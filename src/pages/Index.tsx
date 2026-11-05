@@ -63,7 +63,9 @@ export default function Index() {
         <div
           className={`h-full ${
             activeChatId ? 'hidden md:flex' : 'flex'
-          } w-full md:w-[380px] lg:w-[420px] shrink-0 transition-all`}
+          } w-full md:w-[380px] lg:w-[420px] shrink-0 transition-all ${
+            activeLeftPanel === 'contacts' ? 'md:!w-auto md:flex-1 md:min-w-0' : ''
+          }`}
         >
           {activeLeftPanel === 'chats' && (
             <Sidebar
@@ -76,10 +78,12 @@ export default function Index() {
 
           {/* Tela unificada de Contatos + CRM */}
           {activeLeftPanel === 'contacts' && (
-            <ContactsCrmPanel
-              onClose={() => setActiveLeftPanel('chats')}
-              onOpenChat={openChatWithContact}
-            />
+            <div className="flex-1 min-w-0 flex">
+              <ContactsCrmPanel
+                onClose={() => setActiveLeftPanel('chats')}
+                onOpenChat={openChatWithContact}
+              />
+            </div>
           )}
 
           {activeLeftPanel === 'new-group' && (

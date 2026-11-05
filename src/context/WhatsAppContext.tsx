@@ -13,7 +13,12 @@ import {
   INITIAL_CONVERSATIONS,
   INITIAL_MESSAGES,
 } from '@/data/mockData'
-import { DEFAULT_CRM_STAGES } from '@/data/crmData'
+import {
+  CRM_STAGE_COLORS,
+  CrmStageConfig,
+  DEFAULT_CRM_STAGE_LIST,
+  DEFAULT_CRM_STAGES,
+} from '@/data/crmData'
 
 interface WhatsAppContextType {
   user: UserProfile
@@ -35,6 +40,12 @@ interface WhatsAppContextType {
   // CRM (pipeline de negócios em memória)
   crmStages: Record<string, CrmStageId>
   setContactStage: (contactId: string, stage: CrmStageId) => void
+  // CRUD de estágios do pipeline ("status")
+  crmStageList: CrmStageConfig[]
+  addCrmStage: (label: string, colorIndex?: number) => CrmStageConfig | null
+  renameCrmStage: (stageId: CrmStageId, label: string) => void
+  deleteCrmStage: (stageId: CrmStageId, moveContactsTo: CrmStageId) => void
+  moveCrmStage: (stageId: CrmStageId, direction: -1 | 1) => void
 }
 
 const WhatsAppContext = createContext<WhatsAppContextType | undefined>(undefined)
@@ -45,6 +56,7 @@ const STORAGE_KEYS = {
   CONVERSATIONS: 'wa_clone_conversations',
   MESSAGES: 'wa_clone_messages',
   CRM_STAGES: 'wa_clone_crm_stages',
+  CRM_STAGE_LIST: 'wa_clone_crm_stage_list',
 }
 
 export const WhatsAppProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
@@ -74,14 +86,36 @@ export const WhatsAppProvider: React.FC<{ children: React.ReactNode }> = ({ chil
   // CRM: estágio de cada contato no pipeline (dados de exemplo, persistidos localmente)
   const [crmStages, setCrmStages] = useState<Record<string, CrmStageId>>(() => {
     const saved = localStorage.getItem(STORAGE_KEYS.CRM_STAGES)
-    if (saved) {
-      try {
-        return JSON.parse(saved) as Record<string, CrmStageId>
-      } catch {
-        // ignora e usa o padrão
+    try {
+      const parsed = saved ? (JSON.parse(saved) as unknown) : null
+      if (parsed && typeof parsed === 'object' && !Array.isArray(parsed)) {
+        return parsed as Record<string, CrmStageId>
       }
+    } catch {
+      // ignora e usa o padrão
     }
     return DEFAULT_CRM_STAGES
+  })
+
+  // Lista de estágios do pipeline (CRUD: criar, renomear, reordenar e excluir)
+  const [crmStageList, setCrmStageList] = useState<CrmStageConfig[]>(() => {
+    const saved = localStorage.getItem(STORAGE_KEYS.CRM_STAGE_LIST)
+    try {
+      const parsed = saved ? (JSON.parse(saved) as unknown) : null
+      if (Array.isArray(parsed) && parsed.length > 0) {
+        return parsed
+          .filter((s) => s && typeof s.id === 'string' && typeof s.label === 'string')
+          .map((s, i) => ({
+            id: s.id,
+            label: s.label,
+            dot: s.dot || CRM_STAGE_COLORS[i % CRM_STAGE_COLORS.length].dot,
+            accent: s.accent || CRM_STAGE_COLORS[i % CRM_STAGE_COLORS.length].accent,
+          }))
+      }
+    } catch {
+      // ignora e usa o padrão
+    }
+    return DEFAULT_CRM_STAGE_LIST
   })
 
   // Persist state to localStorage for seamless refreshing
@@ -104,6 +138,10 @@ export const WhatsAppProvider: React.FC<{ children: React.ReactNode }> = ({ chil
   useEffect(() => {
     localStorage.setItem(STORAGE_KEYS.CRM_STAGES, JSON.stringify(crmStages))
   }, [crmStages])
+
+  useEffect(() => {
+    localStorage.setItem(STORAGE_KEYS.CRM_STAGE_LIST, JSON.stringify(crmStageList))
+  }, [crmStageList])
 
   const setUser = (updated: UserProfile) => {
     setUserState(updated)
@@ -371,6 +409,55 @@ export const WhatsAppProvider: React.FC<{ children: React.ReactNode }> = ({ chil
     setCrmStages((prev) => ({ ...prev, [contactId]: stage }))
   }
 
+  // ==== CRUD de estágios do pipeline ====
+
+  const addCrmStage = (label: string, colorIndex = 0): CrmStageConfig | null => {
+    const trimmed = label.trim()
+    if (!trimmed) return null
+
+    const newStage: CrmStageConfig = {
+      id: `stage-${Date.now()}-${Math.random().toString(36).substring(2, 6)}`,
+      label: trimmed,
+      dot: CRM_STAGE_COLORS[colorIndex % CRM_STAGE_COLORS.length].dot,
+      accent: CRM_STAGE_COLORS[colorIndex % CRM_STAGE_COLORS.length].accent,
+    }
+    setCrmStageList((prev) => [...prev, newStage])
+    return newStage
+  }
+
+  const renameCrmStage = (stageId: CrmStageId, label: string) => {
+    const trimmed = label.trim()
+    if (!trimmed) return
+    setCrmStageList((prev) => prev.map((s) => (s.id === stageId ? { ...s, label: trimmed } : s)))
+  }
+
+  // Exclui o estágio movendo seus contatos para outro estágio escolhido pelo usuário
+  const deleteCrmStage = (stageId: CrmStageId, moveContactsTo: CrmStageId) => {
+    if (crmStageList.length <= 1) return
+    if (moveContactsTo === stageId) return
+    setCrmStageList((prev) => prev.filter((s) => s.id !== stageId))
+    setCrmStages((prev) => {
+      const next: Record<string, CrmStageId> = {}
+      Object.entries(prev).forEach(([contactId, stage]) => {
+        next[contactId] = stage === stageId ? moveContactsTo : stage
+      })
+      return next
+    })
+  }
+
+  // Reordena o estágio uma posição para cima/baixo na lista
+  const moveCrmStage = (stageId: CrmStageId, direction: -1 | 1) => {
+    setCrmStageList((prev) => {
+      const index = prev.findIndex((s) => s.id === stageId)
+      const target = index + direction
+      if (index === -1 || target < 0 || target >= prev.length) return prev
+      const next = [...prev]
+      const [item] = next.splice(index, 1)
+      next.splice(target, 0, item)
+      return next
+    })
+  }
+
   const resetData = () => {
     localStorage.removeItem(STORAGE_KEYS.USER)
     localStorage.removeItem(STORAGE_KEYS.CONTACTS)
@@ -384,6 +471,8 @@ export const WhatsAppProvider: React.FC<{ children: React.ReactNode }> = ({ chil
     setActiveChatId(null)
     setActiveMedia(null)
     setCrmStages(DEFAULT_CRM_STAGES)
+    localStorage.removeItem(STORAGE_KEYS.CRM_STAGE_LIST)
+    setCrmStageList(DEFAULT_CRM_STAGE_LIST)
   }
 
   return (
@@ -407,6 +496,11 @@ export const WhatsAppProvider: React.FC<{ children: React.ReactNode }> = ({ chil
         resetData,
         crmStages,
         setContactStage,
+        crmStageList,
+        addCrmStage,
+        renameCrmStage,
+        deleteCrmStage,
+        moveCrmStage,
       }}
     >
       {children}

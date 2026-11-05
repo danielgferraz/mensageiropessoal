@@ -2,7 +2,7 @@ import React, { useEffect, useState } from 'react'
 import { X, MessageCircle, Phone, Pencil, Check } from 'lucide-react'
 import { useWhatsApp } from '@/context/WhatsAppContext'
 import { Contact, CrmStageId } from '@/types/whatsapp'
-import { CRM_STAGES, getStageLabel } from '@/data/crmData'
+import { findStage, getStageLabelIn } from '@/data/crmData'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { useToast } from '@/hooks/use-toast'
@@ -20,7 +20,7 @@ export const ContactDetailsModal: React.FC<ContactDetailsModalProps> = ({
   onClose,
   onOpenChat,
 }) => {
-  const { crmStages, setContactStage, updateContact } = useWhatsApp()
+  const { crmStages, setContactStage, updateContact, crmStageList } = useWhatsApp()
   const { toast } = useToast()
 
   const [editing, setEditing] = useState(false)
@@ -47,8 +47,8 @@ export const ContactDetailsModal: React.FC<ContactDetailsModalProps> = ({
 
   if (!contact) return null
 
-  const stage: CrmStageId = crmStages[contact.id] || 'novo'
-  const stageConfig = CRM_STAGES.find((s) => s.id === stage)
+  const stage: CrmStageId = crmStages[contact.id] || crmStageList[0]?.id || 'novo'
+  const stageConfig = findStage(crmStageList, stage)
 
   const handleSaveEdit = () => {
     if (!draftName.trim()) {
@@ -71,7 +71,7 @@ export const ContactDetailsModal: React.FC<ContactDetailsModalProps> = ({
     setContactStage(contact.id, next)
     toast({
       title: 'Negócio atualizado',
-      description: `${contact.name} movido para "${getStageLabel(next)}".`,
+      description: `${contact.name} movido para "${getStageLabelIn(crmStageList, next)}".`,
     })
   }
 
@@ -154,7 +154,7 @@ export const ContactDetailsModal: React.FC<ContactDetailsModalProps> = ({
           <div>
             <p className="text-[11px] text-slate-500 mb-1.5">Estágio no CRM</p>
             <div className="flex flex-wrap gap-1.5">
-              {CRM_STAGES.map((s) => (
+              {crmStageList.map((s) => (
                 <button
                   key={s.id}
                   type="button"

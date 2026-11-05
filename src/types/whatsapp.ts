@@ -47,7 +47,9 @@ export interface Conversation {
   pinned?: boolean
 }
 
-export type CrmStageId = 'novo' | 'em-contato' | 'em-negociacao' | 'fechado'
+// Estágios do CRM são dinâmicos (CRUD de "status" no pipeline):
+// o id é sempre string, os padrões continuam sendo os quatro originais
+export type CrmStageId = string
 
 export interface UserProfile {
   name: string
