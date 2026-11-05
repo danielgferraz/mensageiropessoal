@@ -7,6 +7,7 @@ import Index from './pages/Index'
 import NotFound from './pages/NotFound'
 import Layout from './components/Layout'
 import { WhatsAppProvider } from './context/WhatsAppContext'
+import { ThemeProvider } from './context/ThemeContext'
 
 // ONLY IMPORT AND RENDER WORKING PAGES, NEVER ADD PLACEHOLDER COMPONENTS OR PAGES IN THIS FILE
 // AVOID REMOVING ANY CONTEXT PROVIDERS FROM THIS FILE (e.g. TooltipProvider, Toaster, Sonner)
@@ -15,16 +16,18 @@ const App = () => (
   <BrowserRouter>
     <TooltipProvider>
       <WhatsAppProvider>
-        <Toaster />
-        <Sonner />
-        <Routes>
-          <Route element={<Layout />}>
-            <Route path="/" element={<Index />} />
-            {/* ADD ALL CUSTOM ROUTES MUST BE ADDED HERE */}
-          </Route>
-          <Route path="*" element={<NotFound />} />
-        </Routes>
-      </WhatsAppProvider>
+        <ThemeProvider>
+          <Toaster />
+          <Sonner />
+          <Routes>
+            <Route element={<Layout />}>
+              <Route path="/" element={<Index />} />
+              {/* ADD ALL CUSTOM ROUTES MUST BE ADDED HERE */}
+            </Route>
+            <Route path="*" element={<NotFound />} />
+          </Routes>
+        </ThemeProvider>
+      </WhatsAppProvider>{' '}
     </TooltipProvider>
   </BrowserRouter>
 )

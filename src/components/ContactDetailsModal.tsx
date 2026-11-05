@@ -1,0 +1,230 @@
+import React, { useEffect, useState } from 'react'
+import { X, MessageCircle, Phone, Pencil, Check } from 'lucide-react'
+import { useWhatsApp } from '@/context/WhatsAppContext'
+import { Contact, CrmStageId } from '@/types/whatsapp'
+import { CRM_STAGES, getStageLabel } from '@/data/crmData'
+import { Button } from '@/components/ui/button'
+import { Input } from '@/components/ui/input'
+import { useToast } from '@/hooks/use-toast'
+
+interface ContactDetailsModalProps {
+  contact: Contact | null
+  onClose: () => void
+  onOpenChat: (contactId: string) => void
+}
+
+// Modal de detalhes do contato: foto, dados, nota e estágio no CRM,
+// com ações rápidas (conversa, mover estágio, editar informações básicas)
+export const ContactDetailsModal: React.FC<ContactDetailsModalProps> = ({
+  contact,
+  onClose,
+  onOpenChat,
+}) => {
+  const { crmStages, setContactStage, updateContact } = useWhatsApp()
+  const { toast } = useToast()
+
+  const [editing, setEditing] = useState(false)
+  const [draftName, setDraftName] = useState('')
+  const [draftAbout, setDraftAbout] = useState('')
+  const [savedFlash, setSavedFlash] = useState(false)
+
+  // Fecha com a tecla Esc
+  useEffect(() => {
+    if (!contact) return
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') onClose()
+    }
+    window.addEventListener('keydown', onKey)
+    return () => window.removeEventListener('keydown', onKey)
+  }, [contact, onClose])
+
+  // Reinicia o estado de edição sempre que abre para outro contato
+  useEffect(() => {
+    setEditing(false)
+    setDraftName(contact?.name || '')
+    setDraftAbout(contact?.about || '')
+  }, [contact])
+
+  if (!contact) return null
+
+  const stage: CrmStageId = crmStages[contact.id] || 'novo'
+  const stageConfig = CRM_STAGES.find((s) => s.id === stage)
+
+  const handleSaveEdit = () => {
+    if (!draftName.trim()) {
+      toast({
+        title: 'Nome obrigatório',
+        description: 'O contato precisa ter pelo menos um nome.',
+        variant: 'destructive',
+      })
+      return
+    }
+    updateContact(contact.id, draftName.trim(), draftAbout.trim())
+    setEditing(false)
+    setSavedFlash(true)
+    setTimeout(() => setSavedFlash(false), 1800)
+    toast({ title: 'Contato atualizado', description: 'As informações foram salvas.' })
+  }
+
+  const handleMoveStage = (next: CrmStageId) => {
+    if (next === stage) return
+    setContactStage(contact.id, next)
+    toast({
+      title: 'Negócio atualizado',
+      description: `${contact.name} movido para "${getStageLabel(next)}".`,
+    })
+  }
+
+  return (
+    <div
+      className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4 animate-fade-in"
+      onClick={onClose}
+    >
+      <div
+        className="w-full max-w-sm rounded-2xl bg-[#111b21] border border-[#2a3942] shadow-2xl overflow-hidden animate-scale-in"
+        onClick={(e) => e.stopPropagation()}
+        role="dialog"
+        aria-modal="true"
+      >
+        {/* Cabeçalho com foto grande */}
+        <div className="relative bg-[#202c33] px-6 pt-6 pb-5 flex flex-col items-center">
+          <button
+            type="button"
+            onClick={onClose}
+            title="Fechar"
+            className="absolute top-3 right-3 w-8 h-8 flex items-center justify-center rounded-full text-slate-400 hover:text-white hover:bg-white/10 transition-colors"
+          >
+            <X className="w-5 h-5" />
+          </button>
+
+          <img
+            src={contact.avatar}
+            alt={contact.name}
+            className="w-24 h-24 rounded-full object-cover ring-2 ring-white/15"
+          />
+          {editing ? (
+            <Input
+              value={draftName}
+              onChange={(e) => setDraftName(e.target.value)}
+              className="mt-3 w-full bg-[#2a3942] border-[#374248] text-white text-center font-semibold"
+              autoFocus
+            />
+          ) : (
+            <h3 className="mt-3 text-lg font-semibold text-white text-center truncate max-w-full">
+              {contact.name}
+            </h3>
+          )}
+          {contact.online && !editing && (
+            <span className="mt-1 text-[11px] text-[#00a884] font-medium flex items-center">
+              <span className="w-2 h-2 bg-[#00a884] rounded-full mr-1.5" />
+              online
+            </span>
+          )}
+        </div>
+
+        {/* Informações */}
+        <div className="px-5 py-4 space-y-4 bg-[#111b21]">
+          {/* Número */}
+          <div className="flex items-center justify-between">
+            <div className="min-w-0">
+              <p className="text-[11px] text-slate-500">Número</p>
+              <p className="text-sm text-slate-100 truncate">{contact.phone}</p>
+            </div>
+            <Phone className="w-4 h-4 text-slate-500 shrink-0" />
+          </div>
+
+          {/* Recado / nota */}
+          <div>
+            <p className="text-[11px] text-slate-500 mb-1">Recado / nota</p>
+            {editing ? (
+              <Input
+                value={draftAbout}
+                onChange={(e) => setDraftAbout(e.target.value)}
+                placeholder="Escreva um recado..."
+                className="bg-[#2a3942] border-[#374248] text-white text-sm"
+              />
+            ) : (
+              <p className="text-sm text-slate-200 bg-[#202c33] rounded-lg px-3 py-2 border border-[#222d34]">
+                {contact.about || 'Sem recado.'}
+              </p>
+            )}
+          </div>
+
+          {/* Estágio no CRM */}
+          <div>
+            <p className="text-[11px] text-slate-500 mb-1.5">Estágio no CRM</p>
+            <div className="flex flex-wrap gap-1.5">
+              {CRM_STAGES.map((s) => (
+                <button
+                  key={s.id}
+                  type="button"
+                  onClick={() => handleMoveStage(s.id)}
+                  className={`flex items-center px-2.5 py-1.5 rounded-full text-xs font-medium border transition-colors ${
+                    s.id === stage
+                      ? 'bg-[#2a3942] border-[#00a884] text-white'
+                      : 'bg-[#202c33] border-[#222d34] text-slate-400 hover:text-slate-200 hover:border-[#374248]'
+                  }`}
+                >
+                  <span className={`w-2 h-2 rounded-full ${s.dot} mr-1.5`} />
+                  {s.label}
+                </button>
+              ))}
+            </div>
+          </div>
+        </div>
+
+        {/* Ações */}
+        <div className="px-5 pb-5 pt-1 flex items-center space-x-2 bg-[#111b21]">
+          {editing ? (
+            <>
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => {
+                  setEditing(false)
+                  setDraftName(contact.name)
+                  setDraftAbout(contact.about || '')
+                }}
+                className="flex-1 text-slate-300 hover:text-white"
+              >
+                Cancelar
+              </Button>
+              <Button
+                size="sm"
+                onClick={handleSaveEdit}
+                className="flex-1 bg-[#00a884] hover:bg-[#008f6f] text-white"
+              >
+                Salvar
+              </Button>
+            </>
+          ) : (
+            <>
+              <Button
+                size="sm"
+                onClick={() => onOpenChat(contact.id)}
+                className="flex-1 bg-[#00a884] hover:bg-[#008f6f] text-white space-x-1.5"
+              >
+                <MessageCircle className="w-4 h-4" />
+                <span>Abrir conversa</span>
+              </Button>
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => setEditing(true)}
+                className="text-slate-300 hover:text-white"
+                title="Editar informações"
+              >
+                {savedFlash ? (
+                  <Check className="w-4 h-4 text-[#00a884]" />
+                ) : (
+                  <Pencil className="w-4 h-4" />
+                )}
+                <span className="ml-1.5">Editar</span>
+              </Button>
+            </>
+          )}
+        </div>
+      </div>
+    </div>
+  )
+}

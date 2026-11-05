@@ -105,23 +105,163 @@
   }
 }
 
-/* WhatsApp Doodle Chat Wallpaper simulation */
-.whatsapp-chat-bg {
-  background-color: #efeae2;
-  background-image:
-    radial-gradient(#d6cdc0 1px, transparent 1px), radial-gradient(#d6cdc0 1px, #efeae2 1px);
-  background-size: 24px 24px;
-  background-position:
-    0 0,
-    12px 12px;
+/* WhatsApp Doodle Chat Wallpaper — padrão sutil de rabiscos sobre o bege característico */
+:root {
+  --wa-doodles: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='360' height='360' viewBox='0 0 360 360'%3E%3Cg fill='none' stroke='%23c9bca9' stroke-width='2.5' stroke-linecap='round' stroke-linejoin='round' opacity='.45'%3E%3Crect x='28' y='28' width='72' height='48' rx='14'/%3E%3Cpath d='M52 76c-2 9-8 14-15 16 11-1 19-7 24-16'/%3E%3Cpath d='M236 84l-11-9c-6-6-5-15 2-18 5-2 9 0 9 5 0-5 4-7 9-5 7 3 8 12 2 18z'/%3E%3Ccircle cx='140' cy='158' r='17'/%3E%3Ccircle cx='134' cy='153' r='1.8' fill='%23c9bca9' stroke='none'/%3E%3Ccircle cx='146' cy='153' r='1.8' fill='%23c9bca9' stroke='none'/%3E%3Cpath d='M133 162q7 7 14 0'/%3E%3Cpath d='M298 138l5.5 11 12 1.8-8.7 8.5 2 12-10.8-5.7-10.8 5.7 2-12-8.7-8.5 12-1.8z'/%3E%3Crect x='70' y='268' width='52' height='38' rx='10'/%3E%3Ccircle cx='96' cy='287' r='9'/%3E%3Cpath d='M242 306v-26l16-5v24'/%3E%3Ccircle cx='237' cy='308' r='5'/%3E%3Ccircle cx='253' cy='301' r='5'/%3E%3Ccircle cx='200' cy='230' r='4'/%3E%3Ccircle cx='330' cy='250' r='4'/%3E%3Ccircle cx='30' cy='210' r='4'/%3E%3Cpath d='M180 30q10 12 0 24'/%3E%3Cpath d='M310 320q8-10 0-20'/%3E%3C/g%3E%3C/svg%3E");
 }
 
-.dark .whatsapp-chat-bg {
-  background-color: #0c1317;
-  background-image:
-    radial-gradient(#182229 1px, transparent 1px), radial-gradient(#182229 1px, #0c1317 1px);
-  background-size: 24px 24px;
-  background-position:
-    0 0,
-    12px 12px;
+.theme-ios {
+  --wa-doodles: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='360' height='360' viewBox='0 0 360 360'%3E%3Cg fill='none' stroke='%23d8d8de' stroke-width='2.5' stroke-linecap='round' stroke-linejoin='round' opacity='.55'%3E%3Crect x='28' y='28' width='72' height='48' rx='14'/%3E%3Cpath d='M52 76c-2 9-8 14-15 16 11-1 19-7 24-16'/%3E%3Cpath d='M236 84l-11-9c-6-6-5-15 2-18 5-2 9 0 9 5 0-5 4-7 9-5 7 3 8 12 2 18z'/%3E%3Ccircle cx='140' cy='158' r='17'/%3E%3Ccircle cx='134' cy='153' r='1.8' fill='%23d8d8de' stroke='none'/%3E%3Ccircle cx='146' cy='153' r='1.8' fill='%23d8d8de' stroke='none'/%3E%3Cpath d='M133 162q7 7 14 0'/%3E%3Cpath d='M298 138l5.5 11 12 1.8-8.7 8.5 2 12-10.8-5.7-10.8 5.7 2-12-8.7-8.5 12-1.8z'/%3E%3Crect x='70' y='268' width='52' height='38' rx='10'/%3E%3Ccircle cx='96' cy='287' r='9'/%3E%3Cpath d='M242 306v-26l16-5v24'/%3E%3Ccircle cx='237' cy='308' r='5'/%3E%3Ccircle cx='253' cy='301' r='5'/%3E%3Ccircle cx='200' cy='230' r='4'/%3E%3Ccircle cx='330' cy='250' r='4'/%3E%3Ccircle cx='30' cy='210' r='4'/%3E%3Cpath d='M180 30q10 12 0 24'/%3E%3Cpath d='M310 320q8-10 0-20'/%3E%3C/g%3E%3C/svg%3E");
+}
+
+.whatsapp-chat-bg {
+  background-color: #efeae2;
+  background-image: var(--wa-doodles);
+  background-size: 360px 360px;
+}
+
+/* ============================================================
+   TEMA iOS — frosted glass, cantos suaves, tipografia do sistema
+   ============================================================ */
+.theme-ios {
+  color-scheme: light;
+}
+
+.theme-ios,
+.theme-ios button,
+.theme-ios input,
+.theme-ios textarea {
+  font-family:
+    -apple-system, BlinkMacSystemFont, 'SF Pro Text', 'Helvetica Neue', 'Segoe UI', sans-serif;
+  letter-spacing: -0.01em;
+}
+
+/* Fundos translúcidos (frosted glass) */
+.theme-ios .bg-\[\#0c1317\] {
+  background: linear-gradient(165deg, #e2e6ec 0%, #cfd5dd 55%, #dfe4ea 100%);
+}
+.theme-ios .bg-\[\#111b21\] {
+  background-color: rgba(255, 255, 255, 0.72);
+  backdrop-filter: blur(28px) saturate(160%);
+  -webkit-backdrop-filter: blur(28px) saturate(160%);
+}
+.theme-ios .bg-\[\#0b141a\] {
+  background-color: rgba(242, 242, 247, 0.65);
+  backdrop-filter: blur(18px);
+  -webkit-backdrop-filter: blur(18px);
+}
+.theme-ios .bg-\[\#202c33\] {
+  background-color: rgba(250, 250, 252, 0.82);
+  backdrop-filter: blur(24px) saturate(170%);
+  -webkit-backdrop-filter: blur(24px) saturate(170%);
+}
+.theme-ios .bg-\[\#2a3942\] {
+  background-color: rgba(255, 255, 255, 0.92);
+}
+.theme-ios .bg-\[\#233138\],
+.theme-ios .bg-\[\#222e35\] {
+  background-color: rgba(255, 255, 255, 0.94);
+  backdrop-filter: blur(30px) saturate(160%);
+  -webkit-backdrop-filter: blur(30px) saturate(160%);
+}
+.theme-ios .bg-\[\#182229\],
+.theme-ios .bg-\[\#182229\]\/80,
+.theme-ios .bg-\[\#182229\]\/90,
+.theme-ios .bg-\[\#111b21\]\/40 {
+  background-color: rgba(120, 120, 128, 0.16);
+}
+.theme-ios .bg-\[\#005c4b\] {
+  background-color: #d9fdd3;
+}
+.theme-ios .bg-\[\#00a884\] {
+  background-color: #34c759;
+}
+.theme-ios .hover\:bg-\[\#008f6f\]:hover {
+  background-color: #2eb350;
+}
+.theme-ios .hover\:bg-\[\#202c33\]:hover,
+.theme-ios .hover\:bg-\[\#2a3942\]:hover,
+.theme-ios .hover\:bg-\[\#182229\]:hover,
+.theme-ios .hover\:bg-\[\#374248\]:hover,
+.theme-ios .hover\:bg-\[\#374248\]\/50:hover {
+  background-color: rgba(120, 120, 128, 0.12);
+}
+
+/* Textos */
+.theme-ios .text-slate-100,
+.theme-ios .text-slate-200 {
+  color: #1c1c1e;
+}
+.theme-ios .text-slate-300 {
+  color: #3a3a3c;
+}
+.theme-ios .text-slate-300\/70 {
+  color: rgba(60, 60, 67, 0.55);
+}
+.theme-ios .text-slate-400 {
+  color: #6e6e73;
+}
+.theme-ios .text-slate-500 {
+  color: #8e8e93;
+}
+.theme-ios .text-slate-600 {
+  color: #aeaeb2;
+}
+.theme-ios .text-\[\#e9edef\] {
+  color: #1c1c1e;
+}
+.theme-ios .text-\[\#ffd279\] {
+  color: #8e8e93;
+}
+.theme-ios .text-\[\#00a884\] {
+  color: #248a3d;
+}
+.theme-ios .hover\:text-white:hover {
+  color: #007aff;
+}
+.theme-ios input,
+.theme-ios textarea {
+  color: #1c1c1e;
+}
+.theme-ios input::placeholder,
+.theme-ios textarea::placeholder {
+  color: #8e8e93;
+  opacity: 1;
+}
+
+/* Bordas e divisores */
+.theme-ios .border-\[\#222d34\],
+.theme-ios .border-\[\#2a3942\],
+.theme-ios .border-\[\#2f3b43\],
+.theme-ios .border-\[\#374248\] {
+  border-color: rgba(60, 60, 67, 0.16);
+}
+.theme-ios .border-\[\#374248\]\/60 {
+  border-color: rgba(60, 60, 67, 0.1);
+}
+.theme-ios .divide-y > :not([hidden]) ~ :not([hidden]) {
+  border-color: rgba(60, 60, 67, 0.12);
+}
+.theme-ios .ring-white\/10,
+.theme-ios .ring-white\/20 {
+  --tw-ring-color: rgba(0, 0, 0, 0.08);
+}
+
+/* Cantos mais generosos, estilo iOS */
+.theme-ios .rounded-md {
+  border-radius: 12px;
+}
+.theme-ios .rounded-lg {
+  border-radius: 14px;
+}
+.theme-ios .rounded-xl {
+  border-radius: 18px;
+}
+.theme-ios .rounded-2xl {
+  border-radius: 24px;
+}
+
+/* Sombra suave em vez de dura */
+.theme-ios .shadow-sm {
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.06);
 }

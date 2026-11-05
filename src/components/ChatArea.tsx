@@ -30,12 +30,18 @@ import { MessageMediaDialog } from './chat/MessageMediaDialog'
 interface ChatAreaProps {
   onBackMobile?: () => void
   onOpenGroupInfo?: () => void
+  onOpenContactDetails?: (contactId: string) => void
 }
 
 const EMOJI_LIST = ['👍', '❤️', '😂', '🔥', '🎉', '👏', '🙏', '😍', '🚀', '☕', '💡', '✨']
 
-export const ChatArea: React.FC<ChatAreaProps> = ({ onBackMobile, onOpenGroupInfo }) => {
-  const { activeChatId, conversations, messages, sendMessage, setActiveMedia } = useWhatsApp()
+export const ChatArea: React.FC<ChatAreaProps> = ({
+  onBackMobile,
+  onOpenGroupInfo,
+  onOpenContactDetails,
+}) => {
+  const { activeChatId, conversations, messages, sendMessage, setActiveMedia, contacts } =
+    useWhatsApp()
 
   const [inputText, setInputText] = useState('')
   const [showEmojiPicker, setShowEmojiPicker] = useState(false)
@@ -48,6 +54,14 @@ export const ChatArea: React.FC<ChatAreaProps> = ({ onBackMobile, onOpenGroupInf
 
   const activeConversation = conversations.find((c) => c.id === activeChatId)
   const chatMessages: Message[] = activeChatId ? messages[activeChatId] || [] : []
+
+  // Em conversas individuais, o contato equivalente (para abrir os detalhes no modal)
+  const activeContact = activeConversation?.participants?.length
+    ? contacts.find((c) => c.id === activeConversation.participants![0])
+    : undefined
+  const handleOpenDetails = () => {
+    if (activeContact && onOpenContactDetails) onOpenContactDetails(activeContact.id)
+  }
 
   // Auto-scroll when messages update
   React.useEffect(() => {
@@ -116,22 +130,26 @@ export const ChatArea: React.FC<ChatAreaProps> = ({ onBackMobile, onOpenGroupInf
     <div className="flex-1 flex flex-col h-full bg-[#0b141a] text-slate-100 overflow-hidden relative">
       {/* Top chat header */}
       <div className="h-16 px-4 bg-[#202c33] border-b border-[#2a3942] flex items-center justify-between shrink-0 z-20">
-        <div className="flex items-center space-x-3 cursor-pointer overflow-hidden">
+        <div
+          className="flex items-center space-x-3 cursor-pointer overflow-hidden"
+          onClick={activeConversation.isGroup ? onOpenGroupInfo : handleOpenDetails}
+          title={activeConversation.isGroup ? 'Dados do grupo' : 'Ver detalhes do contato'}
+        >
           {onBackMobile && (
             <Button
               variant="ghost"
               size="icon"
-              onClick={onBackMobile}
+              onClick={(e) => {
+                e.stopPropagation()
+                onBackMobile()
+              }}
               className="md:hidden text-slate-300 hover:text-white -ml-2"
             >
               <ArrowLeft className="w-5 h-5" />
             </Button>
           )}
 
-          <div
-            className="relative"
-            onClick={activeConversation.isGroup ? onOpenGroupInfo : undefined}
-          >
+          <div className="relative">
             <img
               src={activeConversation.avatar}
               alt={activeConversation.name}
@@ -142,17 +160,14 @@ export const ChatArea: React.FC<ChatAreaProps> = ({ onBackMobile, onOpenGroupInf
             )}
           </div>
 
-          <div
-            className="overflow-hidden"
-            onClick={activeConversation.isGroup ? onOpenGroupInfo : undefined}
-          >
+          <div className="overflow-hidden">
             <h2 className="text-sm sm:text-base font-medium text-slate-100 truncate">
               {activeConversation.name}
             </h2>
             <p className="text-xs text-slate-400 truncate">
               {activeConversation.isGroup
                 ? `${activeConversation.participants?.length || 3} participantes`
-                : 'online'}
+                : 'online — clique para ver os detalhes'}
             </p>
           </div>
         </div>

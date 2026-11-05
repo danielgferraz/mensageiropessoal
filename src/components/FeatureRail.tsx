@@ -2,7 +2,6 @@ import React, { useEffect, useState } from 'react'
 import {
   MessageSquare,
   Users,
-  KanbanSquare,
   PanelLeftClose,
   PanelLeftOpen,
   Star,
@@ -12,7 +11,7 @@ import {
 import { cn } from '@/lib/utils'
 
 // Painéis que podem ficar ativos na área esquerda do app
-export type LeftPanel = 'chats' | 'contacts' | 'new-group' | 'profile' | 'crm'
+export type LeftPanel = 'chats' | 'contacts' | 'new-group' | 'profile' | 'settings'
 
 interface FeatureRailProps {
   activePanel: LeftPanel
@@ -29,15 +28,12 @@ interface RailItem {
 // Itens funcionais do menu lateral recolhível
 const RAIL_ITEMS: RailItem[] = [
   { id: 'chats', label: 'Conversas', icon: MessageSquare, hint: 'Ir para as conversas' },
-  { id: 'contacts', label: 'Contatos', icon: Users, hint: 'Gerenciar contatos' },
-  { id: 'crm', label: 'CRM', icon: KanbanSquare, hint: 'Pipeline de clientes' },
+  { id: 'contacts', label: 'Contatos e CRM', icon: Users, hint: 'Contatos e pipeline de clientes' },
+  { id: 'settings', label: 'Configurações', icon: Settings, hint: 'Preferências do aplicativo' },
 ]
 
 // Espaço reservado para futuras funcionalidades
-const COMING_SOON_ITEMS = [
-  { label: 'Mensagens favoritas', icon: Star },
-  { label: 'Configurações', icon: Settings },
-]
+const COMING_SOON_ITEMS = [{ label: 'Mensagens favoritas', icon: Star }]
 
 export const FeatureRail: React.FC<FeatureRailProps> = ({ activePanel, onSelect }) => {
   // Estado recolhido/expandido persistido entre sessões

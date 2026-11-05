@@ -1,6 +1,9 @@
 import React, { useState } from 'react'
-import { ArrowLeft, UserPlus, Search, MessageCircle, Phone, Check } from 'lucide-react'
+import { ArrowLeft, UserPlus, Search, MessageCircle } from 'lucide-react'
 import { useWhatsApp } from '@/context/WhatsAppContext'
+import { Contact } from '@/types/whatsapp'
+import { CRM_STAGES } from '@/data/crmData'
+import { ContactDetailsModal } from '@/components/ContactDetailsModal'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import {
@@ -17,8 +20,9 @@ interface ContactsPanelProps {
 }
 
 export const ContactsPanel: React.FC<ContactsPanelProps> = ({ onClose }) => {
-  const { contacts, addContact, startChatWithContact } = useWhatsApp()
+  const { contacts, crmStages, addContact, startChatWithContact } = useWhatsApp()
   const [search, setSearch] = useState('')
+  const [selectedContact, setSelectedContact] = useState<Contact | null>(null)
   const [isAddOpen, setIsAddOpen] = useState(false)
   const [newName, setNewName] = useState('')
   const [newPhone, setNewPhone] = useState('')
@@ -111,37 +115,67 @@ export const ContactsPanel: React.FC<ContactsPanelProps> = ({ onClose }) => {
             Nenhum contato encontrado com "{search}".
           </div>
         ) : (
-          filteredContacts.map((contact) => (
-            <div
-              key={contact.id}
-              onClick={() => handleStartConversation(contact.id)}
-              className="flex items-center px-4 py-3 hover:bg-[#202c33] cursor-pointer transition-colors"
-            >
-              <div className="relative shrink-0 mr-3">
-                <img
-                  src={contact.avatar}
-                  alt={contact.name}
-                  className="w-11 h-11 rounded-full object-cover"
-                />
-                {contact.online && (
-                  <span className="absolute bottom-0 right-0 w-2.5 h-2.5 bg-[#00a884] rounded-full border border-[#111b21]" />
-                )}
-              </div>
+          filteredContacts.map((contact) => {
+            const stage = crmStages[contact.id] || 'novo'
+            const stageConfig = CRM_STAGES.find((s) => s.id === stage)
 
-              <div className="flex-1 min-w-0">
-                <div className="flex items-center justify-between">
-                  <h3 className="text-sm font-medium text-slate-100 truncate">{contact.name}</h3>
-                  <MessageCircle className="w-4 h-4 text-slate-400 opacity-60 hover:opacity-100" />
+            return (
+              <div
+                key={contact.id}
+                onClick={() => setSelectedContact(contact)}
+                className="flex items-center px-4 py-3 hover:bg-[#202c33] cursor-pointer transition-colors"
+              >
+                <div className="relative shrink-0 mr-3">
+                  <img
+                    src={contact.avatar}
+                    alt={contact.name}
+                    className="w-11 h-11 rounded-full object-cover"
+                  />
+                  {contact.online && (
+                    <span className="absolute bottom-0 right-0 w-2.5 h-2.5 bg-[#00a884] rounded-full border border-[#111b21]" />
+                  )}
                 </div>
-                <p className="text-xs text-slate-400 truncate mt-0.5">{contact.phone}</p>
-                {contact.about && (
-                  <p className="text-[11px] text-slate-500 truncate mt-0.5">{contact.about}</p>
-                )}
+
+                <div className="flex-1 min-w-0">
+                  <div className="flex items-center justify-between">
+                    <h3 className="text-sm font-medium text-slate-100 truncate">{contact.name}</h3>
+                    <div className="flex items-center space-x-2 shrink-0">
+                      <span
+                        className={`flex items-center text-[10px] font-medium px-2 py-0.5 rounded-full bg-[#202c33] border border-[#2a3942] text-slate-300`}
+                        title="Estágio no CRM"
+                      >
+                        <span className={`w-1.5 h-1.5 rounded-full ${stageConfig?.dot} mr-1`} />
+                        {stageConfig?.label}
+                      </span>
+                      <MessageCircle
+                        className="w-4 h-4 text-slate-400 opacity-60 hover:opacity-100"
+                        onClick={(e) => {
+                          e.stopPropagation()
+                          handleStartConversation(contact.id)
+                        }}
+                      />
+                    </div>
+                  </div>
+                  <p className="text-xs text-slate-400 truncate mt-0.5">{contact.phone}</p>
+                  {contact.about && (
+                    <p className="text-[11px] text-slate-500 truncate mt-0.5">{contact.about}</p>
+                  )}
+                </div>
               </div>
-            </div>
-          ))
+            )
+          })
         )}
       </div>
+
+      {/* Modal de detalhes do contato */}
+      <ContactDetailsModal
+        contact={selectedContact}
+        onClose={() => setSelectedContact(null)}
+        onOpenChat={(id) => {
+          setSelectedContact(null)
+          handleStartConversation(id)
+        }}
+      />
 
       {/* Modal to add contact */}
       <Dialog open={isAddOpen} onOpenChange={setIsAddOpen}>
