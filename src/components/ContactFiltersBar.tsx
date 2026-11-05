@@ -98,7 +98,7 @@ export const ContactFiltersBar: React.FC<ContactFiltersBarProps> = ({
                 className={cn(
                   'inline-flex items-center space-x-1.5 px-2.5 py-1 rounded-full text-xs font-medium border transition-all shrink-0 active:scale-95',
                   isSelected
-                    ? 'border-white text-white shadow-sm'
+                    ? 'border-white text-white shadow-sm wa-tag-badge'
                     : 'bg-[#202c33] border-[#2a3942] text-slate-300 hover:text-white hover:border-[#374248]',
                 )}
                 style={

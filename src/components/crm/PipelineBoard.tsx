@@ -21,6 +21,7 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu'
 import { cn } from '@/lib/utils'
+import { useWhatsApp } from '@/context/WhatsAppContext'
 import { StageDialogState, StageDialogs } from './StageDialogs'
 
 interface PipelineBoardProps {
@@ -50,7 +51,8 @@ export const PipelineBoard: React.FC<PipelineBoardProps> = ({
   overStage,
   setOverStage,
 }) => {
-  const { addCrmStage, renameCrmStage, deleteCrmStage, moveCrmStage } = useStageActions()
+  const { addCrmStage, renameCrmStage, deleteCrmStage, moveCrmStage, labels, getContactLabelIds } =
+    useWhatsApp()
   const [dialog, setDialog] = useState<StageDialogState>({ kind: 'none' })
 
   const handleMove = (contact: Contact, stage: CrmStageId) => moveToStage(contact, stage)
@@ -233,7 +235,7 @@ export const PipelineBoard: React.FC<PipelineBoardProps> = ({
                                   {contactLabels.map((lbl) => (
                                     <span
                                       key={lbl.id}
-                                      className="inline-flex items-center px-1.5 py-0.5 rounded text-[9px] font-medium text-white shadow-xs"
+                                      className="inline-flex items-center px-1.5 py-0.5 rounded text-[9px] font-medium text-white shadow-xs wa-tag-badge"
                                       style={{ backgroundColor: lbl.color }}
                                     >
                                       {lbl.name}
@@ -333,11 +335,4 @@ export const PipelineBoard: React.FC<PipelineBoardProps> = ({
       />
     </div>
   )
-}
-
-// Acesso direto às ações de CRUD (evita acoplar o kanban ao contexto inteiro)
-import { useWhatsApp } from '@/context/WhatsAppContext'
-const useStageActions = () => {
-  const { addCrmStage, renameCrmStage, deleteCrmStage, moveCrmStage } = useWhatsApp()
-  return { addCrmStage, renameCrmStage, deleteCrmStage, moveCrmStage }
 }

@@ -118,7 +118,7 @@ const ContactsList: React.FC<{
                       {contactLabels.map((lbl) => (
                         <span
                           key={lbl.id}
-                          className="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-medium text-white shadow-xs"
+                          className="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-medium text-white shadow-xs wa-tag-badge"
                           style={{ backgroundColor: lbl.color }}
                         >
                           {lbl.name}

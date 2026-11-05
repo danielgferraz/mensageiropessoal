@@ -221,10 +221,13 @@ export const ContactDetailsModal: React.FC<ContactDetailsModalProps> = ({
                       <button
                         key={lbl.id}
                         type="button"
-                        onClick={() => toggleContactLabel(contact.id, lbl.id)}
+                        onClick={(e) => {
+                          e.stopPropagation()
+                          toggleContactLabel(contact.id, lbl.id)
+                        }}
                         className={`inline-flex items-center space-x-1 px-2.5 py-1 rounded-full text-xs font-medium border transition-all active:scale-95 ${
                           isAttached
-                            ? 'text-white shadow-sm border-white/40'
+                            ? 'text-white shadow-sm border-white/40 wa-tag-badge'
                             : 'bg-[#202c33] border-[#2a3942] text-slate-400 hover:text-white hover:border-[#374248]'
                         }`}
                         style={

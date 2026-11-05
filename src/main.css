@@ -409,10 +409,22 @@
 .theme-ios
   span.text-white:not(.bg-\[\#00a884\] *):not(.bg-red-500 *):not(.bg-\[\#2a3942\] *):not(
     .bg-black\/70 *
-  ),
+  ):not(.wa-tag-badge):not(.wa-tag-badge *),
 .theme-ios label.text-white,
-.theme-ios div.text-white:not(.bg-\[\#00a884\] *):not(.bg-red-500 *):not(.bg-black\/70 *) {
+.theme-ios
+  div.text-white:not(.bg-\[\#00a884\] *):not(.bg-red-500 *):not(.bg-black\/70 *):not(
+    .wa-tag-badge
+  ):not(.wa-tag-badge *) {
   color: #1c1c1e;
+}
+
+/* Badges e tags de etiquetas em todos os temas preservam texto em alto contraste */
+.wa-tag-badge {
+  color: #ffffff !important;
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.35);
+}
+.wa-tag-badge * {
+  color: #ffffff !important;
 }
 
 /* Textos dentro de inputs e placeholders */
