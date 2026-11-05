@@ -4,61 +4,25 @@ import { useWhatsApp } from '@/context/WhatsAppContext'
 import { Contact } from '@/types/whatsapp'
 import { CRM_STAGES } from '@/data/crmData'
 import { ContactDetailsModal } from '@/components/ContactDetailsModal'
+import { NewContactDialog } from '@/components/NewContactDialog'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
-import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-  DialogFooter,
-} from '@/components/ui/dialog'
-import { useToast } from '@/hooks/use-toast'
 
 interface ContactsPanelProps {
   onClose: () => void
 }
 
 export const ContactsPanel: React.FC<ContactsPanelProps> = ({ onClose }) => {
-  const { contacts, crmStages, addContact, startChatWithContact } = useWhatsApp()
+  const { contacts, crmStages, startChatWithContact } = useWhatsApp()
   const [search, setSearch] = useState('')
   const [selectedContact, setSelectedContact] = useState<Contact | null>(null)
   const [isAddOpen, setIsAddOpen] = useState(false)
-  const [newName, setNewName] = useState('')
-  const [newPhone, setNewPhone] = useState('')
-  const [newAbout, setNewAbout] = useState('')
-
-  const { toast } = useToast()
 
   const filteredContacts = contacts.filter(
     (c) =>
       c.name.toLowerCase().includes(search.toLowerCase()) ||
       c.phone.toLowerCase().includes(search.toLowerCase()),
   )
-
-  const handleCreateContact = (e: React.FormEvent) => {
-    e.preventDefault()
-    if (!newName.trim() || !newPhone.trim()) {
-      toast({
-        title: 'Campos obrigatórios',
-        description: 'Informe o nome e o número de telefone.',
-        variant: 'destructive',
-      })
-      return
-    }
-
-    const created = addContact(newName.trim(), newPhone.trim(), newAbout.trim() || undefined)
-
-    toast({
-      title: 'Contato adicionado!',
-      description: `${created.name} já pode receber suas mensagens.`,
-    })
-
-    setIsAddOpen(false)
-    setNewName('')
-    setNewPhone('')
-    setNewAbout('')
-  }
 
   const handleStartConversation = (contactId: string) => {
     startChatWithContact(contactId)
@@ -178,68 +142,11 @@ export const ContactsPanel: React.FC<ContactsPanelProps> = ({ onClose }) => {
       />
 
       {/* Modal to add contact */}
-      <Dialog open={isAddOpen} onOpenChange={setIsAddOpen}>
-        <DialogContent className="bg-[#222e35] border-[#2f3b43] text-slate-100 max-w-md">
-          <DialogHeader>
-            <DialogTitle className="text-lg font-semibold flex items-center space-x-2">
-              <UserPlus className="w-5 h-5 text-[#00a884]" />
-              <span>Novo Contato</span>
-            </DialogTitle>
-          </DialogHeader>
-
-          <form onSubmit={handleCreateContact} className="space-y-4 py-2">
-            <div>
-              <label className="block text-xs text-slate-300 mb-1">
-                Nome completo <span className="text-[#00a884]">*</span>
-              </label>
-              <Input
-                placeholder="Ex: Gabriela Duarte"
-                value={newName}
-                onChange={(e) => setNewName(e.target.value)}
-                className="bg-[#2a3942] border-[#374248] text-white"
-                required
-              />
-            </div>
-
-            <div>
-              <label className="block text-xs text-slate-300 mb-1">
-                Número de telefone <span className="text-[#00a884]">*</span>
-              </label>
-              <Input
-                placeholder="+55 11 99999-8888"
-                value={newPhone}
-                onChange={(e) => setNewPhone(e.target.value)}
-                className="bg-[#2a3942] border-[#374248] text-white"
-                required
-              />
-            </div>
-
-            <div>
-              <label className="block text-xs text-slate-300 mb-1">Recado / Status</label>
-              <Input
-                placeholder="Disponível para trocar ideias"
-                value={newAbout}
-                onChange={(e) => setNewAbout(e.target.value)}
-                className="bg-[#2a3942] border-[#374248] text-white"
-              />
-            </div>
-
-            <DialogFooter className="gap-2 sm:gap-0 pt-2">
-              <Button
-                type="button"
-                variant="ghost"
-                onClick={() => setIsAddOpen(false)}
-                className="text-slate-300 hover:text-white"
-              >
-                Cancelar
-              </Button>
-              <Button type="submit" className="bg-[#00a884] hover:bg-[#008f6f] text-white">
-                Salvar Contato
-              </Button>
-            </DialogFooter>
-          </form>
-        </DialogContent>
-      </Dialog>
+      <NewContactDialog
+        open={isAddOpen}
+        onOpenChange={setIsAddOpen}
+        onContactCreated={(created) => setSelectedContact(created)}
+      />
     </div>
   )
 }

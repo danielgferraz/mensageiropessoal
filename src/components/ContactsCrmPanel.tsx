@@ -1,5 +1,5 @@
 import React, { useMemo, useState } from 'react'
-import { ArrowLeft, Users, Search, UserPlus, MessageCircle } from 'lucide-react'
+import { ArrowLeft, Users, Search, UserPlus, MessageCircle, RotateCcw, XCircle } from 'lucide-react'
 import { useWhatsApp } from '@/context/WhatsAppContext'
 import { Contact, CrmStageId } from '@/types/whatsapp'
 import { findStage, getStageLabelIn } from '@/data/crmData'
@@ -7,7 +7,9 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { useToast } from '@/hooks/use-toast'
 import { ContactDetailsModal } from '@/components/ContactDetailsModal'
+import { NewContactDialog } from '@/components/NewContactDialog'
 import { PipelineBoard } from '@/components/crm/PipelineBoard'
+import { ContactFiltersBar, AboutFilter } from '@/components/ContactFiltersBar'
 import { useIsMobile } from '@/hooks/use-mobile'
 import { cn } from '@/lib/utils'
 
@@ -16,10 +18,19 @@ interface ContactsCrmPanelProps {
   onOpenChat: (contactId: string) => void
 }
 
+// Normaliza texto removendo acentos e espaços supérfluos para busca insensível a acentuação
+const normalizeText = (text: string) =>
+  (text || '')
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .toLowerCase()
+
 // Lista de contatos: usada no mobile (aba) e fixa à esquerda no desktop
 const ContactsList: React.FC<{
   contacts: Contact[]
   search: string
+  hasActiveFilters: boolean
+  onClearFilters: () => void
   stageOf: (contactId: string) => CrmStageId
   stageLabelOf: (stage: CrmStageId) => string
   stageDotOf: (stage: CrmStageId) => string
@@ -29,6 +40,8 @@ const ContactsList: React.FC<{
 }> = ({
   contacts,
   search,
+  hasActiveFilters,
+  onClearFilters,
   stageOf,
   stageLabelOf,
   stageDotOf,
@@ -40,8 +53,25 @@ const ContactsList: React.FC<{
     <div className={cn('flex flex-col h-full min-h-0', className)}>
       <div className="flex-1 overflow-y-auto divide-y divide-[#202c33]/40">
         {contacts.length === 0 ? (
-          <div className="text-center py-10 px-4 text-slate-400 text-sm">
-            Nenhum contato encontrado com "{search}".
+          <div className="text-center py-12 px-6 text-slate-400 flex flex-col items-center">
+            <XCircle className="w-10 h-10 text-slate-600 mb-3" />
+            <p className="text-sm font-medium text-slate-300 mb-1">Nenhum contato encontrado</p>
+            <p className="text-xs text-slate-500 max-w-xs leading-relaxed mb-4">
+              {search
+                ? `Não encontramos nenhum resultado para "${search}". Verifique a digitação ou remova filtros.`
+                : 'Nenhum contato corresponde aos filtros de estágio/recado aplicados.'}
+            </p>
+            {hasActiveFilters && (
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={onClearFilters}
+                className="bg-[#202c33] border-[#2a3942] text-[#00a884] hover:text-white hover:bg-[#2a3942] text-xs space-x-1.5"
+              >
+                <RotateCcw className="w-3.5 h-3.5" />
+                <span>Limpar todos os filtros</span>
+              </Button>
+            )}
           </div>
         ) : (
           contacts.map((contact) => {
@@ -97,10 +127,13 @@ const ContactsList: React.FC<{
 // Tela unificada: no desktop contatos fixos à esquerda e pipeline fixo à direita,
 // sem abas; no mobile volta ao alternador "Contatos" / "Pipeline"
 export const ContactsCrmPanel: React.FC<ContactsCrmPanelProps> = ({ onClose, onOpenChat }) => {
-  const { contacts, crmStages, setContactStage, crmStageList, addContact } = useWhatsApp()
+  const { contacts, crmStages, setContactStage, crmStageList } = useWhatsApp()
   const [view, setView] = useState<'contacts' | 'pipeline'>('contacts')
   const [search, setSearch] = useState('')
+  const [selectedStages, setSelectedStages] = useState<CrmStageId[]>([])
+  const [aboutFilter, setAboutFilter] = useState<AboutFilter>('all')
   const [selectedContact, setSelectedContact] = useState<Contact | null>(null)
+  const [isAddOpen, setIsAddOpen] = useState(false)
   const [dragId, setDragId] = useState<string | null>(null)
   const [overStage, setOverStage] = useState<CrmStageId | null>(null)
   const { toast } = useToast()
@@ -110,15 +143,61 @@ export const ContactsCrmPanel: React.FC<ContactsCrmPanelProps> = ({ onClose, onO
   const stageLabelOf = (stage: CrmStageId) => getStageLabelIn(crmStageList, stage)
   const stageDotOf = (stage: CrmStageId) => findStage(crmStageList, stage).dot
 
-  const filteredContacts = useMemo(
-    () =>
-      contacts.filter(
-        (c) =>
-          c.name.toLowerCase().includes(search.toLowerCase()) ||
-          c.phone.toLowerCase().includes(search.toLowerCase()),
-      ),
-    [contacts, search],
+  const handleToggleStage = (stageId: CrmStageId) => {
+    setSelectedStages((prev) =>
+      prev.includes(stageId) ? prev.filter((id) => id !== stageId) : [...prev, stageId],
+    )
+  }
+
+  const handleClearFilters = () => {
+    setSearch('')
+    setSelectedStages([])
+    setAboutFilter('all')
+  }
+
+  const hasActiveFilters = Boolean(
+    search.trim() || selectedStages.length > 0 || aboutFilter !== 'all',
   )
+
+  const filteredContacts = useMemo(() => {
+    const term = normalizeText(search.trim())
+    const digitsTerm = search.replace(/\D/g, '')
+
+    return contacts.filter((c) => {
+      // 1. Filtro de texto (nome ou telefone normalizado sem acento; dígitos do telefone)
+      if (term) {
+        const normName = normalizeText(c.name)
+        const normPhone = normalizeText(c.phone)
+        const digitsPhone = c.phone.replace(/\D/g, '')
+
+        const matchName = normName.includes(term)
+        const matchPhone = normPhone.includes(term)
+        const matchDigits = digitsTerm.length > 0 && digitsPhone.includes(digitsTerm)
+
+        if (!matchName && !matchPhone && !matchDigits) {
+          return false
+        }
+      }
+
+      // 2. Filtro de Estágio do CRM (multi-seleção)
+      if (selectedStages.length > 0) {
+        const contactStage = stageOf(c.id)
+        if (!selectedStages.includes(contactStage)) {
+          return false
+        }
+      }
+
+      // 3. Filtro de Recado (ter / não ter)
+      if (aboutFilter === 'with-about') {
+        if (!c.about || !c.about.trim()) return false
+      } else if (aboutFilter === 'without-about') {
+        if (c.about && c.about.trim().length > 0) return false
+      }
+
+      return true
+    })
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [contacts, search, selectedStages, aboutFilter, crmStages, crmStageList])
 
   const dealsByStage = useMemo(() => {
     const map: Record<string, Contact[]> = {}
@@ -150,25 +229,32 @@ export const ContactsCrmPanel: React.FC<ContactsCrmPanelProps> = ({ onClose, onO
     setOverStage(null)
   }
 
-  const handleAddContact = () => {
-    const created = addContact('Novo contato', '+55 11 90000-0000')
-    toast({
-      title: 'Contato adicionado',
-      description: `${created.name} criado — edite os dados no modal de detalhes.`,
-    })
-    setSelectedContact(created)
-  }
-
   const contactsList = (
     <ContactsList
       contacts={filteredContacts}
       search={search}
+      hasActiveFilters={hasActiveFilters}
+      onClearFilters={handleClearFilters}
       stageOf={stageOf}
       stageLabelOf={stageLabelOf}
       stageDotOf={stageDotOf}
       onSelectContact={setSelectedContact}
       onOpenChat={onOpenChat}
       className="flex-1"
+    />
+  )
+
+  const filtersBar = (
+    <ContactFiltersBar
+      selectedStages={selectedStages}
+      onToggleStage={handleToggleStage}
+      aboutFilter={aboutFilter}
+      onSetAboutFilter={setAboutFilter}
+      onClearFilters={handleClearFilters}
+      hasActiveFilters={hasActiveFilters}
+      totalCount={contacts.length}
+      filteredCount={filteredContacts.length}
+      stageList={crmStageList}
     />
   )
 
@@ -194,7 +280,7 @@ export const ContactsCrmPanel: React.FC<ContactsCrmPanelProps> = ({ onClose, onO
         <Button
           variant="ghost"
           size="icon"
-          onClick={handleAddContact}
+          onClick={() => setIsAddOpen(true)}
           className="ml-auto text-slate-300 hover:text-white"
           title="Adicionar novo contato"
         >
@@ -202,34 +288,48 @@ export const ContactsCrmPanel: React.FC<ContactsCrmPanelProps> = ({ onClose, onO
         </Button>
       </div>
 
-      {/* Alternador de visão: apenas no mobile */}
+      {/* Mobile: Busca + filtros */}
       {isMobile && (
-        <div className="p-3 pb-0 bg-[#111b21] border-b border-[#222d34] shrink-0">
-          <div className="flex bg-[#202c33] rounded-lg p-0.5 mb-2">
-            <button
-              type="button"
-              onClick={() => setView('contacts')}
-              className={cn(
-                'flex-1 flex items-center justify-center space-x-1.5 py-1.5 rounded-md text-xs font-medium transition-colors',
-                view === 'contacts'
-                  ? 'bg-[#2a3942] text-white'
-                  : 'text-slate-400 hover:text-slate-200',
-              )}
-            >
-              Contatos
-            </button>
-            <button
-              type="button"
-              onClick={() => setView('pipeline')}
-              className={cn(
-                'flex-1 flex items-center justify-center space-x-1.5 py-1.5 rounded-md text-xs font-medium transition-colors',
-                view === 'pipeline'
-                  ? 'bg-[#2a3942] text-white'
-                  : 'text-slate-400 hover:text-slate-200',
-              )}
-            >
-              Pipeline
-            </button>
+        <div className="flex flex-col shrink-0">
+          <div className="p-3 bg-[#111b21] border-b border-[#222d34] shrink-0">
+            <div className="relative flex items-center">
+              <Search className="w-4 h-4 absolute left-3 text-slate-400 pointer-events-none" />
+              <Input
+                placeholder="Pesquisar contatos..."
+                value={search}
+                onChange={(e) => setSearch(e.target.value)}
+                className="pl-9 bg-[#202c33] border-none text-white placeholder-slate-400 h-9 text-xs sm:text-sm focus-visible:ring-1 focus-visible:ring-[#00a884]"
+              />
+            </div>
+          </div>
+          {filtersBar}
+          <div className="p-2 pb-0 bg-[#111b21] border-b border-[#222d34]">
+            <div className="flex bg-[#202c33] rounded-lg p-0.5 mb-2">
+              <button
+                type="button"
+                onClick={() => setView('contacts')}
+                className={cn(
+                  'flex-1 flex items-center justify-center space-x-1.5 py-1.5 rounded-md text-xs font-medium transition-colors',
+                  view === 'contacts'
+                    ? 'bg-[#2a3942] text-white'
+                    : 'text-slate-400 hover:text-slate-200',
+                )}
+              >
+                Contatos ({filteredContacts.length})
+              </button>
+              <button
+                type="button"
+                onClick={() => setView('pipeline')}
+                className={cn(
+                  'flex-1 flex items-center justify-center space-x-1.5 py-1.5 rounded-md text-xs font-medium transition-colors',
+                  view === 'pipeline'
+                    ? 'bg-[#2a3942] text-white'
+                    : 'text-slate-400 hover:text-slate-200',
+                )}
+              >
+                Pipeline
+              </button>
+            </div>
           </div>
         </div>
       )}
@@ -276,7 +376,7 @@ export const ContactsCrmPanel: React.FC<ContactsCrmPanelProps> = ({ onClose, onO
             <Button
               variant="ghost"
               size="icon"
-              onClick={handleAddContact}
+              onClick={() => setIsAddOpen(true)}
               className="ml-auto text-slate-300 hover:text-white"
               title="Adicionar novo contato"
             >
@@ -284,18 +384,30 @@ export const ContactsCrmPanel: React.FC<ContactsCrmPanelProps> = ({ onClose, onO
             </Button>
           </div>
 
-          {/* Busca */}
+          {/* Busca por texto e número */}
           <div className="p-3 bg-[#111b21] border-b border-[#222d34] shrink-0">
             <div className="relative flex items-center">
               <Search className="w-4 h-4 absolute left-3 text-slate-400 pointer-events-none" />
               <Input
-                placeholder="Pesquisar contatos..."
+                placeholder="Pesquisar nome, 'joao' ou telefone..."
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
                 className="pl-9 bg-[#202c33] border-none text-white placeholder-slate-400 h-9 text-xs sm:text-sm focus-visible:ring-1 focus-visible:ring-[#00a884]"
               />
+              {search && (
+                <button
+                  type="button"
+                  onClick={() => setSearch('')}
+                  className="absolute right-3 text-slate-400 hover:text-white text-xs"
+                >
+                  ✕
+                </button>
+              )}
             </div>
           </div>
+
+          {/* Barra de Filtros Avançados: estágios, recado, contador X de Y e limpar tudo */}
+          {filtersBar}
 
           {contactsList}
         </div>
@@ -337,6 +449,13 @@ export const ContactsCrmPanel: React.FC<ContactsCrmPanelProps> = ({ onClose, onO
           setSelectedContact(null)
           onOpenChat(id)
         }}
+      />
+
+      {/* Modal de novo contato com campo de telefone editável */}
+      <NewContactDialog
+        open={isAddOpen}
+        onOpenChange={setIsAddOpen}
+        onContactCreated={(created) => setSelectedContact(created)}
       />
     </div>
   )

@@ -1,5 +1,15 @@
 import React, { useState } from 'react'
-import { ArrowLeft, Palette, Type, Sparkles, Smartphone, LayoutGrid, Check } from 'lucide-react'
+import {
+  ArrowLeft,
+  Palette,
+  Type,
+  Sparkles,
+  Smartphone,
+  LayoutGrid,
+  Check,
+  Moon,
+  Trees,
+} from 'lucide-react'
 import { useAppTheme, AppTheme, FontScale } from '@/context/ThemeContext'
 import { cn } from '@/lib/utils'
 
@@ -7,17 +17,50 @@ interface SettingsPanelProps {
   onClose: () => void
 }
 
-// Seletor de tema estilo iOS (segmented control)
-const THEME_OPTIONS: { id: AppTheme; label: string; description: string }[] = [
+const THEME_OPTIONS: {
+  id: AppTheme
+  label: string
+  description: string
+  icon: typeof LayoutGrid
+  headerColor: string
+  bodyColor: string
+  bubbleColor: string
+}[] = [
   {
     id: 'classic',
     label: 'Clássico',
     description: 'O visual escuro tradicional do WhatsApp Web.',
+    icon: LayoutGrid,
+    headerColor: 'bg-[#202c33]',
+    bodyColor: 'bg-[#0b141a]',
+    bubbleColor: 'bg-[#005c4b]',
   },
   {
     id: 'ios',
-    label: 'iOS',
-    description: 'Frosted glass, cantos suaves e cores claras do sistema da Apple.',
+    label: 'iOS Claro',
+    description: 'Frosted glass, cantos suaves e tons claros do sistema Apple.',
+    icon: Smartphone,
+    headerColor: 'bg-white/85',
+    bodyColor: 'bg-[#efeae2]',
+    bubbleColor: 'bg-[#d9fdd3]',
+  },
+  {
+    id: 'amoled',
+    label: 'AMOLED',
+    description: 'Preto puro (#000000) de alto contraste e máxima economia.',
+    icon: Moon,
+    headerColor: 'bg-[#0a0a0a]',
+    bodyColor: 'bg-[#000000]',
+    bubbleColor: 'bg-[#003e33]',
+  },
+  {
+    id: 'emerald',
+    label: 'Esmeralda',
+    description: 'Verde floresta nobre e profundo com alto contraste elegante.',
+    icon: Trees,
+    headerColor: 'bg-[#0b2923]',
+    bodyColor: 'bg-[#061e1b]',
+    bubbleColor: 'bg-[#044b3c]',
   },
 ]
 
@@ -89,35 +132,24 @@ export const SettingsPanel: React.FC<SettingsPanelProps> = ({ onClose }) => {
                   {/* Mini pré-visualização do tema */}
                   <div
                     className={cn(
-                      'h-16 rounded-lg mb-2 overflow-hidden border border-black/20',
-                      option.id === 'ios' ? 'bg-[#eef0f4]' : 'bg-[#0b141a]',
+                      'h-16 rounded-lg mb-2 overflow-hidden border border-black/30',
+                      option.bodyColor,
                     )}
                   >
-                    <div
-                      className={cn('h-4', option.id === 'ios' ? 'bg-white/85' : 'bg-[#202c33]')}
-                    />
+                    <div className={cn('h-4', option.headerColor)} />
                     <div className="p-1.5 space-y-1.5">
-                      <div
-                        className={cn(
-                          'h-3 w-2/3 rounded-full',
-                          option.id === 'ios' ? 'bg-[#d9fdd3]' : 'bg-[#005c4b]',
-                        )}
-                      />
+                      <div className={cn('h-3 w-2/3 rounded-full', option.bubbleColor)} />
                       <div
                         className={cn(
                           'h-3 w-1/2 rounded-full ml-auto',
-                          option.id === 'ios' ? 'bg-white' : 'bg-[#202c33]',
+                          option.id === 'ios' ? 'bg-white' : 'bg-white/10',
                         )}
                       />
                     </div>
                   </div>
 
                   <p className="text-sm font-semibold text-slate-100 flex items-center">
-                    {option.id === 'ios' ? (
-                      <Smartphone className="w-3.5 h-3.5 mr-1.5 text-[#34c759]" />
-                    ) : (
-                      <LayoutGrid className="w-3.5 h-3.5 mr-1.5 text-[#00a884]" />
-                    )}
+                    <option.icon className="w-3.5 h-3.5 mr-1.5 text-[#00a884]" />
                     {option.label}
                   </p>
                   <p className="text-[11px] text-slate-400 mt-0.5 leading-snug">

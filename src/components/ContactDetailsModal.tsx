@@ -25,6 +25,7 @@ export const ContactDetailsModal: React.FC<ContactDetailsModalProps> = ({
 
   const [editing, setEditing] = useState(false)
   const [draftName, setDraftName] = useState('')
+  const [draftPhone, setDraftPhone] = useState('')
   const [draftAbout, setDraftAbout] = useState('')
   const [savedFlash, setSavedFlash] = useState(false)
 
@@ -42,6 +43,7 @@ export const ContactDetailsModal: React.FC<ContactDetailsModalProps> = ({
   useEffect(() => {
     setEditing(false)
     setDraftName(contact?.name || '')
+    setDraftPhone(contact?.phone || '')
     setDraftAbout(contact?.about || '')
   }, [contact])
 
@@ -59,11 +61,19 @@ export const ContactDetailsModal: React.FC<ContactDetailsModalProps> = ({
       })
       return
     }
-    updateContact(contact.id, draftName.trim(), draftAbout.trim())
+    if (!draftPhone.trim()) {
+      toast({
+        title: 'Telefone obrigatório',
+        description: 'Informe um número de telefone para o contato.',
+        variant: 'destructive',
+      })
+      return
+    }
+    updateContact(contact.id, draftName.trim(), draftAbout.trim(), draftPhone.trim())
     setEditing(false)
     setSavedFlash(true)
     setTimeout(() => setSavedFlash(false), 1800)
-    toast({ title: 'Contato atualizado', description: 'As informações foram salvas.' })
+    toast({ title: 'Contato atualizado', description: 'As informações foram salvas com sucesso.' })
   }
 
   const handleMoveStage = (next: CrmStageId) => {
@@ -125,12 +135,22 @@ export const ContactDetailsModal: React.FC<ContactDetailsModalProps> = ({
         {/* Informações */}
         <div className="px-5 py-4 space-y-4 bg-[#111b21]">
           {/* Número */}
-          <div className="flex items-center justify-between">
-            <div className="min-w-0">
-              <p className="text-[11px] text-slate-500">Número</p>
-              <p className="text-sm text-slate-100 truncate">{contact.phone}</p>
+          <div className="flex items-center justify-between gap-2">
+            <div className="min-w-0 flex-1">
+              <p className="text-[11px] text-slate-500 mb-1">Número de telefone</p>
+              {editing ? (
+                <Input
+                  type="tel"
+                  value={draftPhone}
+                  onChange={(e) => setDraftPhone(e.target.value)}
+                  placeholder="+55 11 99999-8888"
+                  className="bg-[#2a3942] border-[#374248] text-white text-sm h-9"
+                />
+              ) : (
+                <p className="text-sm text-slate-100 truncate">{contact.phone}</p>
+              )}
             </div>
-            <Phone className="w-4 h-4 text-slate-500 shrink-0" />
+            {!editing && <Phone className="w-4 h-4 text-slate-500 shrink-0" />}
           </div>
 
           {/* Recado / nota */}
@@ -180,9 +200,11 @@ export const ContactDetailsModal: React.FC<ContactDetailsModalProps> = ({
               <Button
                 variant="ghost"
                 size="sm"
+                type="button"
                 onClick={() => {
                   setEditing(false)
                   setDraftName(contact.name)
+                  setDraftPhone(contact.phone)
                   setDraftAbout(contact.about || '')
                 }}
                 className="flex-1 text-slate-300 hover:text-white"

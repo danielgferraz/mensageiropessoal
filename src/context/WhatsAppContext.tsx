@@ -36,7 +36,7 @@ interface WhatsAppContextType {
   sendMessage: (conversationId: string, text?: string, media?: MessageMedia) => void
   createGroup: (name: string, participantIds: string[], avatar?: string) => string
   addContact: (name: string, phone: string, about?: string) => Contact
-  updateContact: (contactId: string, name: string, about?: string) => void
+  updateContact: (contactId: string, name: string, about?: string, phone?: string) => void
   startChatWithContact: (contactId: string) => string
   markAsRead: (conversationId: string) => void
   resetData: () => void
@@ -425,11 +425,18 @@ export const WhatsAppProvider: React.FC<{ children: React.ReactNode }> = ({ chil
     return newContact
   }
 
-  // Atualiza nome/recado de um contato existente (modal de detalhes)
-  const updateContact = (contactId: string, name: string, about?: string) => {
+  // Atualiza nome/recado/telefone de um contato existente (modal de detalhes e drawer)
+  const updateContact = (contactId: string, name: string, about?: string, phone?: string) => {
     setContacts((prev) =>
       prev.map((c) =>
-        c.id === contactId ? { ...c, name, about: about?.trim() ? about.trim() : c.about } : c,
+        c.id === contactId
+          ? {
+              ...c,
+              name,
+              about: about !== undefined ? (about.trim() ? about.trim() : '') : c.about,
+              phone: phone?.trim() ? phone.trim() : c.phone,
+            }
+          : c,
       ),
     )
   }

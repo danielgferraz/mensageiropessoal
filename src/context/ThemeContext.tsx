@@ -1,7 +1,7 @@
 import React, { createContext, useContext, useEffect, useState } from 'react'
 
 // Temas disponíveis do aplicativo
-export type AppTheme = 'classic' | 'ios'
+export type AppTheme = 'classic' | 'ios' | 'amoled' | 'emerald'
 
 // Escala de fonte escolhida nas configurações
 export type FontScale = 'small' | 'medium' | 'large'
@@ -27,18 +27,24 @@ const FONT_SIZES: Record<FontScale, string> = {
 const AppThemeContext = createContext<AppThemeContextType | undefined>(undefined)
 
 export const ThemeProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-  const [theme, setThemeState] = useState<AppTheme>(() =>
-    localStorage.getItem(STORAGE_KEYS.THEME) === 'ios' ? 'ios' : 'classic',
-  )
+  const [theme, setThemeState] = useState<AppTheme>(() => {
+    const saved = localStorage.getItem(STORAGE_KEYS.THEME)
+    if (saved === 'ios' || saved === 'amoled' || saved === 'emerald' || saved === 'classic') {
+      return saved
+    }
+    return 'classic'
+  })
 
   const [fontScale, setFontScaleState] = useState<FontScale>(() => {
     const saved = localStorage.getItem(STORAGE_KEYS.FONT)
     return saved === 'small' || saved === 'large' ? saved : 'medium'
   })
 
-  // Aplica o tema em toda a árvore (o CSS em main.css reage à classe .theme-ios)
+  // Aplica o tema em toda a árvore (o CSS em main.css reage às classes .theme-ios, .theme-amoled, .theme-emerald)
   useEffect(() => {
-    document.documentElement.classList.toggle('theme-ios', theme === 'ios')
+    const root = document.documentElement
+    root.classList.remove('theme-ios', 'theme-amoled', 'theme-emerald', 'theme-classic')
+    root.classList.add(`theme-${theme}`)
     localStorage.setItem(STORAGE_KEYS.THEME, theme)
   }, [theme])
 

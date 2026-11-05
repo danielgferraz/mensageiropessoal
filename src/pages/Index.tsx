@@ -6,6 +6,7 @@ import { ChatArea } from '@/components/ChatArea'
 import { NewGroupPanel } from '@/components/NewGroupPanel'
 import { ProfilePanel } from '@/components/ProfilePanel'
 import { GroupInfoPanel } from '@/components/GroupInfoPanel'
+import { ContactDetailsDrawer } from '@/components/ContactDetailsDrawer'
 import { MediaViewerModal } from '@/components/MediaViewerModal'
 import { ContactsCrmPanel } from '@/components/ContactsCrmPanel'
 import { SettingsPanel } from '@/components/SettingsPanel'
@@ -28,13 +29,17 @@ export default function Index() {
   // Track active subpanels on the left side
   const [activeLeftPanel, setActiveLeftPanel] = useState<LeftPanel>('chats')
 
-  // Detalhes de contato abertos a partir da lista de conversas (clique no cabeçalho do chat)
-  const [openContactId, setOpenContactId] = useState<string | null>(null)
-  const openContact = openContactId ? contacts.find((c) => c.id === openContactId) || null : null
+  // Drawer lateral de detalhes do contato ativo (clique no cabeçalho do chat)
+  const [activeContactDrawerId, setActiveContactDrawerId] = useState<string | null>(null)
+
+  // Modal modal de detalhes (usado quando vem de listas externas)
+  const [modalContactId, setModalContactId] = useState<string | null>(null)
+  const modalContact = modalContactId ? contacts.find((c) => c.id === modalContactId) || null : null
 
   // Abrir uma conversa a partir de outra tela (contatos, CRM, modal) sem quebrar o chat
   const openChatWithContact = (contactId: string) => {
-    setOpenContactId(null)
+    setModalContactId(null)
+    setActiveContactDrawerId(null)
     setActiveLeftPanel('chats')
     startChatWithContact(contactId)
   }
@@ -103,11 +108,21 @@ export default function Index() {
             {/* Right Side (Active Chat View / Placeholder apenas para Conversas sem chat) */}
             <div className={`flex-1 h-full ${!activeChatId ? 'hidden md:flex' : 'flex'} min-w-0`}>
               <ChatArea
-                onBackMobile={() => setActiveChatId(null)}
-                onOpenGroupInfo={() => setShowGroupInfo(true)}
+                onBackMobile={() => {
+                  setActiveChatId(null)
+                  setActiveContactDrawerId(null)
+                  setShowGroupInfo(false)
+                }}
+                onOpenGroupInfo={() => {
+                  setActiveContactDrawerId(null)
+                  setShowGroupInfo(true)
+                }}
                 onOpenContactDetails={
                   activeChatId && !activeChatId.startsWith('conv-group-')
-                    ? (contactId) => setOpenContactId(contactId)
+                    ? (contactId) => {
+                        setShowGroupInfo(false)
+                        setActiveContactDrawerId(contactId)
+                      }
                     : undefined
                 }
               />
@@ -119,15 +134,24 @@ export default function Index() {
                   onClose={() => setShowGroupInfo(false)}
                 />
               )}
+
+              {/* Drawer lateral de detalhes do contato clicado no header do chat */}
+              {activeContactDrawerId && (
+                <ContactDetailsDrawer
+                  contactId={activeContactDrawerId}
+                  onClose={() => setActiveContactDrawerId(null)}
+                  onOpenFullscreenAvatar={(media) => setActiveMedia(media)}
+                />
+              )}
             </div>
           </>
         )}
       </div>
 
-      {/* Modal de detalhes do contato (a partir da lista de conversas) */}
+      {/* Modal de detalhes do contato (a partir de diálogos ou listas modais) */}
       <ContactDetailsModal
-        contact={openContact}
-        onClose={() => setOpenContactId(null)}
+        contact={modalContact}
+        onClose={() => setModalContactId(null)}
         onOpenChat={openChatWithContact}
       />
 
