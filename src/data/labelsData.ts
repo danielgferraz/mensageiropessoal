@@ -17,6 +17,7 @@ export const DEFAULT_LABELS: ConversationLabel[] = [
   { id: 'lbl-familia', name: 'Família', color: '#ec4899' },
   { id: 'lbl-pessoal', name: 'Pessoal', color: '#8b5cf6' },
   { id: 'lbl-urgente', name: 'Urgente', color: '#ef4444' },
+  { id: 'lbl-ia', name: 'IA Copilot', color: '#06b6d4' },
 ]
 
 export const DEFAULT_QUICK_REPLIES: QuickReply[] = [

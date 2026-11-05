@@ -18,6 +18,7 @@ import {
   ChevronDown,
   ArrowLeft,
   X,
+  QrCode,
 } from 'lucide-react'
 import { useWhatsApp } from '@/context/WhatsAppContext'
 import { Conversation } from '@/types/whatsapp'
@@ -39,6 +40,7 @@ interface SidebarProps {
   onOpenProfile: () => void
   onLogout: () => void
   onOpenMobileMenu?: () => void
+  onOpenNewInstance?: () => void
 }
 
 export const Sidebar: React.FC<SidebarProps> = ({
@@ -47,6 +49,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
   onOpenProfile,
   onLogout,
   onOpenMobileMenu,
+  onOpenNewInstance,
 }) => {
   const {
     user,
@@ -222,6 +225,18 @@ export const Sidebar: React.FC<SidebarProps> = ({
             <Users className="w-5 h-5" />
           </Button>
 
+          {onOpenNewInstance && (
+            <Button
+              variant="ghost"
+              size="icon"
+              onClick={onOpenNewInstance}
+              className="wa-header-btn rounded-full text-[#00a884] hover:text-[#00a884]"
+              title="Nova Instância WhatsApp (QR Code)"
+            >
+              <QrCode className="w-5 h-5" />
+            </Button>
+          )}
+
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
               <Button
@@ -237,6 +252,15 @@ export const Sidebar: React.FC<SidebarProps> = ({
               align="end"
               className="bg-[#233138] border-[#2a3942] text-slate-200"
             >
+              {onOpenNewInstance && (
+                <DropdownMenuItem
+                  onClick={onOpenNewInstance}
+                  className="cursor-pointer hover:bg-[#182229] text-[#00a884] font-medium"
+                >
+                  <QrCode className="w-4 h-4 mr-2 text-[#00a884]" />
+                  Nova instância do WhatsApp
+                </DropdownMenuItem>
+              )}
               <DropdownMenuItem
                 onClick={onOpenNewGroup}
                 className="cursor-pointer hover:bg-[#182229]"

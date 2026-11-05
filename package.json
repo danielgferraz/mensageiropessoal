@@ -14,6 +14,7 @@
     "format": "oxfmt",
     "format:check": "oxfmt --check",
     "preview": "vite preview",
+    "serve": "node server/server.mjs",
     "test": "echo \"there are no tests for this project\" && exit 0",
     "test:watch": "echo \"there are no tests for this project\" && exit 0"
   },

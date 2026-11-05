@@ -56,9 +56,33 @@ export const INITIAL_CONTACTS: Contact[] = [
     about: 'Só responder urgente!',
     online: false,
   },
+  {
+    id: 'c-antigravity',
+    name: 'Antigravity Copilot (VPS)',
+    phone: 'CLI agy v1.4.5',
+    avatar: 'https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe?w=128&auto=format&fit=crop&q=80',
+    about: 'IA conectada ao CLI agy na VPS Oracle',
+    online: true,
+  },
 ]
 
 export const INITIAL_CONVERSATIONS: Conversation[] = [
+  {
+    id: 'conv-antigravity',
+    name: 'Antigravity Copilot (VPS)',
+    isGroup: false,
+    avatar: 'https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe?w=128&auto=format&fit=crop&q=80',
+    participants: ['c-antigravity'],
+    lastMessage: {
+      text: 'Olá! Sou o Antigravity conectado ao CLI agy na VPS. Como posso ajudar?',
+      timestamp: '12:00',
+      senderId: 'c-antigravity',
+      status: 'read',
+    },
+    unreadCount: 0,
+    pinned: true,
+    labelIds: ['lbl-ia'],
+  },
   {
     id: 'conv-1',
     name: 'Ana Carolina',
@@ -152,6 +176,17 @@ export const INITIAL_CONVERSATIONS: Conversation[] = [
 ]
 
 export const INITIAL_MESSAGES: Record<string, Message[]> = {
+  'conv-antigravity': [
+    {
+      id: 'msg-agy-1',
+      conversationId: 'conv-antigravity',
+      senderId: 'c-antigravity',
+      senderName: 'Antigravity Copilot',
+      text: 'Olá! Estou conectado ao CLI nativo agy v1.4.5 na VPS Oracle. Envie qualquer dúvida, instrução ou comando que eu respondo diretamente por aqui.',
+      timestamp: '12:00',
+      status: 'read',
+    },
+  ],
   'conv-1': [
     {
       id: 'm1-1',

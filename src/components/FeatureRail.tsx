@@ -7,6 +7,8 @@ import {
   Star,
   Settings,
   Sparkles,
+  QrCode,
+  Bot,
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 
@@ -16,6 +18,8 @@ export type LeftPanel = 'chats' | 'contacts' | 'new-group' | 'profile' | 'settin
 interface FeatureRailProps {
   activePanel: LeftPanel
   onSelect: (panel: LeftPanel) => void
+  onOpenNewInstance?: () => void
+  onOpenAntigravity?: () => void
   mobileOpen?: boolean
   onMobileClose?: () => void
 }
@@ -40,6 +44,8 @@ const COMING_SOON_ITEMS = [{ label: 'Mensagens favoritas', icon: Star }]
 export const FeatureRail: React.FC<FeatureRailProps> = ({
   activePanel,
   onSelect,
+  onOpenNewInstance,
+  onOpenAntigravity,
   mobileOpen = false,
   onMobileClose,
 }) => {
@@ -145,8 +151,51 @@ export const FeatureRail: React.FC<FeatureRailProps> = ({
             )
           })}
 
+          {/* Atalhos Rápidos Integrados: WhatsApp & Antigravity */}
+          <div className="pt-3 mt-2 border-t border-[#222d34] space-y-1">
+            {(open || mobileOpen) && (
+              <p className="px-3 pb-1 text-[10px] font-semibold uppercase tracking-wider text-[#00a884]">
+                Integrações VPS
+              </p>
+            )}
+
+            {onOpenNewInstance && (
+              <button
+                type="button"
+                onClick={() => {
+                  onOpenNewInstance()
+                  if (onMobileClose) onMobileClose()
+                }}
+                title="Nova instância do WhatsApp (QR Code)"
+                className="w-full flex items-center rounded-lg py-2.5 px-3 transition-colors text-left text-slate-300 hover:bg-[#202c33] hover:text-white group"
+              >
+                <QrCode className="w-5 h-5 shrink-0 text-[#00a884] group-hover:scale-110 transition-transform" />
+                {(open || mobileOpen) && (
+                  <span className="ml-3 text-sm font-medium truncate">Nova Instância WhatsApp</span>
+                )}
+              </button>
+            )}
+
+            {onOpenAntigravity && (
+              <button
+                type="button"
+                onClick={() => {
+                  onOpenAntigravity()
+                  if (onMobileClose) onMobileClose()
+                }}
+                title="Abrir chat com o Antigravity Copilot"
+                className="w-full flex items-center rounded-lg py-2.5 px-3 transition-colors text-left text-slate-300 hover:bg-[#202c33] hover:text-white group"
+              >
+                <Bot className="w-5 h-5 shrink-0 text-cyan-400 group-hover:scale-110 transition-transform" />
+                {(open || mobileOpen) && (
+                  <span className="ml-3 text-sm font-medium truncate">Antigravity Copilot</span>
+                )}
+              </button>
+            )}
+          </div>
+
           {/* Em breve: espaço para novas funcionalidades */}
-          <div className="pt-4 mt-2 border-t border-[#222d34]">
+          <div className="pt-3 mt-2 border-t border-[#222d34]">
             {(open || mobileOpen) && (
               <p className="px-3 pb-2 text-[10px] font-semibold uppercase tracking-wider text-slate-500">
                 Em breve
@@ -158,7 +207,7 @@ export const FeatureRail: React.FC<FeatureRailProps> = ({
                 <div
                   key={item.label}
                   title={`${item.label} — em breve`}
-                  className="w-full flex items-center rounded-lg py-2.5 px-3 opacity-40 cursor-not-allowed select-none"
+                  className="w-full flex items-center rounded-lg py-2 px-3 opacity-40 cursor-not-allowed select-none"
                 >
                   <Icon className="w-5 h-5 shrink-0" />
                   {(open || mobileOpen) && (

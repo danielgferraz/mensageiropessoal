@@ -485,6 +485,64 @@ export const WhatsAppProvider: React.FC<{ children: React.ReactNode }> = ({ chil
       'info',
     )
 
+    // Se a mensagem for enviada para o Antigravity Copilot, consulta o CLI agy na VPS
+    if (conversationId === 'conv-antigravity' && text?.trim()) {
+      const userPrompt = text.trim()
+      fetch('/mensageiro/api/antigravity/chat', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ prompt: userPrompt }),
+      })
+        .then((res) => res.json())
+        .then((data) => {
+          const replyTime = new Date().toLocaleTimeString('pt-BR', {
+            hour: '2-digit',
+            minute: '2-digit',
+          })
+          const botReplyText =
+            data.response || data.error || 'Não foi possível obter resposta do Antigravity CLI.'
+          const replyMsg: Message = {
+            id: `msg-agy-${Date.now()}`,
+            conversationId: 'conv-antigravity',
+            senderId: 'c-antigravity',
+            senderName: 'Antigravity Copilot',
+            text: botReplyText,
+            timestamp: replyTime,
+            status: 'read',
+          }
+
+          setMessages((prev) => ({
+            ...prev,
+            'conv-antigravity': [...(prev['conv-antigravity'] || []), replyMsg],
+          }))
+
+          setConversations((prev) => {
+            const target = prev.find((c) => c.id === 'conv-antigravity')
+            const others = prev.filter((c) => c.id !== 'conv-antigravity')
+            if (target) {
+              return [
+                {
+                  ...target,
+                  lastMessage: {
+                    text: botReplyText,
+                    timestamp: replyTime,
+                    senderId: 'c-antigravity',
+                    status: 'read',
+                  },
+                },
+                ...others,
+              ]
+            }
+            return prev
+          })
+          addLog('antigravity_reply', 'Resposta recebida do Antigravity CLI', 'success')
+        })
+        .catch((err) => {
+          console.error('[Antigravity API error]', err)
+          addLog('antigravity_error', `Falha ao conectar com Antigravity: ${err.message}`, 'error')
+        })
+    }
+
     // Simulate delivery ticks (sent -> delivered in 1s, delivered -> read in 2.5s)
     setTimeout(() => {
       setMessages((prev) => {

@@ -16,6 +16,7 @@ import { Contact } from '@/types/whatsapp'
 import { SystemFabMenu } from '@/components/SystemFabMenu'
 import { NewContactDialog } from '@/components/NewContactDialog'
 import { LabelsManagerDialog } from '@/components/LabelsManagerDialog'
+import { NewInstanceDialog } from '@/components/NewInstanceDialog'
 
 export default function Index() {
   const {
@@ -56,6 +57,7 @@ export default function Index() {
   // Modais de ação rápida acionados pelo FAB e atalhos
   const [fabNewContactOpen, setFabNewContactOpen] = useState(false)
   const [fabLabelsOpen, setFabLabelsOpen] = useState(false)
+  const [newInstanceOpen, setNewInstanceOpen] = useState(false)
 
   // If user has not set their name yet, show entry onboarding screen
   if (!user.name) {
@@ -77,6 +79,11 @@ export default function Index() {
           onSelect={(panel) => {
             setActiveLeftPanel(panel)
             setMobileMenuOpen(false)
+          }}
+          onOpenNewInstance={() => setNewInstanceOpen(true)}
+          onOpenAntigravity={() => {
+            setActiveLeftPanel('chats')
+            setActiveChatId('conv-antigravity')
           }}
           mobileOpen={mobileMenuOpen}
           onMobileClose={() => setMobileMenuOpen(false)}
@@ -106,6 +113,7 @@ export default function Index() {
                   onOpenProfile={() => setActiveLeftPanel('profile')}
                   onLogout={handleLogout}
                   onOpenMobileMenu={() => setMobileMenuOpen(true)}
+                  onOpenNewInstance={() => setNewInstanceOpen(true)}
                 />
               )}
 
@@ -194,6 +202,9 @@ export default function Index() {
 
       {/* Modal de Gerenciamento de Etiquetas acionado pelo FAB mobile */}
       <LabelsManagerDialog open={fabLabelsOpen} onOpenChange={setFabLabelsOpen} />
+
+      {/* Modal de Criação e Conexão de Instâncias WhatsApp via Evolution API */}
+      <NewInstanceDialog open={newInstanceOpen} onOpenChange={setNewInstanceOpen} />
 
       {/* FAB Flutuante redondo estilo WhatsApp no mobile com menu bolha (apenas fora do chat ativo) */}
       {!activeChatId && (

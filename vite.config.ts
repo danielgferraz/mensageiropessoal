@@ -7,9 +7,20 @@ import uidPlugin from './vite-plugin-react-uid'
 
 // https://vitejs.dev/config/
 export default defineConfig(({ mode }) => ({
+  base: '/mensageiro/',
   server: {
     host: '::',
     port: 8080,
+    proxy: {
+      '/mensageiro/api': {
+        target: 'http://localhost:3333',
+        changeOrigin: true,
+      },
+      '/api': {
+        target: 'http://localhost:3333',
+        changeOrigin: true,
+      },
+    },
   },
   build: {
     outDir: mode === 'development' ? 'dev-dist' : 'dist',
