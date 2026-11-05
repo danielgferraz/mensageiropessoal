@@ -128,6 +128,17 @@
   /* Títulos e textos de cabeçalho */
   --wa-header-title: #e9edef;
   --wa-header-subtitle: #8696a0;
+
+  /* FAB e Menu Bolha (estilo WhatsApp móvel) */
+  --wa-fab-bg: #00a884;
+  --wa-fab-hover-bg: #008f6f;
+  --wa-fab-text: #ffffff;
+  --wa-fab-pill-bg: #233138;
+  --wa-fab-pill-text: #e9edef;
+  --wa-fab-pill-border: #2a3942;
+  --wa-fab-item-bg: #202c33;
+  --wa-fab-item-text: #00a884;
+  --wa-fab-item-hover-bg: #2a3942;
 }
 
 .theme-classic {
@@ -145,6 +156,16 @@
   --wa-header-btn-hover-bg: rgba(255, 255, 255, 0.08);
   --wa-header-title: #e9edef;
   --wa-header-subtitle: #8696a0;
+
+  --wa-fab-bg: #00a884;
+  --wa-fab-hover-bg: #008f6f;
+  --wa-fab-text: #ffffff;
+  --wa-fab-pill-bg: #233138;
+  --wa-fab-pill-text: #e9edef;
+  --wa-fab-pill-border: #2a3942;
+  --wa-fab-item-bg: #202c33;
+  --wa-fab-item-text: #00a884;
+  --wa-fab-item-hover-bg: #2a3942;
 }
 
 .theme-ios {
@@ -162,6 +183,16 @@
   --wa-header-btn-hover-bg: rgba(0, 122, 255, 0.1);
   --wa-header-title: #1c1c1e;
   --wa-header-subtitle: #8e8e93;
+
+  --wa-fab-bg: #34c759;
+  --wa-fab-hover-bg: #2eb350;
+  --wa-fab-text: #ffffff;
+  --wa-fab-pill-bg: rgba(255, 255, 255, 0.95);
+  --wa-fab-pill-text: #1c1c1e;
+  --wa-fab-pill-border: rgba(60, 60, 67, 0.18);
+  --wa-fab-item-bg: #ffffff;
+  --wa-fab-item-text: #34c759;
+  --wa-fab-item-hover-bg: #f2f2f7;
 }
 
 .theme-amoled {
@@ -180,6 +211,16 @@
   --wa-header-btn-hover-bg: rgba(255, 255, 255, 0.12);
   --wa-header-title: #ffffff;
   --wa-header-subtitle: #a3b0b8;
+
+  --wa-fab-bg: #00a884;
+  --wa-fab-hover-bg: #008f6f;
+  --wa-fab-text: #ffffff;
+  --wa-fab-pill-bg: #141416;
+  --wa-fab-pill-text: #ffffff;
+  --wa-fab-pill-border: #2c2c32;
+  --wa-fab-item-bg: #121214;
+  --wa-fab-item-text: #00a884;
+  --wa-fab-item-hover-bg: #1c1c20;
 }
 
 .theme-emerald {
@@ -198,12 +239,62 @@
   --wa-header-btn-hover-bg: rgba(52, 211, 153, 0.15);
   --wa-header-title: #f0fdf4;
   --wa-header-subtitle: #a7d9cb;
+
+  --wa-fab-bg: #059669;
+  --wa-fab-hover-bg: #047857;
+  --wa-fab-text: #ffffff;
+  --wa-fab-pill-bg: #0b2923;
+  --wa-fab-pill-text: #f0fdf4;
+  --wa-fab-pill-border: #1b4b42;
+  --wa-fab-item-bg: #0e332c;
+  --wa-fab-item-text: #34d399;
+  --wa-fab-item-hover-bg: #133f37;
 }
 
 .whatsapp-chat-bg {
   background-color: var(--wa-chat-bg-color);
   background-image: var(--wa-doodles);
   background-size: 360px 360px;
+}
+
+/* Utilitários para o FAB flutuante e menu bolha (bubble) */
+.wa-fab-main {
+  background-color: var(--wa-fab-bg) !important;
+  color: var(--wa-fab-text) !important;
+  box-shadow:
+    0 10px 25px -3px rgba(0, 0, 0, 0.4),
+    0 4px 10px -2px rgba(0, 0, 0, 0.25);
+}
+
+.wa-fab-main:hover {
+  background-color: var(--wa-fab-hover-bg) !important;
+}
+
+.wa-fab-main-open {
+  background-color: #ef4444 !important;
+}
+
+.wa-fab-pill {
+  background-color: var(--wa-fab-pill-bg) !important;
+  color: var(--wa-fab-pill-text) !important;
+  border: 1px solid var(--wa-fab-pill-border) !important;
+  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.25);
+}
+
+.wa-fab-bubble-btn {
+  background-color: var(--wa-fab-item-bg) !important;
+  color: var(--wa-fab-item-text) !important;
+  border: 1px solid var(--wa-fab-pill-border) !important;
+  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.25);
+}
+
+.wa-fab-bubble-btn:hover {
+  background-color: var(--wa-fab-item-hover-bg) !important;
+}
+
+.wa-fab-bubble-btn svg {
+  color: inherit !important;
+  stroke: currentColor !important;
 }
 
 /* Utilitários semânticos para as barras superiores e seus botões inteligentes */

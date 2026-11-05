@@ -13,6 +13,9 @@ import { SettingsPanel } from '@/components/SettingsPanel'
 import { FeatureRail, LeftPanel } from '@/components/FeatureRail'
 import { ContactDetailsModal } from '@/components/ContactDetailsModal'
 import { Contact } from '@/types/whatsapp'
+import { SystemFabMenu } from '@/components/SystemFabMenu'
+import { NewContactDialog } from '@/components/NewContactDialog'
+import { LabelsManagerDialog } from '@/components/LabelsManagerDialog'
 
 export default function Index() {
   const {
@@ -49,6 +52,10 @@ export default function Index() {
 
   // Track right-side info panel (e.g. Group Info)
   const [showGroupInfo, setShowGroupInfo] = useState(false)
+
+  // Modais de ação rápida acionados pelo FAB e atalhos
+  const [fabNewContactOpen, setFabNewContactOpen] = useState(false)
+  const [fabLabelsOpen, setFabLabelsOpen] = useState(false)
 
   // If user has not set their name yet, show entry onboarding screen
   if (!user.name) {
@@ -177,6 +184,26 @@ export default function Index() {
 
       {/* Fullscreen Media Viewer Modal */}
       {activeMedia && <MediaViewerModal media={activeMedia} onClose={() => setActiveMedia(null)} />}
+
+      {/* Modal de Novo Contato acionado pelo FAB mobile */}
+      <NewContactDialog
+        open={fabNewContactOpen}
+        onOpenChange={setFabNewContactOpen}
+        onContactCreated={(created) => setModalContactId(created.id)}
+      />
+
+      {/* Modal de Gerenciamento de Etiquetas acionado pelo FAB mobile */}
+      <LabelsManagerDialog open={fabLabelsOpen} onOpenChange={setFabLabelsOpen} />
+
+      {/* FAB Flutuante redondo estilo WhatsApp no mobile com menu bolha (apenas fora do chat ativo) */}
+      {!activeChatId && (
+        <SystemFabMenu
+          onNewChat={() => setActiveLeftPanel('contacts')}
+          onNewGroup={() => setActiveLeftPanel('new-group')}
+          onNewContact={() => setFabNewContactOpen(true)}
+          onNewLabel={() => setFabLabelsOpen(true)}
+        />
+      )}
     </div>
   )
 }
