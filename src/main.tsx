@@ -5,3 +5,18 @@ import './main.css'
 
 // @skip-protected: Do not remove. Required for React rendering.
 createRoot(document.getElementById('root')!).render(<App />)
+
+// Registro do Service Worker do PWA Mensageiro
+if ('serviceWorker' in navigator && import.meta.env.PROD) {
+  window.addEventListener('load', () => {
+    navigator.serviceWorker
+      .register('/mensageiro/sw.js', { scope: '/mensageiro/' })
+      .then((reg) => {
+        console.log('[PWA] Service Worker registrado com escopo:', reg.scope)
+      })
+      .catch((err) => {
+        console.warn('[PWA] Falha ao registrar Service Worker:', err)
+      })
+  })
+}
+

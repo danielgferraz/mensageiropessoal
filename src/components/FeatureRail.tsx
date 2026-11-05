@@ -9,6 +9,7 @@ import {
   Sparkles,
   QrCode,
   Bot,
+  Download,
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 
@@ -53,10 +54,32 @@ export const FeatureRail: React.FC<FeatureRailProps> = ({
   const [open, setOpen] = useState<boolean>(
     () => localStorage.getItem('wa_clone_rail_open') !== '0',
   )
+  const [installPrompt, setInstallPrompt] = useState<any>(null)
 
   useEffect(() => {
     localStorage.setItem('wa_clone_rail_open', open ? '1' : '0')
   }, [open])
+
+  useEffect(() => {
+    const handler = (e: Event) => {
+      e.preventDefault()
+      setInstallPrompt(e)
+    }
+    window.addEventListener('beforeinstallprompt', handler)
+    return () => window.removeEventListener('beforeinstallprompt', handler)
+  }, [])
+
+  const handleInstallApp = async () => {
+    if (!installPrompt) {
+      alert('Para instalar no seu celular ou computador:\n\n• No Chrome/Edge: clique no ícone de instalar na barra de endereços (ou Menu > Instalar Aplicativo).\n• No iPhone/Safari: clique no botão Compartilhar e selecione "Adicionar à Tela de Início".')
+      return
+    }
+    installPrompt.prompt()
+    const { outcome } = await installPrompt.userChoice
+    if (outcome === 'accepted') {
+      setInstallPrompt(null)
+    }
+  }
 
   const handleItemClick = (id: LeftPanel) => {
     onSelect(id)
@@ -192,6 +215,18 @@ export const FeatureRail: React.FC<FeatureRailProps> = ({
                 )}
               </button>
             )}
+
+            <button
+              type="button"
+              onClick={handleInstallApp}
+              title="Instalar Mensageiro como aplicativo (PWA)"
+              className="w-full flex items-center rounded-lg py-2.5 px-3 transition-colors text-left text-slate-300 hover:bg-[#202c33] hover:text-white group"
+            >
+              <Download className="w-5 h-5 shrink-0 text-emerald-400 group-hover:scale-110 transition-transform" />
+              {(open || mobileOpen) && (
+                <span className="ml-3 text-sm font-medium truncate">Instalar App (PWA)</span>
+              )}
+            </button>
           </div>
 
           {/* Em breve: espaço para novas funcionalidades */}

@@ -1,0 +1,41 @@
+{
+  "name": "Mensageiro Pessoal",
+  "short_name": "Mensageiro",
+  "description": "WhatsApp Web Clone integrado a Evolution API e Antigravity Copilot",
+  "start_url": "/mensageiro/",
+  "scope": "/mensageiro/",
+  "id": "/mensageiro/",
+  "display": "standalone",
+  "orientation": "portrait-primary",
+  "background_color": "#111b21",
+  "theme_color": "#111b21",
+  "icons": [
+    {
+      "src": "/mensageiro/icon-512.svg",
+      "sizes": "512x512",
+      "type": "image/svg+xml",
+      "purpose": "any"
+    },
+    {
+      "src": "/mensageiro/icon-512.svg",
+      "sizes": "512x512",
+      "type": "image/svg+xml",
+      "purpose": "maskable"
+    },
+    {
+      "src": "/mensageiro/og-image.png",
+      "sizes": "1200x630",
+      "type": "image/png",
+      "purpose": "any"
+    }
+  ],
+  "categories": ["social", "communication", "utilities"],
+  "shortcuts": [
+    {
+      "name": "Conversas",
+      "short_name": "Chats",
+      "url": "/mensageiro/",
+      "icons": [{ "src": "/mensageiro/icon-512.svg", "sizes": "512x512" }]
+    }
+  ]
+}

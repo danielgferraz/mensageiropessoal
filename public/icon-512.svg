@@ -1,0 +1,28 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="512" height="512">
+  <defs>
+    <linearGradient id="bg" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#128C7E"/>
+      <stop offset="100%" stop-color="#075E54"/>
+    </linearGradient>
+    <filter id="shadow" x="-10%" y="-10%" width="120%" height="120%">
+      <feDropShadow dx="0" dy="12" stdDeviation="16" flood-color="#000" flood-opacity="0.3"/>
+    </filter>
+  </defs>
+
+  <!-- Background Base -->
+  <rect width="512" height="512" rx="112" fill="url(#bg)"/>
+
+  <!-- Balão de Mensagem Estilizado com Ícone -->
+  <g filter="url(#shadow)">
+    <!-- Balão WhatsApp Moderno -->
+    <path fill="#ffffff" d="M256 96c-88.37 0-160 67.16-160 150 0 30.63 10.74 59.08 29.17 82.26L104 396l72.93-19.14C199.9 389.28 227.17 396 256 396c88.37 0 160-67.16 160-150S344.37 96 256 96z"/>
+    
+    <!-- Ícone de Conversa / Chat Bubble interno -->
+    <path fill="#00a884" d="M210 200h92c6.63 0 12 5.37 12 12s-5.37 12-12 12h-92c-6.63 0-12-5.37-12-12s5.37-12 12-12zm0 48h60c6.63 0 12 5.37 12 12s-5.37 12-12 12h-60c-6.63 0-12-5.37-12-12s5.37-12 12-12z"/>
+
+    <!-- Ponto de status / IA / Conexão verde escuro -->
+    <circle cx="316" cy="280" r="14" fill="#128C7E"/>
+    <!-- Brilho de status ativo -->
+    <circle cx="316" cy="280" r="7" fill="#25D366"/>
+  </g>
+</svg>
