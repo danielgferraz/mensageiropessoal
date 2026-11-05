@@ -22,7 +22,7 @@ export const GroupInfoPanel: React.FC<GroupInfoPanelProps> = ({ conversationId, 
   )
 
   return (
-    <div className="w-full sm:w-[340px] md:w-[380px] h-full bg-[#111b21] wa-panel-separator-left text-slate-100 flex flex-col z-20 shrink-0">
+    <div className="w-full sm:w-[340px] md:w-[380px] h-full bg-[#111b21] wa-panel-separator-left text-slate-100 flex flex-col z-20 shrink-0 shadow-2xl animate-in slide-in-from-right duration-200">
       {/* Top Header — Cabeçalho lateral direito de dados do grupo */}
       <div className="h-16 px-4 wa-header-drawer flex items-center space-x-4">
         <Button

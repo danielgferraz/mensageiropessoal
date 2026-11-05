@@ -16,6 +16,7 @@ import { cn } from '@/lib/utils'
 interface ContactsCrmPanelProps {
   onClose: () => void
   onOpenChat: (contactId: string) => void
+  onOpenMobileMenu?: () => void
 }
 
 // Normaliza texto removendo acentos e espaços supérfluos para busca insensível a acentuação
@@ -126,7 +127,11 @@ const ContactsList: React.FC<{
 
 // Tela unificada: no desktop contatos fixos à esquerda e pipeline fixo à direita,
 // sem abas; no mobile volta ao alternador "Contatos" / "Pipeline"
-export const ContactsCrmPanel: React.FC<ContactsCrmPanelProps> = ({ onClose, onOpenChat }) => {
+export const ContactsCrmPanel: React.FC<ContactsCrmPanelProps> = ({
+  onClose,
+  onOpenChat,
+  onOpenMobileMenu,
+}) => {
   const { contacts, crmStages, setContactStage, crmStageList } = useWhatsApp()
   const [view, setView] = useState<'contacts' | 'pipeline'>('contacts')
   const [search, setSearch] = useState('')
@@ -261,76 +266,98 @@ export const ContactsCrmPanel: React.FC<ContactsCrmPanelProps> = ({ onClose, onO
   return (
     <div className="flex-1 flex flex-col md:flex-row h-full bg-[#111b21] border-r border-[#222d34] text-slate-100 z-30 min-w-0">
       {/* Cabeçalho (mobile: ocupa a tela toda; desktop: só a metade esquerda) */}
-      <div className="md:hidden h-16 px-4 wa-header-sidebar flex items-center space-x-3 shrink-0">
-        <Button
-          variant="ghost"
-          size="icon"
-          onClick={onClose}
-          className="wa-header-btn rounded-full -ml-2"
-          title="Voltar para as conversas"
-        >
-          <ArrowLeft className="w-5 h-5" />
-        </Button>
-        <div className="min-w-0">
-          <h2 className="text-base font-semibold leading-tight wa-header-title">Contatos e CRM</h2>
-          <p className="text-[11px] wa-header-subtitle leading-tight">
-            {contacts.length} contatos • {contacts.length} negócios
-          </p>
+      <div className="md:hidden h-16 px-4 wa-header-sidebar flex items-center justify-between shrink-0">
+        <div className="flex items-center space-x-2 min-w-0">
+          <Button
+            variant="ghost"
+            size="icon"
+            onClick={onClose}
+            className="wa-header-btn rounded-full -ml-2"
+            title="Voltar para as conversas"
+          >
+            <ArrowLeft className="w-5 h-5" />
+          </Button>
+          <div className="min-w-0">
+            <h2 className="text-base font-semibold leading-tight wa-header-title">
+              Contatos e CRM
+            </h2>
+            <p className="text-[11px] wa-header-subtitle leading-tight">
+              {contacts.length} contatos • {contacts.length} negócios
+            </p>
+          </div>
         </div>
-        <Button
-          variant="ghost"
-          size="icon"
-          onClick={() => setIsAddOpen(true)}
-          className="ml-auto wa-header-btn rounded-full"
-          title="Adicionar novo contato"
-        >
-          <UserPlus className="w-5 h-5" />
-        </Button>
+        <div className="flex items-center space-x-1">
+          <Button
+            variant="ghost"
+            size="icon"
+            onClick={() => setIsAddOpen(true)}
+            className="wa-header-btn rounded-full"
+            title="Adicionar novo contato"
+          >
+            <UserPlus className="w-5 h-5" />
+          </Button>
+        </div>
       </div>
 
-      {/* Mobile: Busca + filtros */}
+      {/* Mobile: ABAS NO TOPO (logo abaixo do cabeçalho, sticky) + busca e filtros touch-friendly */}
       {isMobile && (
-        <div className="flex flex-col shrink-0">
-          <div className="p-3 bg-[#111b21] border-b border-[#222d34] shrink-0">
-            <div className="relative flex items-center">
-              <Search className="w-4 h-4 absolute left-3 text-slate-400 pointer-events-none" />
-              <Input
-                placeholder="Pesquisar contatos..."
-                value={search}
-                onChange={(e) => setSearch(e.target.value)}
-                className="pl-9 bg-[#202c33] border-none text-white placeholder-slate-400 h-9 text-xs sm:text-sm focus-visible:ring-1 focus-visible:ring-[#00a884]"
-              />
-            </div>
-          </div>
-          {filtersBar}
-          <div className="p-2 pb-0 bg-[#111b21] border-b border-[#222d34]">
-            <div className="flex bg-[#202c33] rounded-lg p-0.5 mb-2">
+        <div className="flex flex-col shrink-0 sticky top-0 z-20 bg-[#111b21] shadow-sm">
+          {/* Abas no topo da página */}
+          <div className="px-3 pt-2 pb-2 bg-[#111b21] border-b border-[#222d34]">
+            <div className="flex bg-[#202c33] rounded-xl p-1 shadow-inner border border-[#2a3942]">
               <button
                 type="button"
                 onClick={() => setView('contacts')}
                 className={cn(
-                  'flex-1 flex items-center justify-center space-x-1.5 py-1.5 rounded-md text-xs font-medium transition-colors',
+                  'flex-1 flex items-center justify-center space-x-2 py-2 rounded-lg text-xs font-semibold transition-all active:scale-95',
                   view === 'contacts'
-                    ? 'bg-[#2a3942] text-white'
+                    ? 'bg-[#00a884] text-white shadow-md'
                     : 'text-slate-400 hover:text-slate-200',
                 )}
               >
-                Contatos ({filteredContacts.length})
+                <Users className="w-4 h-4" />
+                <span>Contatos ({filteredContacts.length})</span>
               </button>
               <button
                 type="button"
                 onClick={() => setView('pipeline')}
                 className={cn(
-                  'flex-1 flex items-center justify-center space-x-1.5 py-1.5 rounded-md text-xs font-medium transition-colors',
+                  'flex-1 flex items-center justify-center space-x-2 py-2 rounded-lg text-xs font-semibold transition-all active:scale-95',
                   view === 'pipeline'
-                    ? 'bg-[#2a3942] text-white'
+                    ? 'bg-[#00a884] text-white shadow-md'
                     : 'text-slate-400 hover:text-slate-200',
                 )}
               >
-                Pipeline
+                <span>Pipeline ({contacts.length})</span>
               </button>
             </div>
           </div>
+
+          {/* Campo de busca integrado */}
+          <div className="p-3 bg-[#111b21] border-b border-[#222d34] shrink-0">
+            <div className="relative flex items-center">
+              <Search className="w-4 h-4 absolute left-3 text-slate-400 pointer-events-none" />
+              <Input
+                placeholder="Pesquisar contatos por nome ou telefone..."
+                value={search}
+                onChange={(e) => setSearch(e.target.value)}
+                className="pl-9 pr-8 bg-[#202c33] border border-[#2a3942] text-white placeholder-slate-400 h-10 text-xs sm:text-sm focus-visible:ring-1 focus-visible:ring-[#00a884] rounded-lg"
+              />
+              {search && (
+                <button
+                  type="button"
+                  onClick={() => setSearch('')}
+                  className="absolute right-2.5 text-slate-400 hover:text-white"
+                  title="Limpar busca"
+                >
+                  <XCircle className="w-4 h-4" />
+                </button>
+              )}
+            </div>
+          </div>
+
+          {/* Filtros compactos touch-friendly */}
+          {filtersBar}
         </div>
       )}
 

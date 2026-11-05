@@ -196,12 +196,12 @@ export const ChatArea: React.FC<ChatAreaProps> = ({
         </div>
 
         {/* Action icons inteligentes */}
-        <div className="flex items-center space-x-1 sm:space-x-1.5">
+        <div className="flex items-center space-x-0.5 sm:space-x-1.5 shrink-0">
           <Button
             variant="ghost"
             size="icon"
             onClick={() => setChatSearchOpen(!chatSearchOpen)}
-            className="wa-header-btn rounded-full"
+            className="w-10 h-10 wa-header-btn rounded-full"
             title="Buscar mensagens no chat"
           >
             <Search className="w-5 h-5" />
@@ -216,7 +216,7 @@ export const ChatArea: React.FC<ChatAreaProps> = ({
                 description: 'Recurso fora do escopo desta versão demonstrativa.',
               })
             }
-            className="wa-header-btn rounded-full hidden sm:inline-flex"
+            className="w-10 h-10 wa-header-btn rounded-full hidden sm:inline-flex"
             title="Chamada de voz (fora do escopo)"
           >
             <Phone className="w-5 h-5" />
@@ -231,7 +231,7 @@ export const ChatArea: React.FC<ChatAreaProps> = ({
                 description: 'Recurso fora do escopo desta versão demonstrativa.',
               })
             }
-            className="wa-header-btn rounded-full hidden sm:inline-flex"
+            className="w-10 h-10 wa-header-btn rounded-full hidden sm:inline-flex"
             title="Chamada de vídeo (fora do escopo)"
           >
             <VideoCallIcon className="w-5 h-5" />
@@ -242,7 +242,7 @@ export const ChatArea: React.FC<ChatAreaProps> = ({
               <Button
                 variant="ghost"
                 size="icon"
-                className="wa-header-btn rounded-full"
+                className="w-10 h-10 wa-header-btn rounded-full"
                 title="Mais opções do chat"
               >
                 <MoreVertical className="w-5 h-5" />

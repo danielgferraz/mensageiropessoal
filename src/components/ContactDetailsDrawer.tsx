@@ -118,19 +118,21 @@ export const ContactDetailsDrawer: React.FC<ContactDetailsDrawerProps> = ({
   }
 
   return (
-    <div className="w-full sm:w-[340px] md:w-[380px] h-full bg-[#111b21] wa-panel-separator-left text-slate-100 flex flex-col z-20 shrink-0 animate-fade-in shadow-2xl">
+    <div className="w-full sm:w-[360px] md:w-[400px] h-full bg-[#111b21] wa-panel-separator-left text-slate-100 flex flex-col z-20 shrink-0 animate-in slide-in-from-right duration-200 shadow-2xl">
       {/* Top Header — Cabeçalho lateral direito de detalhes do contato */}
-      <div className="h-16 px-4 wa-header-drawer flex items-center space-x-3">
-        <Button
-          variant="ghost"
-          size="icon"
-          onClick={onClose}
-          className="wa-header-btn rounded-full -ml-2"
-          title="Fechar dados do contato"
-        >
-          <X className="w-5 h-5" />
-        </Button>
-        <h2 className="text-base font-semibold wa-header-title">Dados do contato</h2>
+      <div className="h-16 px-4 wa-header-drawer flex items-center justify-between shrink-0">
+        <div className="flex items-center space-x-3">
+          <Button
+            variant="ghost"
+            size="icon"
+            onClick={onClose}
+            className="wa-header-btn rounded-full -ml-2 h-10 w-10"
+            title="Fechar dados do contato"
+          >
+            <X className="w-5 h-5" />
+          </Button>
+          <h2 className="text-base font-semibold wa-header-title">Dados do contato</h2>
+        </div>
       </div>
 
       {/* Abas: Detalhes e Notas */}

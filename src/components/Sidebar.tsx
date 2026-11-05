@@ -38,6 +38,7 @@ interface SidebarProps {
   onOpenContacts: () => void
   onOpenProfile: () => void
   onLogout: () => void
+  onOpenMobileMenu?: () => void
 }
 
 export const Sidebar: React.FC<SidebarProps> = ({
@@ -45,6 +46,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
   onOpenContacts,
   onOpenProfile,
   onLogout,
+  onOpenMobileMenu,
 }) => {
   const {
     user,
@@ -151,23 +153,36 @@ export const Sidebar: React.FC<SidebarProps> = ({
             </div>
           </div>
         ) : (
-          <div
-            className="flex items-center space-x-3 cursor-pointer group"
-            onClick={onOpenProfile}
-            title="Ver seu perfil"
-          >
-            <div className="relative">
-              <img
-                src={user.avatar}
-                alt={user.name}
-                className="w-10 h-10 rounded-full object-cover ring-1 ring-white/20 group-hover:ring-[#00a884] transition-all"
-              />
-              <span className="absolute bottom-0 right-0 w-2.5 h-2.5 bg-[#00a884] rounded-full border border-[var(--wa-header-sidebar-bg)]" />
-            </div>
-            <div className="hidden sm:block">
-              <p className="text-sm font-semibold wa-header-title group-hover:opacity-85 transition-opacity truncate max-w-[130px]">
-                {user.name || 'Você'}
-              </p>
+          <div className="flex items-center space-x-2">
+            {onOpenMobileMenu && (
+              <Button
+                variant="ghost"
+                size="icon"
+                onClick={onOpenMobileMenu}
+                className="md:hidden wa-header-btn rounded-full -ml-2"
+                title="Abrir menu de funcionalidades"
+              >
+                <SlidersHorizontal className="w-5 h-5" />
+              </Button>
+            )}
+            <div
+              className="flex items-center space-x-3 cursor-pointer group"
+              onClick={onOpenProfile}
+              title="Ver seu perfil"
+            >
+              <div className="relative">
+                <img
+                  src={user.avatar}
+                  alt={user.name}
+                  className="w-10 h-10 rounded-full object-cover ring-1 ring-white/20 group-hover:ring-[#00a884] transition-all"
+                />
+                <span className="absolute bottom-0 right-0 w-2.5 h-2.5 bg-[#00a884] rounded-full border border-[var(--wa-header-sidebar-bg)]" />
+              </div>
+              <div>
+                <p className="text-sm font-semibold wa-header-title group-hover:opacity-85 transition-opacity truncate max-w-[120px] sm:max-w-[150px]">
+                  {user.name || 'Você'}
+                </p>
+              </div>
             </div>
           </div>
         )}

@@ -72,7 +72,7 @@ export const NewGroupPanel: React.FC<NewGroupPanelProps> = ({ onClose, onGroupCr
   }
 
   return (
-    <div className="w-full md:w-[380px] lg:w-[420px] flex flex-col h-full bg-[#111b21] wa-panel-separator-right text-slate-100 z-30 shrink-0">
+    <div className="w-full md:w-[380px] lg:w-[420px] flex flex-col h-full bg-[#111b21] wa-panel-separator-right text-slate-100 z-30 shrink-0 shadow-2xl animate-in slide-in-from-left duration-200">
       {/* Header — Painel lateral esquerdo de Novo Grupo */}
       <div className="h-16 px-4 wa-header-sidebar flex items-center space-x-4">
         <Button

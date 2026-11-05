@@ -314,9 +314,9 @@ export const ConnectionsSettingsTab: React.FC = () => {
         </div>
       )}
 
-      {/* Diálogo de Criar / Editar Conexão */}
+      {/* Diálogo de Criar / Editar Conexão — responsivo em tela cheia no mobile */}
       <Dialog open={formOpen} onOpenChange={setFormOpen}>
-        <DialogContent className="bg-[#202c33] border-[#2a3942] text-slate-100 max-w-md">
+        <DialogContent className="bg-[#202c33] border-[#2a3942] text-slate-100 w-[95vw] max-w-md max-h-[92vh] overflow-y-auto p-4 sm:p-6 rounded-2xl">
           <DialogHeader>
             <DialogTitle className="text-base text-slate-100 flex items-center">
               <Server className="w-4 h-4 mr-2 text-[#00a884]" />
@@ -333,7 +333,7 @@ export const ConnectionsSettingsTab: React.FC = () => {
                 value={formData.name}
                 onChange={(e) => setFormData({ ...formData, name: e.target.value })}
                 placeholder="Ex: Servidor Produção ou Atendimento 01"
-                className="bg-[#2a3942] border-[#374248] text-white text-xs h-9"
+                className="bg-[#2a3942] border-[#374248] text-white text-xs h-10 rounded-lg"
                 required
               />
             </div>
@@ -346,7 +346,7 @@ export const ConnectionsSettingsTab: React.FC = () => {
                 value={formData.serverUrl}
                 onChange={(e) => setFormData({ ...formData, serverUrl: e.target.value })}
                 placeholder="https://api.seuservidor.com"
-                className="bg-[#2a3942] border-[#374248] text-white text-xs h-9 font-mono"
+                className="bg-[#2a3942] border-[#374248] text-white text-xs h-10 font-mono rounded-lg"
                 required
               />
             </div>
@@ -360,7 +360,7 @@ export const ConnectionsSettingsTab: React.FC = () => {
                   value={formData.instanceName}
                   onChange={(e) => setFormData({ ...formData, instanceName: e.target.value })}
                   placeholder="Ex: whatsapp-principal"
-                  className="bg-[#2a3942] border-[#374248] text-white text-xs h-9"
+                  className="bg-[#2a3942] border-[#374248] text-white text-xs h-10 rounded-lg"
                 />
               </div>
 
@@ -373,7 +373,7 @@ export const ConnectionsSettingsTab: React.FC = () => {
                   value={formData.apiKey}
                   onChange={(e) => setFormData({ ...formData, apiKey: e.target.value })}
                   placeholder="Sua chave secreta..."
-                  className="bg-[#2a3942] border-[#374248] text-white text-xs h-9 font-mono"
+                  className="bg-[#2a3942] border-[#374248] text-white text-xs h-10 font-mono rounded-lg"
                 />
               </div>
             </div>
@@ -384,25 +384,28 @@ export const ConnectionsSettingsTab: React.FC = () => {
                 id="check-is-active"
                 checked={formData.isActive}
                 onChange={(e) => setFormData({ ...formData, isActive: e.target.checked })}
-                className="rounded border-[#374248] bg-[#2a3942] text-[#00a884] focus:ring-[#00a884] w-4 h-4"
+                className="rounded border-[#374248] bg-[#2a3942] text-[#00a884] focus:ring-[#00a884] w-4 h-4 cursor-pointer"
               />
-              <label htmlFor="check-is-active" className="text-xs text-slate-300 cursor-pointer">
+              <label
+                htmlFor="check-is-active"
+                className="text-xs text-slate-300 cursor-pointer select-none"
+              >
                 Definir como conexão padrão / ativa
               </label>
             </div>
 
-            <DialogFooter className="pt-3 space-x-2">
+            <DialogFooter className="pt-3 flex-col-reverse sm:flex-row gap-2 sm:gap-0 sm:space-x-2">
               <Button
                 type="button"
                 variant="ghost"
                 onClick={() => setFormOpen(false)}
-                className="bg-transparent border-[#374248] text-slate-300 hover:bg-[#2a3942] hover:text-white text-xs"
+                className="bg-transparent border-[#374248] text-slate-300 hover:bg-[#2a3942] hover:text-white text-xs h-10 w-full sm:w-auto"
               >
                 Cancelar
               </Button>
               <Button
                 type="submit"
-                className="bg-[#00a884] hover:bg-[#008f6f] text-white text-xs font-semibold"
+                className="bg-[#00a884] hover:bg-[#008f6f] text-white text-xs font-semibold h-10 w-full sm:w-auto"
               >
                 {editingId ? 'Salvar alterações' : 'Cadastrar conexão'}
               </Button>
@@ -416,7 +419,7 @@ export const ConnectionsSettingsTab: React.FC = () => {
         open={!!deletingConnection}
         onOpenChange={(open) => !open && setDeletingConnection(null)}
       >
-        <AlertDialogContent className="bg-[#202c33] border-[#2a3942] text-slate-100 max-w-sm">
+        <AlertDialogContent className="bg-[#202c33] border-[#2a3942] text-slate-100 w-[95vw] max-w-sm rounded-2xl p-4 sm:p-6">
           <AlertDialogHeader>
             <div className="flex items-center space-x-2 text-red-400 mb-1">
               <AlertTriangle className="w-5 h-5 shrink-0" />
@@ -431,16 +434,16 @@ export const ConnectionsSettingsTab: React.FC = () => {
             </AlertDialogDescription>
           </AlertDialogHeader>
 
-          <AlertDialogFooter className="space-x-2 pt-2">
+          <AlertDialogFooter className="flex-col-reverse sm:flex-row gap-2 sm:gap-0 sm:space-x-2 pt-2">
             <AlertDialogCancel
               onClick={() => setDeletingConnection(null)}
-              className="bg-transparent border-[#374248] text-slate-300 hover:bg-[#2a3942] hover:text-white text-xs"
+              className="bg-transparent border-[#374248] text-slate-300 hover:bg-[#2a3942] hover:text-white text-xs h-10 w-full sm:w-auto mt-0"
             >
               Cancelar
             </AlertDialogCancel>
             <AlertDialogAction
               onClick={handleConfirmDelete}
-              className="bg-red-600 hover:bg-red-700 text-white text-xs font-semibold"
+              className="bg-red-600 hover:bg-red-700 text-white text-xs font-semibold h-10 w-full sm:w-auto"
             >
               Excluir conexão
             </AlertDialogAction>

@@ -135,8 +135,8 @@ export const PipelineBoard: React.FC<PipelineBoardProps> = ({
         </DropdownMenu>
       </div>
 
-      {/* Colunas do kanban (rolagem horizontal quando não couberem) */}
-      <div className="flex-1 min-h-0 flex gap-2.5 p-3 overflow-x-auto bg-[#0b141a]">
+      {/* Colunas do kanban (rolagem horizontal por coluna com larguras adaptadas ao toque) */}
+      <div className="flex-1 min-h-0 flex gap-2.5 sm:gap-3 p-2.5 sm:p-3 overflow-x-auto bg-[#0b141a] snap-x snap-mandatory sm:snap-none">
         {stageList.map((stage) => {
           const deals = dealsByStage[stage.id] || []
           const isOver = overStage === stage.id
@@ -163,7 +163,7 @@ export const PipelineBoard: React.FC<PipelineBoardProps> = ({
                 if (contact && stage.id !== stageOf(contact.id)) handleMove(contact, stage.id)
               }}
               className={cn(
-                'flex flex-col w-[230px] shrink-0 rounded-xl border transition-colors',
+                'flex flex-col w-[82vw] max-w-[300px] sm:w-[240px] md:w-[250px] shrink-0 rounded-xl border transition-colors snap-center',
                 isOver ? 'border-[#00a884] bg-[#111b21]' : 'border-[#2a3942] bg-[#202c33]',
               )}
             >

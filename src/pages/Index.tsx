@@ -29,6 +29,9 @@ export default function Index() {
   // Track active subpanels on the left side
   const [activeLeftPanel, setActiveLeftPanel] = useState<LeftPanel>('chats')
 
+  // Gaveta lateral mobile (FeatureRail)
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
+
   // Drawer lateral de detalhes do contato ativo (clique no cabeçalho do chat)
   const [activeContactDrawerId, setActiveContactDrawerId] = useState<string | null>(null)
 
@@ -62,7 +65,15 @@ export default function Index() {
       {/* Outer WhatsApp Web container layout */}
       <div className="flex h-full w-full max-w-[1680px] mx-auto shadow-2xl relative overflow-hidden bg-[#111b21]">
         {/* Menu lateral recolhível de funcionalidades */}
-        <FeatureRail activePanel={activeLeftPanel} onSelect={setActiveLeftPanel} />
+        <FeatureRail
+          activePanel={activeLeftPanel}
+          onSelect={(panel) => {
+            setActiveLeftPanel(panel)
+            setMobileMenuOpen(false)
+          }}
+          mobileOpen={mobileMenuOpen}
+          onMobileClose={() => setMobileMenuOpen(false)}
+        />
 
         {/* Tela unificada de Contatos + CRM em tela cheia (sem painel de chat / placeholder de WhatsApp Web) */}
         {activeLeftPanel === 'contacts' ? (
@@ -70,6 +81,7 @@ export default function Index() {
             <ContactsCrmPanel
               onClose={() => setActiveLeftPanel('chats')}
               onOpenChat={openChatWithContact}
+              onOpenMobileMenu={() => setMobileMenuOpen(true)}
             />
           </div>
         ) : (
@@ -86,6 +98,7 @@ export default function Index() {
                   onOpenNewGroup={() => setActiveLeftPanel('new-group')}
                   onOpenProfile={() => setActiveLeftPanel('profile')}
                   onLogout={handleLogout}
+                  onOpenMobileMenu={() => setMobileMenuOpen(true)}
                 />
               )}
 
@@ -101,7 +114,10 @@ export default function Index() {
               )}
 
               {activeLeftPanel === 'settings' && (
-                <SettingsPanel onClose={() => setActiveLeftPanel('chats')} />
+                <SettingsPanel
+                  onClose={() => setActiveLeftPanel('chats')}
+                  onOpenMobileMenu={() => setMobileMenuOpen(true)}
+                />
               )}
             </div>
 
@@ -127,21 +143,25 @@ export default function Index() {
                 }
               />
 
-              {/* Group details right-dock panel */}
+              {/* Group details right-dock panel — no mobile ocupa a tela como overlay deslizante */}
               {showGroupInfo && activeChatId && (
-                <GroupInfoPanel
-                  conversationId={activeChatId}
-                  onClose={() => setShowGroupInfo(false)}
-                />
+                <div className="fixed inset-0 z-40 md:static md:inset-auto md:z-20 flex justify-end bg-black/60 md:bg-transparent animate-fade-in">
+                  <GroupInfoPanel
+                    conversationId={activeChatId}
+                    onClose={() => setShowGroupInfo(false)}
+                  />
+                </div>
               )}
 
-              {/* Drawer lateral de detalhes do contato clicado no header do chat */}
+              {/* Drawer lateral de detalhes do contato clicado no header do chat — no mobile overlay full-screen */}
               {activeContactDrawerId && (
-                <ContactDetailsDrawer
-                  contactId={activeContactDrawerId}
-                  onClose={() => setActiveContactDrawerId(null)}
-                  onOpenFullscreenAvatar={(media) => setActiveMedia(media)}
-                />
+                <div className="fixed inset-0 z-40 md:static md:inset-auto md:z-20 flex justify-end bg-black/60 md:bg-transparent animate-fade-in">
+                  <ContactDetailsDrawer
+                    contactId={activeContactDrawerId}
+                    onClose={() => setActiveContactDrawerId(null)}
+                    onOpenFullscreenAvatar={(media) => setActiveMedia(media)}
+                  />
+                </div>
               )}
             </div>
           </>

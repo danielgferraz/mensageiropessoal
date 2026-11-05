@@ -121,7 +121,7 @@ export const StageDialogs: React.FC<StageDialogsProps> = ({
         open={dialog.kind === 'create' || dialog.kind === 'rename'}
         onOpenChange={(open) => !open && onClose()}
       >
-        <DialogContent className="bg-[#222e35] border-[#2f3b43] text-slate-100 max-w-sm">
+        <DialogContent className="bg-[#222e35] border-[#2f3b43] text-slate-100 w-[94vw] max-w-sm rounded-2xl p-4 sm:p-6">
           <DialogHeader>
             <DialogTitle className="text-lg font-semibold">
               {dialog.kind === 'create' ? 'Novo estágio' : 'Renomear estágio'}
@@ -200,7 +200,7 @@ export const StageDialogs: React.FC<StageDialogsProps> = ({
           if (!open) onClose()
         }}
       >
-        <AlertDialogContent className="bg-[#222e35] border-[#2f3b43] text-slate-100">
+        <AlertDialogContent className="bg-[#222e35] border-[#2f3b43] text-slate-100 w-[94vw] max-w-md rounded-2xl p-4 sm:p-6">
           <AlertDialogHeader>
             <AlertDialogTitle className="text-lg font-semibold text-slate-100">
               Excluir estágio?
@@ -210,7 +210,6 @@ export const StageDialogs: React.FC<StageDialogsProps> = ({
               pipeline. Escolha para onde vão os contatos dele:
             </AlertDialogDescription>
           </AlertDialogHeader>
-
           <div className="max-h-44 overflow-y-auto rounded-lg border border-[#2f3b43] divide-y divide-[#2a3942]">
             {stageList
               .filter((s) => s.id !== deleteTarget)
@@ -236,19 +235,18 @@ export const StageDialogs: React.FC<StageDialogsProps> = ({
                 </label>
               ))}
           </div>
-
-          <AlertDialogFooter>
-            <AlertDialogCancel className="bg-transparent border-[#374248] text-slate-300 hover:text-white hover:bg-[#374248]/40">
+          <AlertDialogFooter className="flex-col-reverse sm:flex-row gap-2 sm:gap-0 sm:space-x-2 pt-2">
+            <AlertDialogCancel className="bg-transparent border-[#2a3942] text-slate-300 hover:text-white hover:bg-[#202c33] h-10 w-full sm:w-auto mt-0">
               Cancelar
             </AlertDialogCancel>
             <AlertDialogAction
               onClick={handleDelete}
               disabled={!deleteMoveTo}
-              className="bg-red-500 hover:bg-red-600 text-white disabled:opacity-50"
+              className="bg-red-600 hover:bg-red-700 text-white h-10 w-full sm:w-auto font-medium"
             >
-              Excluir e mover contatos
+              Excluir e mover negócios
             </AlertDialogAction>
-          </AlertDialogFooter>
+          </AlertDialogFooter>{' '}
         </AlertDialogContent>
       </AlertDialog>
     </>

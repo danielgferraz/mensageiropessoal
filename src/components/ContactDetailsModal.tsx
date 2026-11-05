@@ -87,11 +87,11 @@ export const ContactDetailsModal: React.FC<ContactDetailsModalProps> = ({
 
   return (
     <div
-      className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4 animate-fade-in"
+      className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-black/60 p-0 sm:p-4 animate-fade-in"
       onClick={onClose}
     >
       <div
-        className="w-full max-w-sm rounded-2xl bg-[#111b21] border border-[#2a3942] shadow-2xl overflow-hidden animate-scale-in"
+        className="w-full sm:max-w-sm max-h-[92vh] flex flex-col rounded-t-2xl sm:rounded-2xl bg-[#111b21] border border-[#2a3942] shadow-2xl overflow-y-auto animate-scale-in"
         onClick={(e) => e.stopPropagation()}
         role="dialog"
         aria-modal="true"

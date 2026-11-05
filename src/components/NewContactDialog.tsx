@@ -83,7 +83,7 @@ export const NewContactDialog: React.FC<NewContactDialogProps> = ({
         onOpenChange(next)
       }}
     >
-      <DialogContent className="bg-[#222e35] border-[#2f3b43] text-slate-100 max-w-md">
+      <DialogContent className="bg-[#222e35] border-[#2f3b43] text-slate-100 w-[95vw] max-w-md max-h-[92vh] overflow-y-auto p-4 sm:p-6 rounded-2xl">
         <DialogHeader>
           <DialogTitle className="text-lg font-semibold flex items-center space-x-2">
             <UserPlus className="w-5 h-5 text-[#00a884]" />
@@ -154,7 +154,7 @@ export const NewContactDialog: React.FC<NewContactDialogProps> = ({
             </div>
           </div>
 
-          <DialogFooter className="gap-2 sm:gap-0 pt-2">
+          <DialogFooter className="flex-col-reverse sm:flex-row gap-2 sm:gap-0 sm:space-x-2 pt-2">
             <Button
               type="button"
               variant="ghost"
@@ -162,11 +162,14 @@ export const NewContactDialog: React.FC<NewContactDialogProps> = ({
                 resetForm()
                 onOpenChange(false)
               }}
-              className="text-slate-300 hover:text-white"
+              className="text-slate-300 hover:text-white h-10 w-full sm:w-auto"
             >
               Cancelar
             </Button>
-            <Button type="submit" className="bg-[#00a884] hover:bg-[#008f6f] text-white">
+            <Button
+              type="submit"
+              className="bg-[#00a884] hover:bg-[#008f6f] text-white h-10 w-full sm:w-auto font-medium"
+            >
               Salvar Contato
             </Button>
           </DialogFooter>
