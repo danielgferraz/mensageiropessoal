@@ -8,6 +8,9 @@ import {
   QuickReply,
   UserProfile,
   MessageMedia,
+  ContactNote,
+  AppEventLog,
+  EvolutionConnection,
 } from '@/types/whatsapp'
 import {
   DEFAULT_USER,
@@ -66,6 +69,32 @@ interface WhatsAppContextType {
   createQuickReply: (text: string, shortcut?: string) => QuickReply | null
   updateQuickReply: (id: string, text: string, shortcut?: string) => void
   deleteQuickReply: (id: string) => void
+  // Notas Internas de Contatos
+  contactNotes: ContactNote[]
+  getNotesByContact: (contactId: string) => ContactNote[]
+  addContactNote: (contactId: string, text: string) => ContactNote | null
+  updateContactNote: (noteId: string, text: string) => void
+  deleteContactNote: (noteId: string) => void
+  // Logs de Eventos
+  logs: AppEventLog[]
+  addLog: (
+    action: string,
+    description: string,
+    level?: 'info' | 'success' | 'warn' | 'error',
+    meta?: Record<string, unknown>,
+  ) => void
+  clearLogs: () => void
+  // Conexões Evolution API
+  connections: EvolutionConnection[]
+  addConnection: (
+    connection: Omit<EvolutionConnection, 'id' | 'createdAt' | 'updatedAt'>,
+  ) => EvolutionConnection | null
+  updateConnection: (
+    id: string,
+    data: Partial<Omit<EvolutionConnection, 'id' | 'createdAt'>>,
+  ) => void
+  deleteConnection: (id: string) => void
+  setActiveConnection: (id: string) => void
 }
 
 const WhatsAppContext = createContext<WhatsAppContextType | undefined>(undefined)
@@ -79,6 +108,9 @@ const STORAGE_KEYS = {
   CRM_STAGE_LIST: 'wa_clone_crm_stage_list',
   LABELS: 'wa_clone_labels',
   QUICK_REPLIES: 'wa_clone_quick_replies',
+  CONTACT_NOTES: 'wa_clone_contact_notes',
+  LOGS: 'wa_clone_event_logs',
+  CONNECTIONS: 'wa_clone_evolution_connections',
 }
 
 export const WhatsAppProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
@@ -168,6 +200,117 @@ export const WhatsAppProvider: React.FC<{ children: React.ReactNode }> = ({ chil
     return DEFAULT_QUICK_REPLIES
   })
 
+  // Notas internas de contatos (salvas por contactId)
+  const [contactNotes, setContactNotes] = useState<ContactNote[]>(() => {
+    const saved = localStorage.getItem(STORAGE_KEYS.CONTACT_NOTES)
+    try {
+      const parsed = saved ? (JSON.parse(saved) as unknown) : null
+      if (Array.isArray(parsed)) {
+        return parsed.filter(
+          (n) =>
+            n &&
+            typeof n.id === 'string' &&
+            typeof n.contactId === 'string' &&
+            typeof n.text === 'string',
+        )
+      }
+    } catch {
+      // ignora
+    }
+    // Seeds iniciais de exemplo para enriquecer os primeiros contatos
+    return [
+      {
+        id: 'note-init-1',
+        contactId: 'c1',
+        text: 'Cliente prefere reuniões às terças no período da tarde.',
+        createdAt: new Date(Date.now() - 86400000 * 2).toLocaleDateString('pt-BR', {
+          day: '2-digit',
+          month: '2-digit',
+          year: 'numeric',
+          hour: '2-digit',
+          minute: '2-digit',
+        }),
+      },
+      {
+        id: 'note-init-2',
+        contactId: 'c2',
+        text: 'Aguardando validação da proposta comercial pelo departamento financeiro.',
+        createdAt: new Date(Date.now() - 86400000).toLocaleDateString('pt-BR', {
+          day: '2-digit',
+          month: '2-digit',
+          year: 'numeric',
+          hour: '2-digit',
+          minute: '2-digit',
+        }),
+      },
+    ]
+  })
+
+  // Logs de eventos do aplicativo
+  const [logs, setLogs] = useState<AppEventLog[]>(() => {
+    const saved = localStorage.getItem(STORAGE_KEYS.LOGS)
+    try {
+      const parsed = saved ? (JSON.parse(saved) as unknown) : null
+      if (Array.isArray(parsed)) {
+        return parsed.filter(
+          (l) => l && typeof l.id === 'string' && typeof l.description === 'string',
+        )
+      }
+    } catch {
+      // ignora
+    }
+    const nowStr = new Date().toLocaleTimeString('pt-BR', {
+      hour: '2-digit',
+      minute: '2-digit',
+      second: '2-digit',
+    })
+    return [
+      {
+        id: `log-init-1`,
+        timestamp: nowStr,
+        action: 'app_start',
+        description: 'Sessão iniciada e dados do WhatsApp carregados.',
+        level: 'info',
+      },
+    ]
+  })
+
+  // Conexões da Evolution API (cadastro local)
+  const [connections, setConnections] = useState<EvolutionConnection[]>(() => {
+    const saved = localStorage.getItem(STORAGE_KEYS.CONNECTIONS)
+    try {
+      const parsed = saved ? (JSON.parse(saved) as unknown) : null
+      if (Array.isArray(parsed) && parsed.length > 0) {
+        return parsed.filter(
+          (c) =>
+            c &&
+            typeof c.id === 'string' &&
+            typeof c.name === 'string' &&
+            typeof c.serverUrl === 'string',
+        )
+      }
+    } catch {
+      // ignora
+    }
+    // Exemplo inicial didático
+    return [
+      {
+        id: 'conn-demo-1',
+        name: 'Servidor Principal (Produção)',
+        serverUrl: 'https://api.evolution.exemplo.com',
+        apiKey: 'evo_sec_9948271038194aef91c89',
+        instanceName: 'whatsapp-atendimento-01',
+        isActive: true,
+        status: 'connected',
+        createdAt: new Date().toLocaleDateString('pt-BR', {
+          day: '2-digit',
+          month: '2-digit',
+          year: 'numeric',
+        }),
+      },
+    ]
+  })
+
   // Persist state to localStorage for seamless refreshing
   useEffect(() => {
     localStorage.setItem(STORAGE_KEYS.USER, JSON.stringify(user))
@@ -200,6 +343,46 @@ export const WhatsAppProvider: React.FC<{ children: React.ReactNode }> = ({ chil
   useEffect(() => {
     localStorage.setItem(STORAGE_KEYS.QUICK_REPLIES, JSON.stringify(quickReplies))
   }, [quickReplies])
+
+  useEffect(() => {
+    localStorage.setItem(STORAGE_KEYS.CONTACT_NOTES, JSON.stringify(contactNotes))
+  }, [contactNotes])
+
+  useEffect(() => {
+    localStorage.setItem(STORAGE_KEYS.LOGS, JSON.stringify(logs))
+  }, [logs])
+
+  useEffect(() => {
+    localStorage.setItem(STORAGE_KEYS.CONNECTIONS, JSON.stringify(connections))
+  }, [connections])
+
+  const addLog = (
+    action: string,
+    description: string,
+    level: 'info' | 'success' | 'warn' | 'error' = 'info',
+    meta?: Record<string, unknown>,
+  ) => {
+    const now = new Date()
+    const timestamp = now.toLocaleTimeString('pt-BR', {
+      hour: '2-digit',
+      minute: '2-digit',
+      second: '2-digit',
+    })
+    const newLog: AppEventLog = {
+      id: `log-${Date.now()}-${Math.random().toString(36).substring(2, 6)}`,
+      timestamp,
+      action,
+      description,
+      level,
+      meta,
+    }
+    setLogs((prev) => [newLog, ...prev.slice(0, 199)]) // mantem ate 200 logs mais recentes
+  }
+
+  const clearLogs = () => {
+    setLogs([])
+    localStorage.removeItem(STORAGE_KEYS.LOGS)
+  }
 
   const setUser = (updated: UserProfile) => {
     setUserState(updated)
@@ -240,14 +423,14 @@ export const WhatsAppProvider: React.FC<{ children: React.ReactNode }> = ({ chil
     }))
 
     // Update conversation last message
+    const previewText = media
+      ? media.type === 'image'
+        ? `📷 ${media.caption || 'Foto'}`
+        : `🎥 ${media.caption || 'Vídeo'}`
+      : text || ''
+
     setConversations((prev) => {
       const target = prev.find((c) => c.id === conversationId)
-      const previewText = media
-        ? media.type === 'image'
-          ? `📷 ${media.caption || 'Foto'}`
-          : `🎥 ${media.caption || 'Vídeo'}`
-        : text || ''
-
       const otherConvs = prev.filter((c) => c.id !== conversationId)
 
       if (target) {
@@ -264,6 +447,13 @@ export const WhatsAppProvider: React.FC<{ children: React.ReactNode }> = ({ chil
       }
       return prev
     })
+
+    const targetConv = conversations.find((c) => c.id === conversationId)
+    addLog(
+      'message_sent',
+      `Mensagem enviada para "${targetConv ? targetConv.name : conversationId}": ${previewText.slice(0, 40)}${previewText.length > 40 ? '...' : ''}`,
+      'info',
+    )
 
     // Simulate delivery ticks (sent -> delivered in 1s, delivered -> read in 2.5s)
     setTimeout(() => {
@@ -405,6 +595,12 @@ export const WhatsAppProvider: React.FC<{ children: React.ReactNode }> = ({ chil
       [newGroupId]: [systemMessage],
     }))
 
+    addLog(
+      'group_created',
+      `Grupo "${name}" criado com ${participantIds.length} participantes.`,
+      'success',
+    )
+
     return newGroupId
   }
 
@@ -422,22 +618,23 @@ export const WhatsAppProvider: React.FC<{ children: React.ReactNode }> = ({ chil
     }
 
     setContacts((prev) => [newContact, ...prev])
+    addLog('contact_created', `Novo contato criado: "${name}" (${phone}).`, 'success')
     return newContact
   }
 
   // Atualiza nome/recado/telefone de um contato existente (modal de detalhes e drawer)
   const updateContact = (contactId: string, name: string, about?: string, phone?: string) => {
     setContacts((prev) =>
-      prev.map((c) =>
-        c.id === contactId
-          ? {
-              ...c,
-              name,
-              about: about !== undefined ? (about.trim() ? about.trim() : '') : c.about,
-              phone: phone?.trim() ? phone.trim() : c.phone,
-            }
-          : c,
-      ),
+      prev.map((c) => {
+        if (c.id !== contactId) return c
+        addLog('contact_updated', `Contato atualizado: "${name}".`, 'info')
+        return {
+          ...c,
+          name,
+          about: about !== undefined ? (about.trim() ? about.trim() : '') : c.about,
+          phone: phone?.trim() ? phone.trim() : c.phone,
+        }
+      }),
     )
   }
 
@@ -472,6 +669,13 @@ export const WhatsAppProvider: React.FC<{ children: React.ReactNode }> = ({ chil
 
   const setContactStage = (contactId: string, stage: CrmStageId) => {
     setCrmStages((prev) => ({ ...prev, [contactId]: stage }))
+    const targetContact = contacts.find((c) => c.id === contactId)
+    const stageName = crmStageList.find((s) => s.id === stage)?.label || stage
+    addLog(
+      'crm_stage_changed',
+      `Estágio CRM de "${targetContact?.name || contactId}" alterado para "${stageName}".`,
+      'info',
+    )
   }
 
   // ==== CRUD de estágios do pipeline ====
@@ -565,6 +769,12 @@ export const WhatsAppProvider: React.FC<{ children: React.ReactNode }> = ({ chil
         const current = c.labelIds || []
         const exists = current.includes(labelId)
         const updated = exists ? current.filter((id) => id !== labelId) : [...current, labelId]
+        const labelObj = labels.find((l) => l.id === labelId)
+        addLog(
+          'label_toggled',
+          `Etiqueta "${labelObj?.name || labelId}" ${exists ? 'removida de' : 'atribuída a'} "${c.name}".`,
+          'info',
+        )
         return { ...c, labelIds: updated }
       }),
     )
@@ -663,6 +873,179 @@ export const WhatsAppProvider: React.FC<{ children: React.ReactNode }> = ({ chil
     setQuickReplies((prev) => prev.filter((q) => q.id !== id))
   }
 
+  // ==== NOTAS INTERNAS DE CONTATO ====
+  const getNotesByContact = (contactId: string): ContactNote[] => {
+    return contactNotes
+      .filter((n) => n.contactId === contactId)
+      .sort((a, b) => b.id.localeCompare(a.id))
+  }
+
+  const addContactNote = (contactId: string, text: string): ContactNote | null => {
+    const trimmed = text.trim()
+    if (!trimmed) return null
+    const now = new Date()
+    const formattedDate = `${now.toLocaleDateString('pt-BR', {
+      day: '2-digit',
+      month: '2-digit',
+      year: 'numeric',
+    })} às ${now.toLocaleTimeString('pt-BR', {
+      hour: '2-digit',
+      minute: '2-digit',
+    })}`
+
+    const newNote: ContactNote = {
+      id: `note-${Date.now()}-${Math.random().toString(36).substring(2, 6)}`,
+      contactId,
+      text: trimmed,
+      createdAt: formattedDate,
+    }
+
+    setContactNotes((prev) => [newNote, ...prev])
+    const contact = contacts.find((c) => c.id === contactId)
+    addLog(
+      'contact_note_added',
+      `Nova nota interna adicionada para "${contact?.name || contactId}".`,
+      'info',
+    )
+    return newNote
+  }
+
+  const updateContactNote = (noteId: string, text: string) => {
+    const trimmed = text.trim()
+    if (!trimmed) return
+    const now = new Date()
+    const formattedDate = `${now.toLocaleDateString('pt-BR', {
+      day: '2-digit',
+      month: '2-digit',
+      year: 'numeric',
+    })} às ${now.toLocaleTimeString('pt-BR', {
+      hour: '2-digit',
+      minute: '2-digit',
+    })}`
+
+    setContactNotes((prev) =>
+      prev.map((n) => (n.id === noteId ? { ...n, text: trimmed, updatedAt: formattedDate } : n)),
+    )
+    addLog('contact_note_updated', `Nota interna de contato atualizada.`, 'info')
+  }
+
+  const deleteContactNote = (noteId: string) => {
+    setContactNotes((prev) => prev.filter((n) => n.id !== noteId))
+    addLog('contact_note_deleted', `Nota interna de contato removida.`, 'warn')
+  }
+
+  // ==== CONEXÕES DA EVOLUTION API ====
+  const addConnection = (
+    data: Omit<EvolutionConnection, 'id' | 'createdAt' | 'updatedAt'>,
+  ): EvolutionConnection | null => {
+    const trimmedName = data.name.trim()
+    const trimmedUrl = data.serverUrl.trim()
+    if (!trimmedName || !trimmedUrl) return null
+
+    const now = new Date()
+    const formattedDate = `${now.toLocaleDateString('pt-BR', {
+      day: '2-digit',
+      month: '2-digit',
+      year: 'numeric',
+    })} às ${now.toLocaleTimeString('pt-BR', {
+      hour: '2-digit',
+      minute: '2-digit',
+    })}`
+
+    // Se marcou como ativa ou for a primeira, desativa as outras
+    const shouldBeActive = data.isActive ?? connections.length === 0
+
+    const newConn: EvolutionConnection = {
+      id: `conn-${Date.now()}-${Math.random().toString(36).substring(2, 6)}`,
+      name: trimmedName,
+      serverUrl: trimmedUrl,
+      apiKey: data.apiKey.trim(),
+      instanceName: data.instanceName.trim(),
+      isActive: shouldBeActive,
+      status: 'connected',
+      createdAt: formattedDate,
+    }
+
+    setConnections((prev) => {
+      const updated = shouldBeActive ? prev.map((c) => ({ ...c, isActive: false })) : prev
+      return [...updated, newConn]
+    })
+
+    addLog(
+      'connection_created',
+      `Nova conexão da Evolution API criada: "${trimmedName}" (${data.instanceName || 'sem instância'}).`,
+      'success',
+    )
+    return newConn
+  }
+
+  const updateConnection = (
+    id: string,
+    data: Partial<Omit<EvolutionConnection, 'id' | 'createdAt'>>,
+  ) => {
+    const now = new Date()
+    const formattedDate = `${now.toLocaleDateString('pt-BR', {
+      day: '2-digit',
+      month: '2-digit',
+      year: 'numeric',
+    })} às ${now.toLocaleTimeString('pt-BR', {
+      hour: '2-digit',
+      minute: '2-digit',
+    })}`
+
+    setConnections((prev) => {
+      let isMakingActive = data.isActive === true
+      return prev.map((c) => {
+        if (c.id === id) {
+          return {
+            ...c,
+            ...data,
+            name: data.name !== undefined ? data.name.trim() : c.name,
+            serverUrl: data.serverUrl !== undefined ? data.serverUrl.trim() : c.serverUrl,
+            apiKey: data.apiKey !== undefined ? data.apiKey.trim() : c.apiKey,
+            instanceName:
+              data.instanceName !== undefined ? data.instanceName.trim() : c.instanceName,
+            updatedAt: formattedDate,
+          }
+        }
+        if (isMakingActive) {
+          return { ...c, isActive: false }
+        }
+        return c
+      })
+    })
+
+    addLog('connection_updated', `Conexão da Evolution API atualizada.`, 'info')
+  }
+
+  const deleteConnection = (id: string) => {
+    const target = connections.find((c) => c.id === id)
+    setConnections((prev) => {
+      const filtered = prev.filter((c) => c.id !== id)
+      // Se a conexão excluída era ativa e restam conexões, ativa a primeira
+      if (target?.isActive && filtered.length > 0) {
+        return filtered.map((c, idx) => (idx === 0 ? { ...c, isActive: true } : c))
+      }
+      return filtered
+    })
+    addLog('connection_deleted', `Conexão Evolution API "${target?.name || id}" excluída.`, 'warn')
+  }
+
+  const setActiveConnection = (id: string) => {
+    setConnections((prev) =>
+      prev.map((c) => ({
+        ...c,
+        isActive: c.id === id,
+      })),
+    )
+    const target = connections.find((c) => c.id === id)
+    addLog(
+      'connection_activated',
+      `Conexão "${target?.name || id}" marcada como ativa/padrão.`,
+      'info',
+    )
+  }
+
   const resetData = () => {
     localStorage.removeItem(STORAGE_KEYS.USER)
     localStorage.removeItem(STORAGE_KEYS.CONTACTS)
@@ -672,6 +1055,9 @@ export const WhatsAppProvider: React.FC<{ children: React.ReactNode }> = ({ chil
     localStorage.removeItem(STORAGE_KEYS.CRM_STAGE_LIST)
     localStorage.removeItem(STORAGE_KEYS.LABELS)
     localStorage.removeItem(STORAGE_KEYS.QUICK_REPLIES)
+    localStorage.removeItem(STORAGE_KEYS.CONTACT_NOTES)
+    localStorage.removeItem(STORAGE_KEYS.LOGS)
+    localStorage.removeItem(STORAGE_KEYS.CONNECTIONS)
     setUserState(DEFAULT_USER)
     setContacts(INITIAL_CONTACTS)
     setConversations(INITIAL_CONVERSATIONS)
@@ -682,6 +1068,9 @@ export const WhatsAppProvider: React.FC<{ children: React.ReactNode }> = ({ chil
     setCrmStageList(DEFAULT_CRM_STAGE_LIST)
     setLabels(DEFAULT_LABELS)
     setQuickReplies(DEFAULT_QUICK_REPLIES)
+    setContactNotes([])
+    setLogs([])
+    setConnections([])
   }
 
   return (
@@ -723,6 +1112,19 @@ export const WhatsAppProvider: React.FC<{ children: React.ReactNode }> = ({ chil
         createQuickReply,
         updateQuickReply,
         deleteQuickReply,
+        contactNotes,
+        getNotesByContact,
+        addContactNote,
+        updateContactNote,
+        deleteContactNote,
+        logs,
+        addLog,
+        clearLogs,
+        connections,
+        addConnection,
+        updateConnection,
+        deleteConnection,
+        setActiveConnection,
       }}
     >
       {children}

@@ -271,8 +271,9 @@
   opacity: 1;
 }
 
-/* Diálogos, popovers e dropdowns no tema iOS */
+/* Diálogos, popovers, alert-dialogs e dropdowns no tema iOS */
 .theme-ios [role='dialog'],
+.theme-ios [role='alertdialog'],
 .theme-ios [role='menu'],
 .theme-ios [data-radix-popper-content-wrapper] > div {
   background-color: rgba(255, 255, 255, 0.96) !important;
@@ -284,28 +285,40 @@
 .theme-ios [role='dialog'] h2,
 .theme-ios [role='dialog'] h3,
 .theme-ios [role='dialog'] label,
-.theme-ios [role='dialog'] p {
+.theme-ios [role='dialog'] p,
+.theme-ios [role='alertdialog'] h2,
+.theme-ios [role='alertdialog'] h3,
+.theme-ios [role='alertdialog'] p {
   color: #1c1c1e;
 }
 .theme-ios [role='dialog'] .text-slate-400,
-.theme-ios [role='dialog'] .text-slate-300 {
+.theme-ios [role='dialog'] .text-slate-300,
+.theme-ios [role='alertdialog'] .text-slate-400,
+.theme-ios [role='alertdialog'] .text-slate-300 {
   color: #48484a !important;
 }
 
 .theme-ios [role='dialog'] .bg-\[\#182229\],
 .theme-ios [role='dialog'] .bg-\[\#202c33\],
-.theme-ios [role='dialog'] .bg-\[\#2a3942\] {
+.theme-ios [role='dialog'] .bg-\[\#2a3942\],
+.theme-ios [role='alertdialog'] .bg-\[\#182229\],
+.theme-ios [role='alertdialog'] .bg-\[\#202c33\],
+.theme-ios [role='alertdialog'] .bg-\[\#2a3942\] {
   background-color: #f2f2f7 !important;
   color: #1c1c1e !important;
 }
 
 .theme-ios [role='dialog'] .border-\[\#2a3942\],
-.theme-ios [role='dialog'] .border-\[\#374248\] {
+.theme-ios [role='dialog'] .border-\[\#374248\],
+.theme-ios [role='alertdialog'] .border-\[\#2a3942\],
+.theme-ios [role='alertdialog'] .border-\[\#374248\] {
   border-color: #d1d1d6 !important;
 }
 
 .theme-ios [role='dialog'] input,
-.theme-ios [role='dialog'] textarea {
+.theme-ios [role='dialog'] textarea,
+.theme-ios [role='alertdialog'] input,
+.theme-ios [role='alertdialog'] textarea {
   background-color: #ffffff !important;
   color: #1c1c1e !important;
   border: 1px solid #d1d1d6 !important;

@@ -77,3 +77,35 @@ export interface UserProfile {
   avatar: string
   about: string
 }
+
+// Nota interna associada a um contato
+export interface ContactNote {
+  id: string
+  contactId: string
+  text: string
+  createdAt: string // ISO string ou formatado
+  updatedAt?: string
+}
+
+// Log de evento da aplicação
+export interface AppEventLog {
+  id: string
+  timestamp: string // ISO ou formatado HH:mm:ss
+  action: string // ex: 'message_sent', 'contact_created', etc.
+  description: string
+  level?: 'info' | 'success' | 'warn' | 'error'
+  meta?: Record<string, unknown>
+}
+
+// Cadastro local de Conexão Evolution API (preparação de integração futura)
+export interface EvolutionConnection {
+  id: string
+  name: string
+  serverUrl: string
+  apiKey: string
+  instanceName: string
+  isActive?: boolean // marcada como conexão padrão / ativa
+  status?: 'connected' | 'disconnected' | 'connecting'
+  createdAt: string
+  updatedAt?: string
+}

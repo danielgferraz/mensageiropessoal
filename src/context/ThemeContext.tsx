@@ -54,7 +54,36 @@ export const ThemeProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     localStorage.setItem(STORAGE_KEYS.FONT, fontScale)
   }, [fontScale])
 
-  const setTheme = (next: AppTheme) => setThemeState(next)
+  const setTheme = (next: AppTheme) => {
+    setThemeState(next)
+    try {
+      const savedLogs = localStorage.getItem('wa_clone_event_logs')
+      const logs = savedLogs ? JSON.parse(savedLogs) : []
+      const now = new Date()
+      const timestamp = now.toLocaleTimeString('pt-BR', {
+        hour: '2-digit',
+        minute: '2-digit',
+        second: '2-digit',
+      })
+      const themeLabels: Record<AppTheme, string> = {
+        classic: 'Clássico',
+        ios: 'iOS Claro',
+        amoled: 'AMOLED',
+        emerald: 'Esmeralda',
+      }
+      const newLog = {
+        id: `log-${Date.now()}-${Math.random().toString(36).substring(2, 6)}`,
+        timestamp,
+        action: 'theme_changed',
+        description: `Tema do aplicativo alterado para "${themeLabels[next]}".`,
+        level: 'info',
+      }
+      localStorage.setItem('wa_clone_event_logs', JSON.stringify([newLog, ...logs.slice(0, 199)]))
+    } catch {
+      // ignora
+    }
+  }
+
   const setFontScale = (next: FontScale) => setFontScaleState(next)
 
   return (
