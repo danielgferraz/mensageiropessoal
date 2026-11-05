@@ -1,6 +1,6 @@
 {
-  "name": "skip-react-template",
-  "description": "A frontend React Vite TypeScript Shadcn UI template for Skip projects",
+  "name": "mensageiro-pessoal",
+  "description": "Mensageiro Pessoal TechAgenda com WhatsApp Evolution API e Antigravity Copilot",
   "private": true,
   "version": "0.0.14",
   "type": "module",

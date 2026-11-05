@@ -1,14 +1,14 @@
-<!-- HTML template for the frontend react app: https://developer.mozilla.org/en-US/docs/Web/HTML -->
 <!doctype html>
-<html lang="en">
+<html lang="pt-BR">
   <head>
     <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
-    <title>Mensageiro Pessoal</title>
-    <meta name="description" content="WhatsApp Web Clone com Evolution API e Antigravity" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
+    <title>Mensageiro Pessoal | TechAgenda</title>
+    <meta name="description" content="Mensageiro Pessoal integrado ao WhatsApp Evolution API e Antigravity Copilot" />
     <link rel="icon" type="image/svg+xml" href="/mensageiro/icon-512.svg" />
     <link rel="manifest" href="/mensageiro/manifest.webmanifest" />
     <meta name="theme-color" content="#111b21" />
+    <meta name="mobile-web-app-capable" content="yes" />
     <meta name="apple-mobile-web-app-capable" content="yes" />
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
     <meta name="apple-mobile-web-app-title" content="Mensageiro" />
@@ -16,11 +16,8 @@
     <meta property="og:image" content="/mensageiro/og-image.png" />
   </head>
 
-  <body>
+  <body class="bg-[#111b21] text-[#e9edef] overflow-hidden select-none touch-manipulation">
     <div id="root"></div>
-    <!-- @skip-protected: Do not remove. Required for app features. -->
-    <script src="https://goskip.dev/skip.js"></script>
-    <!-- @skip-protected: Do not remove. App entrypoint. -->
     <script type="module" src="/src/main.tsx"></script>
   </body>
 </html>
