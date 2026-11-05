@@ -333,31 +333,36 @@ export const ContactsCrmPanel: React.FC<ContactsCrmPanelProps> = ({
             </div>
           </div>
 
-          {/* Campo de busca integrado */}
-          <div className="p-3 bg-[#111b21] border-b border-[#222d34] shrink-0">
-            <div className="relative flex items-center">
-              <Search className="w-4 h-4 absolute left-3 text-slate-400 pointer-events-none" />
-              <Input
-                placeholder="Pesquisar contatos por nome ou telefone..."
-                value={search}
-                onChange={(e) => setSearch(e.target.value)}
-                className="pl-9 pr-8 bg-[#202c33] border border-[#2a3942] text-white placeholder-slate-400 h-10 text-xs sm:text-sm focus-visible:ring-1 focus-visible:ring-[#00a884] rounded-lg"
-              />
-              {search && (
-                <button
-                  type="button"
-                  onClick={() => setSearch('')}
-                  className="absolute right-2.5 text-slate-400 hover:text-white"
-                  title="Limpar busca"
-                >
-                  <XCircle className="w-4 h-4" />
-                </button>
-              )}
-            </div>
-          </div>
+          {/* Campo de busca e filtros aparecem SOMENTE na aba Contatos no mobile */}
+          {view === 'contacts' && (
+            <>
+              {/* Campo de busca integrado */}
+              <div className="p-3 bg-[#111b21] border-b border-[#222d34] shrink-0">
+                <div className="relative flex items-center">
+                  <Search className="w-4 h-4 absolute left-3 text-slate-400 pointer-events-none" />
+                  <Input
+                    placeholder="Pesquisar contatos por nome ou telefone..."
+                    value={search}
+                    onChange={(e) => setSearch(e.target.value)}
+                    className="pl-9 pr-8 bg-[#202c33] border border-[#2a3942] text-white placeholder-slate-400 h-10 text-xs sm:text-sm focus-visible:ring-1 focus-visible:ring-[#00a884] rounded-lg"
+                  />
+                  {search && (
+                    <button
+                      type="button"
+                      onClick={() => setSearch('')}
+                      className="absolute right-2.5 text-slate-400 hover:text-white"
+                      title="Limpar busca"
+                    >
+                      <XCircle className="w-4 h-4" />
+                    </button>
+                  )}
+                </div>
+              </div>
 
-          {/* Filtros compactos touch-friendly */}
-          {filtersBar}
+              {/* Filtros compactos touch-friendly */}
+              {filtersBar}
+            </>
+          )}
         </div>
       )}
 
