@@ -35,6 +35,8 @@ const ContactsList: React.FC<{
   stageOf: (contactId: string) => CrmStageId
   stageLabelOf: (stage: CrmStageId) => string
   stageDotOf: (stage: CrmStageId) => string
+  getContactLabelIds: (contactId: string) => string[]
+  labels: { id: string; name: string; color: string }[]
   onSelectContact: (contact: Contact) => void
   onOpenChat: (contactId: string) => void
   className?: string
@@ -46,6 +48,8 @@ const ContactsList: React.FC<{
   stageOf,
   stageLabelOf,
   stageDotOf,
+  getContactLabelIds,
+  labels,
   onSelectContact,
   onOpenChat,
   className,
@@ -77,6 +81,8 @@ const ContactsList: React.FC<{
         ) : (
           contacts.map((contact) => {
             const stage = stageOf(contact.id)
+            const contactLabelIds = getContactLabelIds(contact.id)
+            const contactLabels = labels.filter((l) => contactLabelIds.includes(l.id))
 
             return (
               <div
@@ -107,6 +113,19 @@ const ContactsList: React.FC<{
                   {contact.about && (
                     <p className="text-[11px] text-slate-500 truncate mt-0.5">{contact.about}</p>
                   )}
+                  {contactLabels.length > 0 && (
+                    <div className="flex items-center gap-1 mt-1.5 flex-wrap">
+                      {contactLabels.map((lbl) => (
+                        <span
+                          key={lbl.id}
+                          className="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-medium text-white shadow-xs"
+                          style={{ backgroundColor: lbl.color }}
+                        >
+                          {lbl.name}
+                        </span>
+                      ))}
+                    </div>
+                  )}
                 </div>
 
                 <MessageCircle
@@ -132,10 +151,12 @@ export const ContactsCrmPanel: React.FC<ContactsCrmPanelProps> = ({
   onOpenChat,
   onOpenMobileMenu,
 }) => {
-  const { contacts, crmStages, setContactStage, crmStageList } = useWhatsApp()
+  const { contacts, crmStages, setContactStage, crmStageList, labels, getContactLabelIds } =
+    useWhatsApp()
   const [view, setView] = useState<'contacts' | 'pipeline'>('contacts')
   const [search, setSearch] = useState('')
   const [selectedStages, setSelectedStages] = useState<CrmStageId[]>([])
+  const [selectedLabelId, setSelectedLabelId] = useState<string | null>(null)
   const [aboutFilter, setAboutFilter] = useState<AboutFilter>('all')
   const [selectedContact, setSelectedContact] = useState<Contact | null>(null)
   const [isAddOpen, setIsAddOpen] = useState(false)
@@ -157,11 +178,12 @@ export const ContactsCrmPanel: React.FC<ContactsCrmPanelProps> = ({
   const handleClearFilters = () => {
     setSearch('')
     setSelectedStages([])
+    setSelectedLabelId(null)
     setAboutFilter('all')
   }
 
   const hasActiveFilters = Boolean(
-    search.trim() || selectedStages.length > 0 || aboutFilter !== 'all',
+    search.trim() || selectedStages.length > 0 || selectedLabelId !== null || aboutFilter !== 'all',
   )
 
   const filteredContacts = useMemo(() => {
@@ -192,7 +214,15 @@ export const ContactsCrmPanel: React.FC<ContactsCrmPanelProps> = ({
         }
       }
 
-      // 3. Filtro de Recado (ter / não ter)
+      // 3. Filtro de Etiqueta (tag)
+      if (selectedLabelId !== null) {
+        const contactLabelIds = getContactLabelIds(c.id)
+        if (!contactLabelIds.includes(selectedLabelId)) {
+          return false
+        }
+      }
+
+      // 4. Filtro de Recado (ter / não ter)
       if (aboutFilter === 'with-about') {
         if (!c.about || !c.about.trim()) return false
       } else if (aboutFilter === 'without-about') {
@@ -202,7 +232,16 @@ export const ContactsCrmPanel: React.FC<ContactsCrmPanelProps> = ({
       return true
     })
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [contacts, search, selectedStages, aboutFilter, crmStages, crmStageList])
+  }, [
+    contacts,
+    search,
+    selectedStages,
+    selectedLabelId,
+    aboutFilter,
+    crmStages,
+    crmStageList,
+    getContactLabelIds,
+  ])
 
   const dealsByStage = useMemo(() => {
     const map: Record<string, Contact[]> = {}
@@ -243,6 +282,8 @@ export const ContactsCrmPanel: React.FC<ContactsCrmPanelProps> = ({
       stageOf={stageOf}
       stageLabelOf={stageLabelOf}
       stageDotOf={stageDotOf}
+      getContactLabelIds={getContactLabelIds}
+      labels={labels}
       onSelectContact={setSelectedContact}
       onOpenChat={onOpenChat}
       className="flex-1"
@@ -253,6 +294,9 @@ export const ContactsCrmPanel: React.FC<ContactsCrmPanelProps> = ({
     <ContactFiltersBar
       selectedStages={selectedStages}
       onToggleStage={handleToggleStage}
+      selectedLabelId={selectedLabelId}
+      onSelectLabel={setSelectedLabelId}
+      availableLabels={labels}
       aboutFilter={aboutFilter}
       onSetAboutFilter={setAboutFilter}
       onClearFilters={handleClearFilters}
@@ -328,7 +372,7 @@ export const ContactsCrmPanel: React.FC<ContactsCrmPanelProps> = ({
                     : 'text-slate-400 hover:text-slate-200',
                 )}
               >
-                <span>Pipeline ({contacts.length})</span>
+                <span>Pipeline ({filteredContacts.length})</span>
               </button>
             </div>
           </div>
@@ -373,18 +417,35 @@ export const ContactsCrmPanel: React.FC<ContactsCrmPanelProps> = ({
 
       {/* Mobile: pipeline em tela cheia */}
       {isMobile && view === 'pipeline' && (
-        <PipelineBoard
-          stageList={crmStageList}
-          dealsByStage={dealsByStage}
-          stageOf={stageOf}
-          moveToStage={moveToStage}
-          onOpenChat={(id) => onOpenChat(id)}
-          onSelectContact={setSelectedContact}
-          dragId={dragId}
-          setDragId={setDragId}
-          overStage={overStage}
-          setOverStage={setOverStage}
-        />
+        <div className="flex-1 min-h-0 flex flex-col">
+          {hasActiveFilters && (
+            <div className="px-3 py-1.5 bg-[#182229] border-b border-[#222d34] flex items-center justify-between text-xs shrink-0">
+              <span className="text-slate-400 text-[11px]">
+                Filtros ativos: <strong className="text-white">{filteredContacts.length}</strong>{' '}
+                contatos
+              </span>
+              <button
+                type="button"
+                onClick={handleClearFilters}
+                className="text-xs text-[#00a884] hover:text-[#25d366] font-medium"
+              >
+                Limpar filtros
+              </button>
+            </div>
+          )}
+          <PipelineBoard
+            stageList={crmStageList}
+            dealsByStage={dealsByStage}
+            stageOf={stageOf}
+            moveToStage={moveToStage}
+            onOpenChat={(id) => onOpenChat(id)}
+            onSelectContact={setSelectedContact}
+            dragId={dragId}
+            setDragId={setDragId}
+            overStage={overStage}
+            setOverStage={setOverStage}
+          />
+        </div>
       )}
 
       {/* Desktop: coluna esquerda fixa = lista de contatos (420px a 460px) */}

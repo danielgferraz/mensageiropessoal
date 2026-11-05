@@ -59,6 +59,9 @@ interface WhatsAppContextType {
   deleteLabel: (labelId: string) => void
   setConversationLabels: (conversationId: string, labelIds: string[]) => void
   toggleConversationLabel: (conversationId: string, labelId: string) => void
+  getContactLabelIds: (contactId: string) => string[]
+  setContactLabels: (contactId: string, labelIds: string[]) => void
+  toggleContactLabel: (contactId: string, labelId: string) => void
   // Arquivar & Fixar
   togglePinConversation: (conversationId: string) => void
   toggleArchiveConversation: (conversationId: string) => void
@@ -107,6 +110,7 @@ const STORAGE_KEYS = {
   CRM_STAGES: 'wa_clone_crm_stages',
   CRM_STAGE_LIST: 'wa_clone_crm_stage_list',
   LABELS: 'wa_clone_labels',
+  CONTACT_LABELS: 'wa_clone_contact_labels',
   QUICK_REPLIES: 'wa_clone_quick_replies',
   CONTACT_NOTES: 'wa_clone_contact_notes',
   LOGS: 'wa_clone_event_logs',
@@ -184,6 +188,28 @@ export const WhatsAppProvider: React.FC<{ children: React.ReactNode }> = ({ chil
       // usa o padrão
     }
     return DEFAULT_LABELS
+  })
+
+  // Mapeamento de etiquetas de contatos: { [contactId]: labelId[] }
+  const [contactLabels, setContactLabelsState] = useState<Record<string, string[]>>(() => {
+    const saved = localStorage.getItem(STORAGE_KEYS.CONTACT_LABELS)
+    try {
+      const parsed = saved ? (JSON.parse(saved) as unknown) : null
+      if (parsed && typeof parsed === 'object' && !Array.isArray(parsed)) {
+        return parsed as Record<string, string[]>
+      }
+    } catch {
+      // ignora
+    }
+    // Valores iniciais sincronizados com as conversas padrão
+    return {
+      c1: ['lbl-cliente', 'lbl-urgente'],
+      c2: [],
+      c3: ['lbl-trabalho'],
+      c4: [],
+      c5: [],
+      c6: [],
+    }
   })
 
   // Respostas Rápidas
@@ -339,6 +365,10 @@ export const WhatsAppProvider: React.FC<{ children: React.ReactNode }> = ({ chil
   useEffect(() => {
     localStorage.setItem(STORAGE_KEYS.LABELS, JSON.stringify(labels))
   }, [labels])
+
+  useEffect(() => {
+    localStorage.setItem(STORAGE_KEYS.CONTACT_LABELS, JSON.stringify(contactLabels))
+  }, [contactLabels])
 
   useEffect(() => {
     localStorage.setItem(STORAGE_KEYS.QUICK_REPLIES, JSON.stringify(quickReplies))
@@ -780,6 +810,43 @@ export const WhatsAppProvider: React.FC<{ children: React.ReactNode }> = ({ chil
     )
   }
 
+  // Obter etiquetas de um contato (combina mapeamento local com a conversa 1:1)
+  const getContactLabelIds = (contactId: string): string[] => {
+    if (contactLabels[contactId] !== undefined) {
+      return contactLabels[contactId] || []
+    }
+    const conv = conversations.find((c) => !c.isGroup && c.participants?.includes(contactId))
+    return conv?.labelIds || []
+  }
+
+  const setContactLabels = (contactId: string, labelIds: string[]) => {
+    setContactLabelsState((prev) => ({ ...prev, [contactId]: labelIds }))
+    // Sincroniza conversa 1:1 se existir
+    const conv = conversations.find((c) => !c.isGroup && c.participants?.includes(contactId))
+    if (conv) {
+      setConversationLabels(conv.id, labelIds)
+    }
+  }
+
+  const toggleContactLabel = (contactId: string, labelId: string) => {
+    const current = getContactLabelIds(contactId)
+    const exists = current.includes(labelId)
+    const updated = exists ? current.filter((id) => id !== labelId) : [...current, labelId]
+    setContactLabelsState((prev) => ({ ...prev, [contactId]: updated }))
+    // Sincroniza conversa 1:1 se existir
+    const conv = conversations.find((c) => !c.isGroup && c.participants?.includes(contactId))
+    if (conv) {
+      toggleConversationLabel(conv.id, labelId)
+    }
+    const labelObj = labels.find((l) => l.id === labelId)
+    const contactObj = contacts.find((c) => c.id === contactId)
+    addLog(
+      'contact_label_toggled',
+      `Etiqueta "${labelObj?.name || labelId}" ${exists ? 'removida de' : 'atribuída a'} contato "${contactObj?.name || contactId}".`,
+      'info',
+    )
+  }
+
   // ==== Fixar e Arquivar ====
 
   const togglePinConversation = (conversationId: string) => {
@@ -1105,6 +1172,9 @@ export const WhatsAppProvider: React.FC<{ children: React.ReactNode }> = ({ chil
         deleteLabel,
         setConversationLabels,
         toggleConversationLabel,
+        getContactLabelIds,
+        setContactLabels,
+        toggleContactLabel,
         togglePinConversation,
         toggleArchiveConversation,
         toggleMessageReaction,

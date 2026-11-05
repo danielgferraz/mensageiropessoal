@@ -9,6 +9,7 @@ import {
   Clock,
   Briefcase,
   Sparkles,
+  Tag,
 } from 'lucide-react'
 import { Contact, CrmStageId, MessageMedia } from '@/types/whatsapp'
 import { useWhatsApp } from '@/context/WhatsAppContext'
@@ -39,6 +40,9 @@ export const ContactDetailsDrawer: React.FC<ContactDetailsDrawerProps> = ({
     crmStageList,
     setActiveMedia,
     getNotesByContact,
+    labels,
+    getContactLabelIds,
+    toggleContactLabel,
   } = useWhatsApp()
   const { toast } = useToast()
 
@@ -296,6 +300,55 @@ export const ContactDetailsDrawer: React.FC<ContactDetailsDrawerProps> = ({
                 </button>
               ))}
             </div>
+          </div>
+
+          {/* Etiquetas (Tags) */}
+          <div className="bg-[#182229] p-4 rounded-xl border border-[#2a3942] space-y-2">
+            <div className="flex items-center justify-between">
+              <span className="text-xs font-semibold text-[#00a884] uppercase tracking-wider flex items-center">
+                <Tag className="w-3.5 h-3.5 mr-1" />
+                Etiquetas
+              </span>
+              <span className="text-[10px] text-slate-500">Alternar</span>
+            </div>
+
+            {labels.length === 0 ? (
+              <p className="text-xs text-slate-500 italic">Nenhuma etiqueta cadastrada.</p>
+            ) : (
+              <div className="flex flex-wrap gap-1.5 pt-1">
+                {(() => {
+                  const contactLabelIds = getContactLabelIds(contact.id)
+                  return labels.map((lbl) => {
+                    const isAttached = contactLabelIds.includes(lbl.id)
+                    return (
+                      <button
+                        key={lbl.id}
+                        type="button"
+                        onClick={() => toggleContactLabel(contact.id, lbl.id)}
+                        className={`inline-flex items-center space-x-1 px-2.5 py-1 rounded-full text-xs font-medium border transition-all active:scale-95 ${
+                          isAttached
+                            ? 'text-white shadow-sm border-white/40'
+                            : 'bg-[#202c33] border-[#2a3942] text-slate-400 hover:text-white hover:border-[#374248]'
+                        }`}
+                        style={
+                          isAttached
+                            ? { backgroundColor: lbl.color, borderColor: lbl.color }
+                            : undefined
+                        }
+                        title={isAttached ? 'Remover etiqueta' : 'Adicionar etiqueta'}
+                      >
+                        <span
+                          className="w-2 h-2 rounded-full shrink-0"
+                          style={{ backgroundColor: isAttached ? '#ffffff' : lbl.color }}
+                        />
+                        <span>{lbl.name}</span>
+                        {isAttached && <Check className="w-3 h-3 text-white ml-0.5" />}
+                      </button>
+                    )
+                  })
+                })()}
+              </div>
+            )}
           </div>
 
           {/* Botão de Edição */}

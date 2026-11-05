@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react'
-import { X, MessageCircle, Phone, Pencil, Check } from 'lucide-react'
+import { X, MessageCircle, Phone, Pencil, Check, Tag } from 'lucide-react'
 import { useWhatsApp } from '@/context/WhatsAppContext'
 import { Contact, CrmStageId } from '@/types/whatsapp'
 import { findStage, getStageLabelIn } from '@/data/crmData'
@@ -20,7 +20,15 @@ export const ContactDetailsModal: React.FC<ContactDetailsModalProps> = ({
   onClose,
   onOpenChat,
 }) => {
-  const { crmStages, setContactStage, updateContact, crmStageList } = useWhatsApp()
+  const {
+    crmStages,
+    setContactStage,
+    updateContact,
+    crmStageList,
+    labels,
+    getContactLabelIds,
+    toggleContactLabel,
+  } = useWhatsApp()
   const { toast } = useToast()
 
   const [editing, setEditing] = useState(false)
@@ -190,6 +198,54 @@ export const ContactDetailsModal: React.FC<ContactDetailsModalProps> = ({
                 </button>
               ))}
             </div>
+          </div>
+
+          {/* Etiquetas / Tags do Contato */}
+          <div>
+            <div className="flex items-center justify-between mb-1.5">
+              <p className="text-[11px] text-slate-500 flex items-center">
+                <Tag className="w-3 h-3 mr-1 text-[#00a884]" />
+                Etiquetas
+              </p>
+              <span className="text-[10px] text-slate-500">Clique para alternar</span>
+            </div>
+            {labels.length === 0 ? (
+              <p className="text-xs text-slate-500 italic">Nenhuma etiqueta cadastrada.</p>
+            ) : (
+              <div className="flex flex-wrap gap-1.5">
+                {(() => {
+                  const contactLabelIds = getContactLabelIds(contact.id)
+                  return labels.map((lbl) => {
+                    const isAttached = contactLabelIds.includes(lbl.id)
+                    return (
+                      <button
+                        key={lbl.id}
+                        type="button"
+                        onClick={() => toggleContactLabel(contact.id, lbl.id)}
+                        className={`inline-flex items-center space-x-1 px-2.5 py-1 rounded-full text-xs font-medium border transition-all active:scale-95 ${
+                          isAttached
+                            ? 'text-white shadow-sm border-white/40'
+                            : 'bg-[#202c33] border-[#2a3942] text-slate-400 hover:text-white hover:border-[#374248]'
+                        }`}
+                        style={
+                          isAttached
+                            ? { backgroundColor: lbl.color, borderColor: lbl.color }
+                            : undefined
+                        }
+                        title={isAttached ? 'Remover etiqueta' : 'Adicionar etiqueta'}
+                      >
+                        <span
+                          className="w-2 h-2 rounded-full shrink-0"
+                          style={{ backgroundColor: isAttached ? '#ffffff' : lbl.color }}
+                        />
+                        <span>{lbl.name}</span>
+                        {isAttached && <Check className="w-3 h-3 text-white ml-0.5" />}
+                      </button>
+                    )
+                  })
+                })()}
+              </div>
+            )}
           </div>
         </div>
 

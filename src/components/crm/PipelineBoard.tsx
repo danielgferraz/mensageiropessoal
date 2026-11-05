@@ -222,6 +222,26 @@ export const PipelineBoard: React.FC<PipelineBoardProps> = ({
                             <p className="text-[11px] text-slate-400 truncate mt-0.5">
                               {contact.phone}
                             </p>
+                            {(() => {
+                              const contactLabelIds = getContactLabelIds(contact.id)
+                              const contactLabels = labels.filter((l) =>
+                                contactLabelIds.includes(l.id),
+                              )
+                              if (contactLabels.length === 0) return null
+                              return (
+                                <div className="flex items-center gap-1 mt-1 flex-wrap">
+                                  {contactLabels.map((lbl) => (
+                                    <span
+                                      key={lbl.id}
+                                      className="inline-flex items-center px-1.5 py-0.5 rounded text-[9px] font-medium text-white shadow-xs"
+                                      style={{ backgroundColor: lbl.color }}
+                                    >
+                                      {lbl.name}
+                                    </span>
+                                  ))}
+                                </div>
+                              )
+                            })()}
                           </div>
 
                           <DropdownMenu>
