@@ -53,20 +53,20 @@ export const FeatureRail: React.FC<FeatureRailProps> = ({ activePanel, onSelect 
         open ? 'w-[64px] md:w-[230px]' : 'w-[64px]',
       )}
     >
-      {/* Cabeçalho do menu */}
-      <div className="h-16 flex items-center px-3 border-b border-[#222d34]">
+      {/* Cabeçalho do menu — Trilho de funcionalidades */}
+      <div className="h-16 flex items-center px-3 wa-header-sidebar">
         <button
           type="button"
           onClick={() => setOpen((v) => !v)}
           title={open ? 'Recolher menu' : 'Expandir menu'}
-          className="w-9 h-9 flex items-center justify-center rounded-full hover:bg-[#374248]/50 hover:text-white transition-colors shrink-0"
+          className="w-9 h-9 flex items-center justify-center rounded-full wa-header-btn shrink-0"
         >
           {open ? <PanelLeftClose className="w-5 h-5" /> : <PanelLeftOpen className="w-5 h-5" />}
         </button>
         {open && (
           <div className="hidden md:flex items-center space-x-1.5 ml-2 min-w-0">
             <Sparkles className="w-4 h-4 text-[#00a884] shrink-0" />
-            <span className="text-sm font-semibold text-slate-200 truncate">Funcionalidades</span>
+            <span className="text-sm font-semibold wa-header-title truncate">Funcionalidades</span>
           </div>
         )}
       </div>

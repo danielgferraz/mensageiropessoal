@@ -64,10 +64,10 @@ export const PipelineBoard: React.FC<PipelineBoardProps> = ({
             <button
               type="button"
               title="Gerenciar estágios do pipeline"
-              className="flex items-center space-x-1.5 px-2.5 py-1.5 rounded-full text-xs font-medium bg-[#202c33] border border-[#2a3942] text-slate-300 hover:text-white hover:border-[#00a884]/60 transition-colors"
+              className="flex items-center space-x-1.5 px-2.5 py-1.5 rounded-full text-xs font-medium wa-header-btn border border-[var(--wa-header-border)] shadow-sm"
             >
               <Settings2 className="w-3.5 h-3.5" />
-              <span>Estágios</span>
+              <span className="font-medium">Estágios</span>
             </button>
           </DropdownMenuTrigger>
           <DropdownMenuContent

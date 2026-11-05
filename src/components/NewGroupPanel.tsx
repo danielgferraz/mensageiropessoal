@@ -72,20 +72,21 @@ export const NewGroupPanel: React.FC<NewGroupPanelProps> = ({ onClose, onGroupCr
   }
 
   return (
-    <div className="w-full md:w-[380px] lg:w-[420px] flex flex-col h-full bg-[#111b21] border-r border-[#222d34] text-slate-100 z-30 shrink-0">
-      {/* Header */}
-      <div className="h-16 px-4 bg-[#202c33] flex items-center space-x-4 border-b border-[#2a3942]">
+    <div className="w-full md:w-[380px] lg:w-[420px] flex flex-col h-full bg-[#111b21] wa-panel-separator-right text-slate-100 z-30 shrink-0">
+      {/* Header — Painel lateral esquerdo de Novo Grupo */}
+      <div className="h-16 px-4 wa-header-sidebar flex items-center space-x-4">
         <Button
           variant="ghost"
           size="icon"
           onClick={step === 'details' ? () => setStep('participants') : onClose}
-          className="text-slate-300 hover:text-white -ml-2"
+          className="wa-header-btn rounded-full -ml-2"
+          title="Voltar"
         >
           <ArrowLeft className="w-5 h-5" />
         </Button>
         <div>
-          <h2 className="text-base font-semibold">Novo grupo</h2>
-          <p className="text-xs text-slate-400">
+          <h2 className="text-base font-semibold wa-header-title">Novo grupo</h2>
+          <p className="text-xs wa-header-subtitle">
             {step === 'participants'
               ? `${selectedIds.length} selecionados`
               : 'Definir nome do grupo'}

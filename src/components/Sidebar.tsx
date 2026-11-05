@@ -131,23 +131,23 @@ export const Sidebar: React.FC<SidebarProps> = ({
   }
 
   return (
-    <div className="w-full md:w-[380px] lg:w-[420px] flex flex-col h-full bg-[#111b21] border-r border-[#222d34] text-slate-200 shrink-0">
-      {/* Top Header */}
-      <div className="h-16 px-4 bg-[#202c33] flex items-center justify-between border-b border-[#2a3942] shrink-0">
+    <div className="w-full md:w-[380px] lg:w-[420px] flex flex-col h-full bg-[#111b21] wa-panel-separator-right text-slate-200 shrink-0">
+      {/* Top Header — Área do perfil / conversas */}
+      <div className="h-16 px-4 wa-header-sidebar flex items-center justify-between shrink-0">
         {showArchivedView ? (
           <div className="flex items-center space-x-2">
             <Button
               variant="ghost"
               size="icon"
               onClick={() => setShowArchivedView(false)}
-              className="text-slate-300 hover:text-white rounded-full -ml-2"
+              className="wa-header-btn rounded-full -ml-2"
               title="Voltar às conversas principais"
             >
               <ArrowLeft className="w-5 h-5" />
             </Button>
             <div className="flex items-center space-x-2">
               <Archive className="w-5 h-5 text-[#00a884]" />
-              <h2 className="text-base font-semibold text-white">Arquivadas</h2>
+              <h2 className="text-base font-semibold wa-header-title">Arquivadas</h2>
             </div>
           </div>
         ) : (
@@ -162,18 +162,18 @@ export const Sidebar: React.FC<SidebarProps> = ({
                 alt={user.name}
                 className="w-10 h-10 rounded-full object-cover ring-1 ring-white/20 group-hover:ring-[#00a884] transition-all"
               />
-              <span className="absolute bottom-0 right-0 w-2.5 h-2.5 bg-[#00a884] rounded-full border border-[#202c33]" />
+              <span className="absolute bottom-0 right-0 w-2.5 h-2.5 bg-[#00a884] rounded-full border border-[var(--wa-header-sidebar-bg)]" />
             </div>
             <div className="hidden sm:block">
-              <p className="text-sm font-medium text-slate-200 group-hover:text-white transition-colors truncate max-w-[130px]">
+              <p className="text-sm font-semibold wa-header-title group-hover:opacity-85 transition-opacity truncate max-w-[130px]">
                 {user.name || 'Você'}
               </p>
             </div>
           </div>
         )}
 
-        {/* Action icons */}
-        <div className="flex items-center space-x-1 text-slate-400">
+        {/* Action icons inteligentes */}
+        <div className="flex items-center space-x-1">
           <Button
             variant="ghost"
             size="icon"
@@ -181,7 +181,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
               setTargetConversationForLabels(null)
               setLabelsDialogOpen(true)
             }}
-            className="hover:text-white hover:bg-[#374248]/50 rounded-full"
+            className="wa-header-btn rounded-full"
             title="Gerenciar Etiquetas"
           >
             <Tag className="w-5 h-5" />
@@ -191,7 +191,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
             variant="ghost"
             size="icon"
             onClick={onOpenContacts}
-            className="hover:text-white hover:bg-[#374248]/50 rounded-full"
+            className="wa-header-btn rounded-full"
             title="Lista de Contatos"
           >
             <UserPlus className="w-5 h-5" />
@@ -201,7 +201,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
             variant="ghost"
             size="icon"
             onClick={onOpenNewGroup}
-            className="hover:text-white hover:bg-[#374248]/50 rounded-full"
+            className="wa-header-btn rounded-full"
             title="Criar novo grupo"
           >
             <Users className="w-5 h-5" />
@@ -212,7 +212,8 @@ export const Sidebar: React.FC<SidebarProps> = ({
               <Button
                 variant="ghost"
                 size="icon"
-                className="hover:text-white hover:bg-[#374248]/50 rounded-full"
+                className="wa-header-btn rounded-full"
+                title="Mais opções"
               >
                 <MoreVertical className="w-5 h-5" />
               </Button>

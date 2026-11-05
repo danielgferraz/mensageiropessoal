@@ -261,19 +261,19 @@ export const ContactsCrmPanel: React.FC<ContactsCrmPanelProps> = ({ onClose, onO
   return (
     <div className="flex-1 flex flex-col md:flex-row h-full bg-[#111b21] border-r border-[#222d34] text-slate-100 z-30 min-w-0">
       {/* Cabeçalho (mobile: ocupa a tela toda; desktop: só a metade esquerda) */}
-      <div className="md:hidden h-16 px-4 bg-[#202c33] flex items-center space-x-3 border-b border-[#2a3942] shrink-0">
+      <div className="md:hidden h-16 px-4 wa-header-sidebar flex items-center space-x-3 shrink-0">
         <Button
           variant="ghost"
           size="icon"
           onClick={onClose}
-          className="text-slate-300 hover:text-white -ml-2"
+          className="wa-header-btn rounded-full -ml-2"
           title="Voltar para as conversas"
         >
           <ArrowLeft className="w-5 h-5" />
         </Button>
         <div className="min-w-0">
-          <h2 className="text-base font-semibold leading-tight">Contatos e CRM</h2>
-          <p className="text-[11px] text-slate-400 leading-tight">
+          <h2 className="text-base font-semibold leading-tight wa-header-title">Contatos e CRM</h2>
+          <p className="text-[11px] wa-header-subtitle leading-tight">
             {contacts.length} contatos • {contacts.length} negócios
           </p>
         </div>
@@ -281,7 +281,7 @@ export const ContactsCrmPanel: React.FC<ContactsCrmPanelProps> = ({ onClose, onO
           variant="ghost"
           size="icon"
           onClick={() => setIsAddOpen(true)}
-          className="ml-auto text-slate-300 hover:text-white"
+          className="ml-auto wa-header-btn rounded-full"
           title="Adicionar novo contato"
         >
           <UserPlus className="w-5 h-5" />
@@ -359,25 +359,27 @@ export const ContactsCrmPanel: React.FC<ContactsCrmPanelProps> = ({ onClose, onO
       {!isMobile && (
         <div className="w-[380px] lg:w-[420px] xl:w-[460px] flex flex-col h-full border-r border-[#222d34] shrink-0">
           {/* Cabeçalho da metade esquerda */}
-          <div className="h-16 px-4 bg-[#202c33] flex items-center space-x-3 border-b border-[#2a3942] shrink-0">
+          <div className="h-16 px-4 wa-header-sidebar flex items-center space-x-3 shrink-0">
             <Button
               variant="ghost"
               size="icon"
               onClick={onClose}
-              className="text-slate-300 hover:text-white -ml-2"
+              className="wa-header-btn rounded-full -ml-2"
               title="Voltar para as conversas"
             >
               <ArrowLeft className="w-5 h-5" />
             </Button>
             <div className="min-w-0">
-              <h2 className="text-base font-semibold leading-tight">Contatos</h2>
-              <p className="text-[11px] text-slate-400 leading-tight">{contacts.length} contatos</p>
+              <h2 className="text-base font-semibold leading-tight wa-header-title">Contatos</h2>
+              <p className="text-[11px] wa-header-subtitle leading-tight">
+                {contacts.length} contatos
+              </p>
             </div>
             <Button
               variant="ghost"
               size="icon"
               onClick={() => setIsAddOpen(true)}
-              className="ml-auto text-slate-300 hover:text-white"
+              className="ml-auto wa-header-btn rounded-full"
               title="Adicionar novo contato"
             >
               <UserPlus className="w-5 h-5" />

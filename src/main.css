@@ -105,36 +105,199 @@
   }
 }
 
-/* WhatsApp Doodle Chat Wallpaper — padrão sutil de rabiscos sobre o bege característico */
+/* WhatsApp Theme System — Variáveis globais para wallpaper, cabeçalhos, botões inteligentes e divisões */
 :root {
   --wa-chat-bg-color: #0b141a;
   --wa-doodles: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='360' height='360' viewBox='0 0 360 360'%3E%3Cg fill='none' stroke='%23223038' stroke-width='2.2' stroke-linecap='round' stroke-linejoin='round' opacity='.6'%3E%3Crect x='28' y='28' width='72' height='48' rx='14'/%3E%3Cpath d='M52 76c-2 9-8 14-15 16 11-1 19-7 24-16'/%3E%3Cpath d='M236 84l-11-9c-6-6-5-15 2-18 5-2 9 0 9 5 0-5 4-7 9-5 7 3 8 12 2 18z'/%3E%3Ccircle cx='140' cy='158' r='17'/%3E%3Ccircle cx='134' cy='153' r='1.8' fill='%23223038' stroke='none'/%3E%3Ccircle cx='146' cy='153' r='1.8' fill='%23223038' stroke='none'/%3E%3Cpath d='M133 162q7 7 14 0'/%3E%3Cpath d='M298 138l5.5 11 12 1.8-8.7 8.5 2 12-10.8-5.7-10.8 5.7 2-12-8.7-8.5 12-1.8z'/%3E%3Crect x='70' y='268' width='52' height='38' rx='10'/%3E%3Ccircle cx='96' cy='287' r='9'/%3E%3Cpath d='M242 306v-26l16-5v24'/%3E%3Ccircle cx='237' cy='308' r='5'/%3E%3Ccircle cx='253' cy='301' r='5'/%3E%3Ccircle cx='200' cy='230' r='4'/%3E%3Ccircle cx='330' cy='250' r='4'/%3E%3Ccircle cx='30' cy='210' r='4'/%3E%3Cpath d='M180 30q10 12 0 24'/%3E%3Cpath d='M310 320q8-10 0-20'/%3E%3C/g%3E%3C/svg%3E");
+
+  /* Cabeçalhos superiores por seção (WhatsApp Web clássico) */
+  --wa-header-sidebar-bg: #202c33;
+  --wa-header-chat-bg: #202c33;
+  --wa-header-drawer-bg: #202c33;
+
+  /* Bordas divisórias de cabeçalho e painéis verticais */
+  --wa-header-border: #2a3942;
+  --wa-panel-divider: #222d34;
+  --wa-panel-divider-accent: #2a3942;
+
+  /* Botões e ícones inteligentes do cabeçalho */
+  --wa-header-btn-text: #aebac1;
+  --wa-header-btn-hover-text: #ffffff;
+  --wa-header-btn-hover-bg: rgba(255, 255, 255, 0.08);
+
+  /* Títulos e textos de cabeçalho */
+  --wa-header-title: #e9edef;
+  --wa-header-subtitle: #8696a0;
 }
 
 .theme-classic {
   --wa-chat-bg-color: #0b141a;
   --wa-doodles: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='360' height='360' viewBox='0 0 360 360'%3E%3Cg fill='none' stroke='%23223038' stroke-width='2.2' stroke-linecap='round' stroke-linejoin='round' opacity='.6'%3E%3Crect x='28' y='28' width='72' height='48' rx='14'/%3E%3Cpath d='M52 76c-2 9-8 14-15 16 11-1 19-7 24-16'/%3E%3Cpath d='M236 84l-11-9c-6-6-5-15 2-18 5-2 9 0 9 5 0-5 4-7 9-5 7 3 8 12 2 18z'/%3E%3Ccircle cx='140' cy='158' r='17'/%3E%3Ccircle cx='134' cy='153' r='1.8' fill='%23223038' stroke='none'/%3E%3Ccircle cx='146' cy='153' r='1.8' fill='%23223038' stroke='none'/%3E%3Cpath d='M133 162q7 7 14 0'/%3E%3Cpath d='M298 138l5.5 11 12 1.8-8.7 8.5 2 12-10.8-5.7-10.8 5.7 2-12-8.7-8.5 12-1.8z'/%3E%3Crect x='70' y='268' width='52' height='38' rx='10'/%3E%3Ccircle cx='96' cy='287' r='9'/%3E%3Cpath d='M242 306v-26l16-5v24'/%3E%3Ccircle cx='237' cy='308' r='5'/%3E%3Ccircle cx='253' cy='301' r='5'/%3E%3Ccircle cx='200' cy='230' r='4'/%3E%3Ccircle cx='330' cy='250' r='4'/%3E%3Ccircle cx='30' cy='210' r='4'/%3E%3Cpath d='M180 30q10 12 0 24'/%3E%3Cpath d='M310 320q8-10 0-20'/%3E%3C/g%3E%3C/svg%3E");
+
+  --wa-header-sidebar-bg: #202c33;
+  --wa-header-chat-bg: #202c33;
+  --wa-header-drawer-bg: #202c33;
+  --wa-header-border: #2a3942;
+  --wa-panel-divider: #222d34;
+  --wa-panel-divider-accent: #2a3942;
+  --wa-header-btn-text: #aebac1;
+  --wa-header-btn-hover-text: #ffffff;
+  --wa-header-btn-hover-bg: rgba(255, 255, 255, 0.08);
+  --wa-header-title: #e9edef;
+  --wa-header-subtitle: #8696a0;
 }
 
 .theme-ios {
   --wa-chat-bg-color: #efeae2;
   --wa-doodles: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='360' height='360' viewBox='0 0 360 360'%3E%3Cg fill='none' stroke='%23c9bca9' stroke-width='2.5' stroke-linecap='round' stroke-linejoin='round' opacity='.45'%3E%3Crect x='28' y='28' width='72' height='48' rx='14'/%3E%3Cpath d='M52 76c-2 9-8 14-15 16 11-1 19-7 24-16'/%3E%3Cpath d='M236 84l-11-9c-6-6-5-15 2-18 5-2 9 0 9 5 0-5 4-7 9-5 7 3 8 12 2 18z'/%3E%3Ccircle cx='140' cy='158' r='17'/%3E%3Ccircle cx='134' cy='153' r='1.8' fill='%23c9bca9' stroke='none'/%3E%3Ccircle cx='146' cy='153' r='1.8' fill='%23c9bca9' stroke='none'/%3E%3Cpath d='M133 162q7 7 14 0'/%3E%3Cpath d='M298 138l5.5 11 12 1.8-8.7 8.5 2 12-10.8-5.7-10.8 5.7 2-12-8.7-8.5 12-1.8z'/%3E%3Crect x='70' y='268' width='52' height='38' rx='10'/%3E%3Ccircle cx='96' cy='287' r='9'/%3E%3Cpath d='M242 306v-26l16-5v24'/%3E%3Ccircle cx='237' cy='308' r='5'/%3E%3Ccircle cx='253' cy='301' r='5'/%3E%3Ccircle cx='200' cy='230' r='4'/%3E%3Ccircle cx='330' cy='250' r='4'/%3E%3Ccircle cx='30' cy='210' r='4'/%3E%3Cpath d='M180 30q10 12 0 24'/%3E%3Cpath d='M310 320q8-10 0-20'/%3E%3C/g%3E%3C/svg%3E");
+
+  --wa-header-sidebar-bg: rgba(246, 246, 248, 0.88);
+  --wa-header-chat-bg: rgba(255, 255, 255, 0.92);
+  --wa-header-drawer-bg: rgba(246, 246, 248, 0.92);
+  --wa-header-border: rgba(60, 60, 67, 0.18);
+  --wa-panel-divider: rgba(60, 60, 67, 0.18);
+  --wa-panel-divider-accent: rgba(0, 122, 255, 0.25);
+  --wa-header-btn-text: #007aff;
+  --wa-header-btn-hover-text: #0051a8;
+  --wa-header-btn-hover-bg: rgba(0, 122, 255, 0.1);
+  --wa-header-title: #1c1c1e;
+  --wa-header-subtitle: #8e8e93;
 }
 
 .theme-amoled {
   --wa-chat-bg-color: #000000;
   --wa-doodles: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='360' height='360' viewBox='0 0 360 360'%3E%3Cg fill='none' stroke='%231a1a1a' stroke-width='2' stroke-linecap='round' stroke-linejoin='round' opacity='.5'%3E%3Crect x='28' y='28' width='72' height='48' rx='14'/%3E%3Cpath d='M52 76c-2 9-8 14-15 16 11-1 19-7 24-16'/%3E%3Cpath d='M236 84l-11-9c-6-6-5-15 2-18 5-2 9 0 9 5 0-5 4-7 9-5 7 3 8 12 2 18z'/%3E%3Ccircle cx='140' cy='158' r='17'/%3E%3Ccircle cx='134' cy='153' r='1.8' fill='%231a1a1a' stroke='none'/%3E%3Ccircle cx='146' cy='153' r='1.8' fill='%231a1a1a' stroke='none'/%3E%3Cpath d='M133 162q7 7 14 0'/%3E%3Cpath d='M298 138l5.5 11 12 1.8-8.7 8.5 2 12-10.8-5.7-10.8 5.7 2-12-8.7-8.5 12-1.8z'/%3E%3Crect x='70' y='268' width='52' height='38' rx='10'/%3E%3Ccircle cx='96' cy='287' r='9'/%3E%3Cpath d='M242 306v-26l16-5v24'/%3E%3Ccircle cx='237' cy='308' r='5'/%3E%3Ccircle cx='253' cy='301' r='5'/%3E%3Ccircle cx='200' cy='230' r='4'/%3E%3Ccircle cx='330' cy='250' r='4'/%3E%3Ccircle cx='30' cy='210' r='4'/%3E%3Cpath d='M180 30q10 12 0 24'/%3E%3Cpath d='M310 320q8-10 0-20'/%3E%3C/g%3E%3C/svg%3E");
+
+  /* No AMOLED: cabeçalhos diferenciam sutileza de cinza profundo e borda luminosa nítida */
+  --wa-header-sidebar-bg: #0c0c0e;
+  --wa-header-chat-bg: #141416;
+  --wa-header-drawer-bg: #0e0e10;
+  --wa-header-border: #26262b;
+  --wa-panel-divider: #26262b;
+  --wa-panel-divider-accent: #00a884;
+  --wa-header-btn-text: #e1e7eb;
+  --wa-header-btn-hover-text: #ffffff;
+  --wa-header-btn-hover-bg: rgba(255, 255, 255, 0.12);
+  --wa-header-title: #ffffff;
+  --wa-header-subtitle: #a3b0b8;
 }
 
 .theme-emerald {
   --wa-chat-bg-color: #061e1b;
   --wa-doodles: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='360' height='360' viewBox='0 0 360 360'%3E%3Cg fill='none' stroke='%230b352f' stroke-width='2.2' stroke-linecap='round' stroke-linejoin='round' opacity='.65'%3E%3Crect x='28' y='28' width='72' height='48' rx='14'/%3E%3Cpath d='M52 76c-2 9-8 14-15 16 11-1 19-7 24-16'/%3E%3Cpath d='M236 84l-11-9c-6-6-5-15 2-18 5-2 9 0 9 5 0-5 4-7 9-5 7 3 8 12 2 18z'/%3E%3Ccircle cx='140' cy='158' r='17'/%3E%3Ccircle cx='134' cy='153' r='1.8' fill='%230b352f' stroke='none'/%3E%3Ccircle cx='146' cy='153' r='1.8' fill='%230b352f' stroke='none'/%3E%3Cpath d='M133 162q7 7 14 0'/%3E%3Cpath d='M298 138l5.5 11 12 1.8-8.7 8.5 2 12-10.8-5.7-10.8 5.7 2-12-8.7-8.5 12-1.8z'/%3E%3Crect x='70' y='268' width='52' height='38' rx='10'/%3E%3Ccircle cx='96' cy='287' r='9'/%3E%3Cpath d='M242 306v-26l16-5v24'/%3E%3Ccircle cx='237' cy='308' r='5'/%3E%3Ccircle cx='253' cy='301' r='5'/%3E%3Ccircle cx='200' cy='230' r='4'/%3E%3Ccircle cx='330' cy='250' r='4'/%3E%3Ccircle cx='30' cy='210' r='4'/%3E%3Cpath d='M180 30q10 12 0 24'/%3E%3Cpath d='M310 320q8-10 0-20'/%3E%3C/g%3E%3C/svg%3E");
+
+  /* No Esmeralda: cabeçalho com tons distintos verde-floresta e botões claríssimos */
+  --wa-header-sidebar-bg: #0b2923;
+  --wa-header-chat-bg: #103830;
+  --wa-header-drawer-bg: #0d3029;
+  --wa-header-border: #1b4b42;
+  --wa-panel-divider: #1b4b42;
+  --wa-panel-divider-accent: #34d399;
+  --wa-header-btn-text: #d1efe6;
+  --wa-header-btn-hover-text: #ffffff;
+  --wa-header-btn-hover-bg: rgba(52, 211, 153, 0.15);
+  --wa-header-title: #f0fdf4;
+  --wa-header-subtitle: #a7d9cb;
 }
 
 .whatsapp-chat-bg {
   background-color: var(--wa-chat-bg-color);
   background-image: var(--wa-doodles);
   background-size: 360px 360px;
+}
+
+/* Utilitários semânticos para as barras superiores e seus botões inteligentes */
+.wa-header-sidebar {
+  background-color: var(--wa-header-sidebar-bg);
+  border-bottom: 1px solid var(--wa-header-border);
+}
+
+.wa-header-chat {
+  background-color: var(--wa-header-chat-bg);
+  border-bottom: 1px solid var(--wa-header-border);
+}
+
+.wa-header-drawer {
+  background-color: var(--wa-header-drawer-bg);
+  border-bottom: 1px solid var(--wa-header-border);
+}
+
+/* Divisores verticais entre painéis — criam corte e separação nítida na barra superior */
+.wa-panel-separator-left {
+  border-left: 1px solid var(--wa-panel-divider) !important;
+  box-shadow: inset 1px 0 0 0 rgba(255, 255, 255, 0.04);
+}
+
+.wa-panel-separator-right {
+  border-right: 1px solid var(--wa-panel-divider) !important;
+  box-shadow: inset -1px 0 0 0 rgba(255, 255, 255, 0.04);
+}
+
+/* Botões inteligentes da barra superior que se adaptam perfeitamente a cada tema */
+.wa-header-btn {
+  color: var(--wa-header-btn-text) !important;
+  background-color: transparent !important;
+  transition:
+    color 0.15s ease,
+    background-color 0.15s ease,
+    transform 0.1s ease,
+    box-shadow 0.15s ease;
+}
+
+.wa-header-btn:hover {
+  color: var(--wa-header-btn-hover-text) !important;
+  background-color: var(--wa-header-btn-hover-bg) !important;
+}
+
+.wa-header-btn:active {
+  transform: scale(0.94);
+}
+
+.wa-header-btn svg {
+  color: inherit !important;
+  stroke: currentColor !important;
+}
+
+/* Textos dos cabeçalhos superiores */
+.wa-header-title {
+  color: var(--wa-header-title) !important;
+}
+
+.wa-header-subtitle {
+  color: var(--wa-header-subtitle) !important;
+}
+
+/* Overrides específicos nos 4 temas para garantir máxima fidelidade visual */
+.theme-classic .wa-header-btn {
+  color: #aebac1 !important;
+}
+.theme-classic .wa-header-btn:hover {
+  color: #ffffff !important;
+  background-color: rgba(255, 255, 255, 0.08) !important;
+}
+
+.theme-ios .wa-header-btn {
+  color: #007aff !important;
+}
+.theme-ios .wa-header-btn:hover {
+  color: #0051a8 !important;
+  background-color: rgba(0, 122, 255, 0.12) !important;
+}
+
+.theme-amoled .wa-header-btn {
+  color: #e5e5e5 !important;
+}
+.theme-amoled .wa-header-btn:hover {
+  color: #ffffff !important;
+  background-color: rgba(255, 255, 255, 0.16) !important;
+}
+
+.theme-emerald .wa-header-btn {
+  color: #d1efe6 !important;
+}
+.theme-emerald .wa-header-btn:hover {
+  color: #ffffff !important;
+  background-color: rgba(52, 211, 153, 0.2) !important;
 }
 
 /* ============================================================

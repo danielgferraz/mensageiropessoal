@@ -32,18 +32,19 @@ export const ProfilePanel: React.FC<ProfilePanelProps> = ({ onClose }) => {
   }
 
   return (
-    <div className="w-full md:w-[380px] lg:w-[420px] flex flex-col h-full bg-[#111b21] border-r border-[#222d34] text-slate-100 z-30 shrink-0">
-      {/* Header */}
-      <div className="h-16 px-4 bg-[#202c33] flex items-center space-x-4 border-b border-[#2a3942]">
+    <div className="w-full md:w-[380px] lg:w-[420px] flex flex-col h-full bg-[#111b21] wa-panel-separator-right text-slate-100 z-30 shrink-0">
+      {/* Header — Painel lateral esquerdo de Perfil */}
+      <div className="h-16 px-4 wa-header-sidebar flex items-center space-x-4">
         <Button
           variant="ghost"
           size="icon"
           onClick={onClose}
-          className="text-slate-300 hover:text-white -ml-2"
+          className="wa-header-btn rounded-full -ml-2"
+          title="Voltar"
         >
           <ArrowLeft className="w-5 h-5" />
         </Button>
-        <h2 className="text-base font-semibold">Perfil</h2>
+        <h2 className="text-base font-semibold wa-header-title">Perfil</h2>
       </div>
 
       <div className="flex-1 overflow-y-auto p-6 space-y-6">

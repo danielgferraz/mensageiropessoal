@@ -115,18 +115,18 @@ export const SettingsPanel: React.FC<SettingsPanelProps> = ({ onClose }) => {
   }
 
   return (
-    <div className="w-full md:w-[380px] lg:w-[420px] flex flex-col h-full bg-[#111b21] border-r border-[#222d34] text-slate-100 z-30 shrink-0">
-      {/* Cabeçalho */}
-      <div className="h-16 px-4 bg-[#202c33] flex items-center space-x-3 border-b border-[#2a3942] shrink-0">
+    <div className="w-full md:w-[380px] lg:w-[420px] flex flex-col h-full bg-[#111b21] wa-panel-separator-right text-slate-100 z-30 shrink-0">
+      {/* Cabeçalho — Painel lateral esquerdo de Configurações */}
+      <div className="h-16 px-4 wa-header-sidebar flex items-center space-x-3 shrink-0">
         <button
           type="button"
           onClick={onClose}
-          className="w-9 h-9 flex items-center justify-center rounded-full text-slate-300 hover:text-white hover:bg-[#374248]/50 -ml-2 transition-colors"
+          className="w-9 h-9 flex items-center justify-center rounded-full wa-header-btn -ml-2"
           title="Voltar"
         >
           <ArrowLeft className="w-5 h-5" />
         </button>
-        <h2 className="text-base font-semibold">Configurações</h2>
+        <h2 className="text-base font-semibold wa-header-title">Configurações</h2>
       </div>
 
       {/* Navegação entre Abas */}

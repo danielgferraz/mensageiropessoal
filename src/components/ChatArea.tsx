@@ -151,8 +151,8 @@ export const ChatArea: React.FC<ChatAreaProps> = ({
 
   return (
     <div className="flex-1 flex flex-col h-full bg-[#0b141a] text-slate-100 overflow-hidden relative">
-      {/* Top chat header */}
-      <div className="h-16 px-4 bg-[#202c33] border-b border-[#2a3942] flex items-center justify-between shrink-0 z-20">
+      {/* Top chat header — Cabeçalho central do chat ativo */}
+      <div className="h-16 px-4 wa-header-chat flex items-center justify-between shrink-0 z-20">
         <div
           className="flex items-center space-x-3 cursor-pointer overflow-hidden"
           onClick={activeConversation.isGroup ? onOpenGroupInfo : handleOpenDetails}
@@ -166,7 +166,7 @@ export const ChatArea: React.FC<ChatAreaProps> = ({
                 e.stopPropagation()
                 onBackMobile()
               }}
-              className="md:hidden text-slate-300 hover:text-white -ml-2"
+              className="md:hidden wa-header-btn rounded-full -ml-2"
             >
               <ArrowLeft className="w-5 h-5" />
             </Button>
@@ -179,15 +179,15 @@ export const ChatArea: React.FC<ChatAreaProps> = ({
               className="w-10 h-10 rounded-full object-cover ring-1 ring-white/10"
             />
             {!activeConversation.isGroup && (
-              <span className="absolute bottom-0 right-0 w-3 h-3 bg-[#00a884] border-2 border-[#202c33] rounded-full" />
+              <span className="absolute bottom-0 right-0 w-3 h-3 bg-[#00a884] border-2 border-[var(--wa-header-chat-bg)] rounded-full" />
             )}
           </div>
 
           <div className="overflow-hidden">
-            <h2 className="text-sm sm:text-base font-medium text-slate-100 truncate">
+            <h2 className="text-sm sm:text-base font-medium wa-header-title truncate">
               {activeConversation.name}
             </h2>
-            <p className="text-xs text-slate-400 truncate">
+            <p className="text-xs wa-header-subtitle truncate">
               {activeConversation.isGroup
                 ? `${activeConversation.participants?.length || 3} participantes`
                 : 'online — clique para ver os detalhes'}
@@ -195,13 +195,13 @@ export const ChatArea: React.FC<ChatAreaProps> = ({
           </div>
         </div>
 
-        {/* Action icons */}
-        <div className="flex items-center space-x-1 sm:space-x-2 text-slate-400">
+        {/* Action icons inteligentes */}
+        <div className="flex items-center space-x-1 sm:space-x-1.5">
           <Button
             variant="ghost"
             size="icon"
             onClick={() => setChatSearchOpen(!chatSearchOpen)}
-            className="hover:text-white hover:bg-[#374248]/50 rounded-full"
+            className="wa-header-btn rounded-full"
             title="Buscar mensagens no chat"
           >
             <Search className="w-5 h-5" />
@@ -216,7 +216,7 @@ export const ChatArea: React.FC<ChatAreaProps> = ({
                 description: 'Recurso fora do escopo desta versão demonstrativa.',
               })
             }
-            className="hover:text-white hover:bg-[#374248]/50 rounded-full hidden sm:inline-flex"
+            className="wa-header-btn rounded-full hidden sm:inline-flex"
             title="Chamada de voz (fora do escopo)"
           >
             <Phone className="w-5 h-5" />
@@ -231,7 +231,7 @@ export const ChatArea: React.FC<ChatAreaProps> = ({
                 description: 'Recurso fora do escopo desta versão demonstrativa.',
               })
             }
-            className="hover:text-white hover:bg-[#374248]/50 rounded-full hidden sm:inline-flex"
+            className="wa-header-btn rounded-full hidden sm:inline-flex"
             title="Chamada de vídeo (fora do escopo)"
           >
             <VideoCallIcon className="w-5 h-5" />
@@ -242,7 +242,8 @@ export const ChatArea: React.FC<ChatAreaProps> = ({
               <Button
                 variant="ghost"
                 size="icon"
-                className="hover:text-white hover:bg-[#374248]/50 rounded-full"
+                className="wa-header-btn rounded-full"
+                title="Mais opções do chat"
               >
                 <MoreVertical className="w-5 h-5" />
               </Button>
