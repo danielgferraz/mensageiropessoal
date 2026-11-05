@@ -47,6 +47,8 @@ export interface Conversation {
   pinned?: boolean
 }
 
+export type CrmStageId = 'novo' | 'em-contato' | 'em-negociacao' | 'fechado'
+
 export interface UserProfile {
   name: string
   phone?: string

@@ -1,11 +1,19 @@
 import React, { createContext, useContext, useState, useEffect } from 'react'
-import { Contact, Conversation, Message, UserProfile, MessageMedia } from '@/types/whatsapp'
+import {
+  Contact,
+  Conversation,
+  CrmStageId,
+  Message,
+  UserProfile,
+  MessageMedia,
+} from '@/types/whatsapp'
 import {
   DEFAULT_USER,
   INITIAL_CONTACTS,
   INITIAL_CONVERSATIONS,
   INITIAL_MESSAGES,
 } from '@/data/mockData'
+import { DEFAULT_CRM_STAGES } from '@/data/crmData'
 
 interface WhatsAppContextType {
   user: UserProfile
@@ -23,6 +31,9 @@ interface WhatsAppContextType {
   startChatWithContact: (contactId: string) => string
   markAsRead: (conversationId: string) => void
   resetData: () => void
+  // CRM (pipeline de negócios em memória)
+  crmStages: Record<string, CrmStageId>
+  setContactStage: (contactId: string, stage: CrmStageId) => void
 }
 
 const WhatsAppContext = createContext<WhatsAppContextType | undefined>(undefined)
@@ -32,6 +43,7 @@ const STORAGE_KEYS = {
   CONTACTS: 'wa_clone_contacts',
   CONVERSATIONS: 'wa_clone_conversations',
   MESSAGES: 'wa_clone_messages',
+  CRM_STAGES: 'wa_clone_crm_stages',
 }
 
 export const WhatsAppProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
@@ -58,6 +70,19 @@ export const WhatsAppProvider: React.FC<{ children: React.ReactNode }> = ({ chil
   const [activeChatId, setActiveChatId] = useState<string | null>(null)
   const [activeMedia, setActiveMedia] = useState<MessageMedia | null>(null)
 
+  // CRM: estágio de cada contato no pipeline (dados de exemplo, persistidos localmente)
+  const [crmStages, setCrmStages] = useState<Record<string, CrmStageId>>(() => {
+    const saved = localStorage.getItem(STORAGE_KEYS.CRM_STAGES)
+    if (saved) {
+      try {
+        return JSON.parse(saved) as Record<string, CrmStageId>
+      } catch {
+        // ignora e usa o padrão
+      }
+    }
+    return DEFAULT_CRM_STAGES
+  })
+
   // Persist state to localStorage for seamless refreshing
   useEffect(() => {
     localStorage.setItem(STORAGE_KEYS.USER, JSON.stringify(user))
@@ -74,6 +99,10 @@ export const WhatsAppProvider: React.FC<{ children: React.ReactNode }> = ({ chil
   useEffect(() => {
     localStorage.setItem(STORAGE_KEYS.MESSAGES, JSON.stringify(messages))
   }, [messages])
+
+  useEffect(() => {
+    localStorage.setItem(STORAGE_KEYS.CRM_STAGES, JSON.stringify(crmStages))
+  }, [crmStages])
 
   const setUser = (updated: UserProfile) => {
     setUserState(updated)
@@ -328,17 +357,23 @@ export const WhatsAppProvider: React.FC<{ children: React.ReactNode }> = ({ chil
     return newConvId
   }
 
+  const setContactStage = (contactId: string, stage: CrmStageId) => {
+    setCrmStages((prev) => ({ ...prev, [contactId]: stage }))
+  }
+
   const resetData = () => {
     localStorage.removeItem(STORAGE_KEYS.USER)
     localStorage.removeItem(STORAGE_KEYS.CONTACTS)
     localStorage.removeItem(STORAGE_KEYS.CONVERSATIONS)
     localStorage.removeItem(STORAGE_KEYS.MESSAGES)
+    localStorage.removeItem(STORAGE_KEYS.CRM_STAGES)
     setUserState(DEFAULT_USER)
     setContacts(INITIAL_CONTACTS)
     setConversations(INITIAL_CONVERSATIONS)
     setMessages(INITIAL_MESSAGES)
     setActiveChatId(null)
     setActiveMedia(null)
+    setCrmStages(DEFAULT_CRM_STAGES)
   }
 
   return (
@@ -359,6 +394,8 @@ export const WhatsAppProvider: React.FC<{ children: React.ReactNode }> = ({ chil
         startChatWithContact,
         markAsRead,
         resetData,
+        crmStages,
+        setContactStage,
       }}
     >
       {children}
