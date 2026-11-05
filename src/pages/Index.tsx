@@ -59,66 +59,69 @@ export default function Index() {
         {/* Menu lateral recolhível de funcionalidades */}
         <FeatureRail activePanel={activeLeftPanel} onSelect={setActiveLeftPanel} />
 
-        {/* Left Side (Sidebar or specialized panels) */}
-        <div
-          className={`h-full ${
-            activeChatId ? 'hidden md:flex' : 'flex'
-          } w-full md:w-[380px] lg:w-[420px] shrink-0 transition-all ${
-            activeLeftPanel === 'contacts' ? 'md:!w-auto md:flex-1 md:min-w-0' : ''
-          }`}
-        >
-          {activeLeftPanel === 'chats' && (
-            <Sidebar
-              onOpenContacts={() => setActiveLeftPanel('contacts')}
-              onOpenNewGroup={() => setActiveLeftPanel('new-group')}
-              onOpenProfile={() => setActiveLeftPanel('profile')}
-              onLogout={handleLogout}
-            />
-          )}
-
-          {/* Tela unificada de Contatos + CRM */}
-          {activeLeftPanel === 'contacts' && (
-            <div className="flex-1 min-w-0 flex">
-              <ContactsCrmPanel
-                onClose={() => setActiveLeftPanel('chats')}
-                onOpenChat={openChatWithContact}
-              />
-            </div>
-          )}
-
-          {activeLeftPanel === 'new-group' && (
-            <NewGroupPanel
+        {/* Tela unificada de Contatos + CRM em tela cheia (sem painel de chat / placeholder de WhatsApp Web) */}
+        {activeLeftPanel === 'contacts' ? (
+          <div className="flex-1 h-full min-w-0 flex">
+            <ContactsCrmPanel
               onClose={() => setActiveLeftPanel('chats')}
-              onGroupCreated={() => setActiveLeftPanel('chats')}
+              onOpenChat={openChatWithContact}
             />
-          )}
+          </div>
+        ) : (
+          <>
+            {/* Left Side (Sidebar or specialized panels) */}
+            <div
+              className={`h-full ${
+                activeChatId ? 'hidden md:flex' : 'flex'
+              } w-full md:w-[380px] lg:w-[420px] shrink-0 transition-all`}
+            >
+              {activeLeftPanel === 'chats' && (
+                <Sidebar
+                  onOpenContacts={() => setActiveLeftPanel('contacts')}
+                  onOpenNewGroup={() => setActiveLeftPanel('new-group')}
+                  onOpenProfile={() => setActiveLeftPanel('profile')}
+                  onLogout={handleLogout}
+                />
+              )}
 
-          {activeLeftPanel === 'profile' && (
-            <ProfilePanel onClose={() => setActiveLeftPanel('chats')} />
-          )}
+              {activeLeftPanel === 'new-group' && (
+                <NewGroupPanel
+                  onClose={() => setActiveLeftPanel('chats')}
+                  onGroupCreated={() => setActiveLeftPanel('chats')}
+                />
+              )}
 
-          {activeLeftPanel === 'settings' && (
-            <SettingsPanel onClose={() => setActiveLeftPanel('chats')} />
-          )}
-        </div>
+              {activeLeftPanel === 'profile' && (
+                <ProfilePanel onClose={() => setActiveLeftPanel('chats')} />
+              )}
 
-        {/* Right Side (Active Chat View) */}
-        <div className={`flex-1 h-full ${!activeChatId ? 'hidden md:flex' : 'flex'} min-w-0`}>
-          <ChatArea
-            onBackMobile={() => setActiveChatId(null)}
-            onOpenGroupInfo={() => setShowGroupInfo(true)}
-            onOpenContactDetails={
-              activeChatId && !activeChatId.startsWith('conv-group-')
-                ? (contactId) => setOpenContactId(contactId)
-                : undefined
-            }
-          />
+              {activeLeftPanel === 'settings' && (
+                <SettingsPanel onClose={() => setActiveLeftPanel('chats')} />
+              )}
+            </div>
 
-          {/* Group details right-dock panel */}
-          {showGroupInfo && activeChatId && (
-            <GroupInfoPanel conversationId={activeChatId} onClose={() => setShowGroupInfo(false)} />
-          )}
-        </div>
+            {/* Right Side (Active Chat View / Placeholder apenas para Conversas sem chat) */}
+            <div className={`flex-1 h-full ${!activeChatId ? 'hidden md:flex' : 'flex'} min-w-0`}>
+              <ChatArea
+                onBackMobile={() => setActiveChatId(null)}
+                onOpenGroupInfo={() => setShowGroupInfo(true)}
+                onOpenContactDetails={
+                  activeChatId && !activeChatId.startsWith('conv-group-')
+                    ? (contactId) => setOpenContactId(contactId)
+                    : undefined
+                }
+              />
+
+              {/* Group details right-dock panel */}
+              {showGroupInfo && activeChatId && (
+                <GroupInfoPanel
+                  conversationId={activeChatId}
+                  onClose={() => setShowGroupInfo(false)}
+                />
+              )}
+            </div>
+          </>
+        )}
       </div>
 
       {/* Modal de detalhes do contato (a partir da lista de conversas) */}

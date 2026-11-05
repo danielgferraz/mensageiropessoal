@@ -255,9 +255,9 @@ export const ContactsCrmPanel: React.FC<ContactsCrmPanelProps> = ({ onClose, onO
         />
       )}
 
-      {/* Desktop: metade esquerda fixa = lista de contatos */}
+      {/* Desktop: coluna esquerda fixa = lista de contatos (420px a 460px) */}
       {!isMobile && (
-        <div className="w-1/2 max-w-[480px] flex flex-col h-full border-r border-[#222d34] shrink-0">
+        <div className="w-[380px] lg:w-[420px] xl:w-[460px] flex flex-col h-full border-r border-[#222d34] shrink-0">
           {/* Cabeçalho da metade esquerda */}
           <div className="h-16 px-4 bg-[#202c33] flex items-center space-x-3 border-b border-[#2a3942] shrink-0">
             <Button
@@ -301,9 +301,9 @@ export const ContactsCrmPanel: React.FC<ContactsCrmPanelProps> = ({ onClose, onO
         </div>
       )}
 
-      {/* Desktop: metade direita fixa = pipeline kanban */}
+      {/* Desktop: área direita = pipeline kanban ocupando todo o espaço restante */}
       {!isMobile && (
-        <div className="flex-1 min-w-0 flex flex-col h-full">
+        <div className="flex-1 min-w-0 flex flex-col h-full overflow-hidden">
           <PipelineBoard
             stageList={crmStageList}
             dealsByStage={dealsByStage}

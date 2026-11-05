@@ -56,7 +56,7 @@ export const PipelineBoard: React.FC<PipelineBoardProps> = ({
   const handleMove = (contact: Contact, stage: CrmStageId) => moveToStage(contact, stage)
 
   return (
-    <div className="relative flex-1 min-h-0 flex flex-col">
+    <div className="relative flex-1 min-h-0 flex flex-col w-full h-full overflow-hidden">
       {/* Botão de gerenciamento dos estágios */}
       <div className="absolute top-3 right-3 z-20">
         <DropdownMenu>
@@ -136,7 +136,7 @@ export const PipelineBoard: React.FC<PipelineBoardProps> = ({
       </div>
 
       {/* Colunas do kanban (rolagem horizontal quando não couberem) */}
-      <div className="h-full flex gap-2.5 p-3 overflow-x-auto bg-[#0b141a]">
+      <div className="flex-1 min-h-0 flex gap-2.5 p-3 overflow-x-auto bg-[#0b141a]">
         {stageList.map((stage) => {
           const deals = dealsByStage[stage.id] || []
           const isOver = overStage === stage.id
@@ -148,7 +148,9 @@ export const PipelineBoard: React.FC<PipelineBoardProps> = ({
                 e.preventDefault()
                 setOverStage(stage.id)
               }}
-              onDragLeave={() => setOverStage((s) => (s === stage.id ? null : s))}
+              onDragLeave={() => {
+                if (overStage === stage.id) setOverStage(null)
+              }}
               onDrop={(e) => {
                 e.preventDefault()
                 const dropped = dragId

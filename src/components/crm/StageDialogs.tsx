@@ -138,7 +138,11 @@ export const StageDialogs: React.FC<StageDialogsProps> = ({
                 onKeyDown={(e) => {
                   if (e.key === 'Enter') {
                     e.preventDefault()
-                    dialog.kind === 'create' ? handleCreate() : handleRename()
+                    if (dialog.kind === 'create') {
+                      handleCreate()
+                    } else {
+                      handleRename()
+                    }
                   }
                 }}
                 className="bg-[#2a3942] border-[#374248] text-white"

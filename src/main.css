@@ -196,26 +196,51 @@
   color: #3a3a3c;
 }
 .theme-ios .text-slate-300\/70 {
-  color: rgba(60, 60, 67, 0.55);
+  color: rgba(60, 60, 67, 0.7);
 }
 .theme-ios .text-slate-400 {
-  color: #6e6e73;
+  color: #48484a;
 }
 .theme-ios .text-slate-500 {
-  color: #8e8e93;
+  color: #636366;
 }
 .theme-ios .text-slate-600 {
-  color: #aeaeb2;
+  color: #8e8e93;
 }
 .theme-ios .text-\[\#e9edef\] {
   color: #1c1c1e;
 }
 .theme-ios .text-\[\#ffd279\] {
-  color: #8e8e93;
+  color: #636366;
 }
 .theme-ios .text-\[\#00a884\] {
-  color: #248a3d;
+  color: #1e7a33;
 }
+.theme-ios .text-\[\#53bdeb\] {
+  color: #007aff;
+}
+
+/* Garante legibilidade onde text-white foi usado sobre fundos que se tornaram claros no iOS */
+.theme-ios h1.text-white,
+.theme-ios h2.text-white,
+.theme-ios h3.text-white,
+.theme-ios h4.text-white,
+.theme-ios p.text-white,
+.theme-ios
+  span.text-white:not(.bg-\[\#00a884\] *):not(.bg-red-500 *):not(.bg-\[\#2a3942\] *):not(
+    .bg-black\/70 *
+  ),
+.theme-ios label.text-white,
+.theme-ios div.text-white:not(.bg-\[\#00a884\] *):not(.bg-red-500 *):not(.bg-black\/70 *) {
+  color: #1c1c1e;
+}
+
+/* Textos dentro de inputs e placeholders */
+.theme-ios input.text-white,
+.theme-ios textarea.text-white {
+  color: #1c1c1e !important;
+}
+
 .theme-ios .hover\:text-white:hover {
   color: #007aff;
 }
@@ -227,6 +252,35 @@
 .theme-ios textarea::placeholder {
   color: #8e8e93;
   opacity: 1;
+}
+
+/* Diálogos, popovers e dropdowns no tema iOS */
+.theme-ios [role='dialog'],
+.theme-ios [role='menu'],
+.theme-ios [data-radix-popper-content-wrapper] > div {
+  background-color: rgba(255, 255, 255, 0.96) !important;
+  color: #1c1c1e !important;
+  border-color: rgba(60, 60, 67, 0.18) !important;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.12) !important;
+}
+
+.theme-ios [role='dialog'] h2,
+.theme-ios [role='dialog'] h3,
+.theme-ios [role='dialog'] label,
+.theme-ios [role='dialog'] p {
+  color: #1c1c1e;
+}
+.theme-ios [role='dialog'] .text-slate-400,
+.theme-ios [role='dialog'] .text-slate-300 {
+  color: #48484a !important;
+}
+
+/* Botões primários preservam texto branco legível */
+.theme-ios .bg-\[\#00a884\] {
+  color: #ffffff !important;
+}
+.theme-ios .bg-\[\#00a884\] * {
+  color: #ffffff !important;
 }
 
 /* Bordas e divisores */
