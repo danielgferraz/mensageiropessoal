@@ -1,4 +1,5 @@
 import React, { createContext, useContext, useState, useEffect } from 'react'
+import { apiFetch } from '@/lib/api'
 import {
   Contact,
   Conversation,
@@ -488,7 +489,7 @@ export const WhatsAppProvider: React.FC<{ children: React.ReactNode }> = ({ chil
     // Se a mensagem for enviada para o Antigravity Copilot, consulta o CLI agy na VPS
     if (conversationId === 'conv-antigravity' && text?.trim()) {
       const userPrompt = text.trim()
-      fetch('/mensageiro/api/antigravity/chat', {
+      apiFetch('/mensageiro/api/antigravity/chat', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ prompt: userPrompt }),

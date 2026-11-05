@@ -10,8 +10,11 @@ import {
   QrCode,
   Bot,
   Download,
+  LogOut,
+  ShieldCheck,
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
+import { useAuth } from '@/context/AuthContext'
 
 // Painéis que podem ficar ativos na área esquerda do app
 export type LeftPanel = 'chats' | 'contacts' | 'new-group' | 'profile' | 'settings'
@@ -50,6 +53,7 @@ export const FeatureRail: React.FC<FeatureRailProps> = ({
   mobileOpen = false,
   onMobileClose,
 }) => {
+  const { user, logout } = useAuth()
   // Estado recolhido/expandido persistido entre sessões (desktop)
   const [open, setOpen] = useState<boolean>(
     () => localStorage.getItem('wa_clone_rail_open') !== '0',
@@ -254,12 +258,36 @@ export const FeatureRail: React.FC<FeatureRailProps> = ({
           </div>
         </nav>
 
-        {/* Rodapé do menu */}
-        {(open || mobileOpen) && (
-          <div className="px-4 py-3 border-t border-[#222d34] shrink-0">
-            <p className="text-[11px] leading-snug text-slate-500">
-              WhatsApp Web Clone • Menu mobile e atalhos rápidos.
-            </p>
+        {/* Rodapé do menu: Perfil de Admin e Sair */}
+        {user && (
+          <div className="px-3 py-3 border-t border-[#222d34] shrink-0 bg-[#0c1317]/50">
+            <div className="flex items-center justify-between gap-2">
+              <div className="flex items-center gap-2.5 min-w-0 flex-1">
+                <div className="w-8 h-8 rounded-full bg-emerald-500/20 border border-emerald-500/40 flex items-center justify-center shrink-0 text-emerald-400 font-bold text-xs">
+                  <ShieldCheck className="w-4 h-4" />
+                </div>
+                {(open || mobileOpen) && (
+                  <div className="min-w-0 flex-1 text-left leading-tight">
+                    <p className="text-xs font-medium text-white truncate">
+                      {user.fullName || user.email}
+                    </p>
+                    <span className="inline-block text-[10px] text-emerald-400 font-mono uppercase tracking-wide">
+                      Admin
+                    </span>
+                  </div>
+                )}
+              </div>
+              {(open || mobileOpen) && (
+                <button
+                  type="button"
+                  onClick={logout}
+                  title="Sair do Mensageiro"
+                  className="p-1.5 text-gray-400 hover:text-red-400 hover:bg-[#202c33] rounded-lg transition"
+                >
+                  <LogOut className="w-4 h-4" />
+                </button>
+              )}
+            </div>
           </div>
         )}
       </div>

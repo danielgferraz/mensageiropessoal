@@ -13,6 +13,93 @@ const EVOLUTION_APIKEY = process.env.EVOLUTION_APIKEY || '957b79630f4904dde12dee
 const AGY_BIN = process.env.AGY_BIN || '/home/opc/.local/bin/agy';
 const DIST_DIR = path.resolve(__dirname, '../dist');
 
+const SUPABASE_URL = process.env.SUPABASE_URL || 'http://127.0.0.1:18180';
+const SUPABASE_ANON_KEY = process.env.SUPABASE_ANON_KEY || 'eyJhbGciOiJFUzI1NiIsInR5cCI6IkpXVCIsImtpZCI6ImE3ZDQwYzk0LTYwYWUtNDg3Yi04MDNkLTU0Y2VmMzhhNTljMyJ9.eyJyb2xlIjoiYW5vbiIsImlzcyI6Imh0dHBzOi8vd3d3LnRlY2hhZ2VuZGEuYXBwLmJyL2F1dGgvdjEiLCJhdWQiOiJhdXRoZW50aWNhdGVkIiwiaWF0IjoxNzkzNjQ1MTQzLCJleHAiOjE3OTYyMzcxNDN9.bRw-pTO9XDbcQ1jnTkninnZvgFU6cUGDblxSmfr8ZiU4mwWsivy7NztFeSwwqQtY8b6PG-mThe1HXK2mckvs_A';
+
+// Cache em memória para tokens validados (evita requisições repetitivas ao Auth em polling)
+const adminTokenCache = new Map(); // token -> { user, expiresAt }
+
+async function verifyAdminAuth(req) {
+  const authHeader = req.headers['authorization'] || '';
+  if (!authHeader.startsWith('Bearer ')) {
+    return { authorized: false, status: 401, error: 'Token de autenticação não fornecido.' };
+  }
+  const token = authHeader.replace(/^Bearer\s+/i, '').trim();
+  if (!token) {
+    return { authorized: false, status: 401, error: 'Token vazio.' };
+  }
+
+  // Verifica cache ativo
+  const cached = adminTokenCache.get(token);
+  if (cached && cached.expiresAt > Date.now()) {
+    return { authorized: true, user: cached.user };
+  }
+
+  try {
+    // 1. Valida token com Supabase Auth
+    const userRes = await fetch(`${SUPABASE_URL}/auth/v1/user`, {
+      headers: {
+        apikey: SUPABASE_ANON_KEY,
+        Authorization: `Bearer ${token}`,
+      },
+    });
+
+    if (!userRes.ok) {
+      return { authorized: false, status: 401, error: 'Token de autenticação inválido ou expirado.' };
+    }
+
+    const userData = await userRes.json();
+    if (!userData || !userData.id) {
+      return { authorized: false, status: 401, error: 'Usuário não identificado.' };
+    }
+
+    // 2. Consulta perfil em public.profiles para validar role 'admin'
+    const profileRes = await fetch(`${SUPABASE_URL}/rest/v1/profiles?id=eq.${userData.id}&select=id,role,full_name`, {
+      headers: {
+        apikey: SUPABASE_ANON_KEY,
+        Authorization: `Bearer ${token}`,
+      },
+    });
+
+    if (!profileRes.ok) {
+      return { authorized: false, status: 500, error: 'Falha ao consultar perfil do usuário.' };
+    }
+
+    const profiles = await profileRes.json();
+    if (!Array.isArray(profiles) || profiles.length === 0) {
+      return { authorized: false, status: 403, error: 'Perfil de usuário não encontrado.' };
+    }
+
+    const profile = profiles[0];
+    if (profile.role !== 'admin') {
+      return {
+        authorized: false,
+        status: 403,
+        error: `Acesso negado: o perfil "${profile.role}" não possui permissão de Administrador.`,
+        role: profile.role,
+      };
+    }
+
+    const adminUser = {
+      id: userData.id,
+      email: userData.email,
+      fullName: profile.full_name || userData.email,
+      role: 'admin',
+    };
+
+    // Cache por 60 segundos
+    adminTokenCache.set(token, {
+      user: adminUser,
+      expiresAt: Date.now() + 60 * 1000,
+    });
+
+    return { authorized: true, user: adminUser };
+  } catch (err) {
+    console.error('[Admin Auth Verification Error]', err);
+    return { authorized: false, status: 502, error: 'Erro de comunicação com o serviço de autenticação.' };
+  }
+}
+
 const MIME_TYPES = {
   '.html': 'text/html; charset=utf-8',
   '.js': 'application/javascript; charset=utf-8',
@@ -89,6 +176,88 @@ async function handleApi(req, res, apiPath) {
       hasAgy: fs.existsSync(AGY_BIN),
       timestamp: new Date().toISOString()
     });
+  }
+
+  // Auth: Login como Administrador via Supabase Auth
+  if (apiPath === '/auth/login' && method === 'POST') {
+    const body = await parseBody(req);
+    const { email, password } = body;
+    if (!email || !password) {
+      return sendJson(res, 400, { success: false, error: 'Email e senha são obrigatórios.' });
+    }
+
+    try {
+      const loginRes = await fetch(`${SUPABASE_URL}/auth/v1/token?grant_type=password`, {
+        method: 'POST',
+        headers: {
+          apikey: SUPABASE_ANON_KEY,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ email: email.trim(), password }),
+      });
+
+      const data = await loginRes.json();
+      if (!loginRes.ok || !data.access_token) {
+        return sendJson(res, 401, {
+          success: false,
+          error: data.error_description || data.msg || 'Credenciais inválidas.',
+        });
+      }
+
+      const token = data.access_token;
+      const profileRes = await fetch(`${SUPABASE_URL}/rest/v1/profiles?id=eq.${data.user.id}&select=id,role,full_name`, {
+        headers: {
+          apikey: SUPABASE_ANON_KEY,
+          Authorization: `Bearer ${token}`,
+        },
+      });
+
+      const profiles = await profileRes.json();
+      if (!Array.isArray(profiles) || profiles.length === 0 || profiles[0].role !== 'admin') {
+        const userRole = profiles?.[0]?.role || 'sem perfil';
+        return sendJson(res, 403, {
+          success: false,
+          error: `Acesso negado: sua conta possui o perfil "${userRole}". O Mensageiro é restrito a Administradores.`,
+        });
+      }
+
+      const adminUser = {
+        id: data.user.id,
+        email: data.user.email,
+        fullName: profiles[0].full_name || data.user.email,
+        role: 'admin',
+      };
+
+      adminTokenCache.set(token, {
+        user: adminUser,
+        expiresAt: Date.now() + 60 * 1000,
+      });
+
+      return sendJson(res, 200, {
+        success: true,
+        access_token: data.access_token,
+        refresh_token: data.refresh_token,
+        user: adminUser,
+      });
+    } catch (err) {
+      console.error('[Login Error]', err);
+      return sendJson(res, 502, { success: false, error: 'Falha de comunicação com Supabase Auth.', details: err.message });
+    }
+  }
+
+  // Auth: Verificação de sessão existente
+  if (apiPath === '/auth/verify' && method === 'GET') {
+    const auth = await verifyAdminAuth(req);
+    if (!auth.authorized) {
+      return sendJson(res, auth.status || 401, { authorized: false, error: auth.error, role: auth.role });
+    }
+    return sendJson(res, 200, { authorized: true, user: auth.user });
+  }
+
+  // A partir daqui, TODOS os endpoints de API exigem autorização de Administrador
+  const auth = await verifyAdminAuth(req);
+  if (!auth.authorized) {
+    return sendJson(res, auth.status || 401, { error: auth.error, role: auth.role });
   }
 
   // Antigravity CLI Chat endpoint

@@ -24,6 +24,7 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { useToast } from '@/hooks/use-toast'
 import { useWhatsApp } from '@/context/WhatsAppContext'
+import { apiFetch } from '@/lib/api'
 
 interface NewInstanceDialogProps {
   open: boolean
@@ -68,7 +69,7 @@ export const NewInstanceDialog: React.FC<NewInstanceDialogProps> = ({ open, onOp
   const fetchInstances = useCallback(async () => {
     setLoadingList(true)
     try {
-      const res = await fetch('/mensageiro/api/whatsapp/instances')
+      const res = await apiFetch('/mensageiro/api/whatsapp/instances')
       if (res.ok) {
         const data = await res.json()
         if (Array.isArray(data)) {
@@ -98,7 +99,7 @@ export const NewInstanceDialog: React.FC<NewInstanceDialogProps> = ({ open, onOp
 
     const interval = setInterval(async () => {
       try {
-        const res = await fetch(`/mensageiro/api/whatsapp/status/${encodeURIComponent(activeCreatedName)}`)
+        const res = await apiFetch(`/mensageiro/api/whatsapp/status/${encodeURIComponent(activeCreatedName)}`)
         if (res.ok) {
           const data = await res.json()
           const state = data?.instance?.state || data?.state
@@ -141,7 +142,7 @@ export const NewInstanceDialog: React.FC<NewInstanceDialogProps> = ({ open, onOp
     setConnectionState('connecting')
 
     try {
-      const res = await fetch('/mensageiro/api/whatsapp/instances', {
+      const res = await apiFetch('/mensageiro/api/whatsapp/instances', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ instanceName: cleanName }),
@@ -162,7 +163,7 @@ export const NewInstanceDialog: React.FC<NewInstanceDialogProps> = ({ open, onOp
 
       // Se não veio QR code no create, solicita ao endpoint connect
       if (!base64 && !pairingCode) {
-        const connectRes = await fetch(`/mensageiro/api/whatsapp/connect/${encodeURIComponent(cleanName)}`)
+        const connectRes = await apiFetch(`/mensageiro/api/whatsapp/connect/${encodeURIComponent(cleanName)}`)
         if (connectRes.ok) {
           const connectData = await connectRes.json()
           base64 = connectData?.base64 || connectData?.qrcode?.base64
@@ -202,7 +203,7 @@ export const NewInstanceDialog: React.FC<NewInstanceDialogProps> = ({ open, onOp
     setActiveTab('create')
 
     try {
-      const res = await fetch(`/mensageiro/api/whatsapp/connect/${encodeURIComponent(name)}`)
+      const res = await apiFetch(`/mensageiro/api/whatsapp/connect/${encodeURIComponent(name)}`)
       const data = await res.json()
 
       if (data?.instance?.state === 'open') {
@@ -237,7 +238,7 @@ export const NewInstanceDialog: React.FC<NewInstanceDialogProps> = ({ open, onOp
     if (!confirm(`Tem certeza que deseja excluir a instância "${name}"?`)) return
 
     try {
-      const res = await fetch(`/mensageiro/api/whatsapp/instances/${encodeURIComponent(name)}`, {
+      const res = await apiFetch(`/mensageiro/api/whatsapp/instances/${encodeURIComponent(name)}`, {
         method: 'DELETE',
       })
       if (res.ok) {
