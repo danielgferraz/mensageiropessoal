@@ -13,7 +13,7 @@ import { ThemeProvider } from './context/ThemeContext'
 // AVOID REMOVING ANY CONTEXT PROVIDERS FROM THIS FILE (e.g. TooltipProvider, Toaster, Sonner)
 
 const App = () => (
-  <BrowserRouter>
+  <BrowserRouter basename={import.meta.env.BASE_URL}>
     <TooltipProvider>
       <WhatsAppProvider>
         <ThemeProvider>
