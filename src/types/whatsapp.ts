@@ -10,6 +10,11 @@ export interface MessageMedia {
   fileSize?: string
 }
 
+export interface MessageReaction {
+  emoji: string
+  userId: string // 'me' ou contactId
+}
+
 export interface Message {
   id: string
   conversationId: string
@@ -19,7 +24,20 @@ export interface Message {
   media?: MessageMedia
   timestamp: string // ISO string or 'HH:mm'
   status: MessageStatus
-  reactions?: { [emoji: string]: number }
+  reactions?: { [emoji: string]: number } // legibilidade / contagem simples
+  reactionList?: MessageReaction[] // lista detalhada para saber se 'me' reagiu
+}
+
+export interface ConversationLabel {
+  id: string
+  name: string
+  color: string // classe de cor ou hex
+}
+
+export interface QuickReply {
+  id: string
+  shortcut?: string // atalho opcional ex: "/ola"
+  text: string
 }
 
 export interface Contact {
@@ -45,6 +63,8 @@ export interface Conversation {
   }
   unreadCount?: number
   pinned?: boolean
+  archived?: boolean
+  labelIds?: string[] // IDs de etiquetas atribuídas
 }
 
 // Estágios do CRM são dinâmicos (CRUD de "status" no pipeline):

@@ -12,6 +12,12 @@ import {
   RotateCcw,
   LogOut,
   SlidersHorizontal,
+  Archive,
+  ArchiveRestore,
+  Tag,
+  ChevronDown,
+  ArrowLeft,
+  X,
 } from 'lucide-react'
 import { useWhatsApp } from '@/context/WhatsAppContext'
 import { Conversation } from '@/types/whatsapp'
@@ -25,6 +31,7 @@ import {
   DropdownMenuSeparator,
 } from '@/components/ui/dropdown-menu'
 import { useToast } from '@/hooks/use-toast'
+import { LabelsManagerDialog } from './LabelsManagerDialog'
 
 interface SidebarProps {
   onOpenNewGroup: () => void
@@ -39,24 +46,64 @@ export const Sidebar: React.FC<SidebarProps> = ({
   onOpenProfile,
   onLogout,
 }) => {
-  const { user, conversations, activeChatId, setActiveChatId, markAsRead, resetData } =
-    useWhatsApp()
+  const {
+    user,
+    conversations,
+    activeChatId,
+    setActiveChatId,
+    markAsRead,
+    resetData,
+    labels,
+    togglePinConversation,
+    toggleArchiveConversation,
+  } = useWhatsApp()
 
   const [searchQuery, setSearchQuery] = useState('')
   const [filterType, setFilterType] = useState<'all' | 'unread' | 'groups'>('all')
+  const [selectedLabelFilter, setSelectedLabelFilter] = useState<string | null>(null)
+  const [showArchivedView, setShowArchivedView] = useState(false)
+
+  // Diálogo de etiquetas
+  const [labelsDialogOpen, setLabelsDialogOpen] = useState(false)
+  const [targetConversationForLabels, setTargetConversationForLabels] = useState<string | null>(
+    null,
+  )
+
   const { toast } = useToast()
 
-  const filteredConversations = conversations.filter((c) => {
-    // text search
+  // Separação entre arquivadas e ativas
+  const archivedConversations = conversations.filter((c) => !!c.archived)
+  const activeConversations = conversations.filter((c) => !c.archived)
+
+  // Lista base dependendo da visão (Arquivadas ou Principal)
+  const currentBaseList = showArchivedView ? archivedConversations : activeConversations
+
+  // Filtro e busca
+  const filteredConversations = currentBaseList.filter((c) => {
+    // Busca de texto
     const matchesSearch =
       c.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
       (c.lastMessage?.text || '').toLowerCase().includes(searchQuery.toLowerCase())
 
     if (!matchesSearch) return false
 
+    // Filtro por etiqueta
+    if (selectedLabelFilter) {
+      if (!(c.labelIds || []).includes(selectedLabelFilter)) return false
+    }
+
     if (filterType === 'unread') return (c.unreadCount || 0) > 0
     if (filterType === 'groups') return c.isGroup
     return true
+  })
+
+  // Ordenação: conversas fixadas (pinned) primeiro na visão principal
+  const sortedConversations = [...filteredConversations].sort((a, b) => {
+    if (!showArchivedView) {
+      if (a.pinned && !b.pinned) return -1
+      if (!a.pinned && b.pinned) return 1
+    }
+    return 0
   })
 
   const handleSelectChat = (conv: Conversation) => {
@@ -66,43 +113,80 @@ export const Sidebar: React.FC<SidebarProps> = ({
     }
   }
 
+  const handleOpenLabelsForChat = (convId: string, e?: React.MouseEvent) => {
+    if (e) e.stopPropagation()
+    setTargetConversationForLabels(convId)
+    setLabelsDialogOpen(true)
+  }
+
   const renderStatus = (status?: string, isMine?: boolean) => {
     if (!isMine || !status) return null
     if (status === 'read') {
-      return <CheckCheck className="w-3.5 h-3.5 text-[#53bdeb] inline mr-1" />
+      return <CheckCheck className="w-3.5 h-3.5 text-[#53bdeb] inline mr-1 shrink-0" />
     }
     if (status === 'delivered') {
-      return <CheckCheck className="w-3.5 h-3.5 text-slate-400 inline mr-1" />
+      return <CheckCheck className="w-3.5 h-3.5 text-slate-400 inline mr-1 shrink-0" />
     }
-    return <Check className="w-3.5 h-3.5 text-slate-400 inline mr-1" />
+    return <Check className="w-3.5 h-3.5 text-slate-400 inline mr-1 shrink-0" />
   }
 
   return (
     <div className="w-full md:w-[380px] lg:w-[420px] flex flex-col h-full bg-[#111b21] border-r border-[#222d34] text-slate-200 shrink-0">
       {/* Top Header */}
-      <div className="h-16 px-4 bg-[#202c33] flex items-center justify-between border-b border-[#2a3942]">
-        <div
-          className="flex items-center space-x-3 cursor-pointer group"
-          onClick={onOpenProfile}
-          title="Ver seu perfil"
-        >
-          <div className="relative">
-            <img
-              src={user.avatar}
-              alt={user.name}
-              className="w-10 h-10 rounded-full object-cover ring-1 ring-white/20 group-hover:ring-[#00a884] transition-all"
-            />
-            <span className="absolute bottom-0 right-0 w-2.5 h-2.5 bg-[#00a884] rounded-full border border-[#202c33]" />
+      <div className="h-16 px-4 bg-[#202c33] flex items-center justify-between border-b border-[#2a3942] shrink-0">
+        {showArchivedView ? (
+          <div className="flex items-center space-x-2">
+            <Button
+              variant="ghost"
+              size="icon"
+              onClick={() => setShowArchivedView(false)}
+              className="text-slate-300 hover:text-white rounded-full -ml-2"
+              title="Voltar às conversas principais"
+            >
+              <ArrowLeft className="w-5 h-5" />
+            </Button>
+            <div className="flex items-center space-x-2">
+              <Archive className="w-5 h-5 text-[#00a884]" />
+              <h2 className="text-base font-semibold text-white">Arquivadas</h2>
+            </div>
           </div>
-          <div className="hidden sm:block">
-            <p className="text-sm font-medium text-slate-200 group-hover:text-white transition-colors truncate max-w-[130px]">
-              {user.name || 'Você'}
-            </p>
+        ) : (
+          <div
+            className="flex items-center space-x-3 cursor-pointer group"
+            onClick={onOpenProfile}
+            title="Ver seu perfil"
+          >
+            <div className="relative">
+              <img
+                src={user.avatar}
+                alt={user.name}
+                className="w-10 h-10 rounded-full object-cover ring-1 ring-white/20 group-hover:ring-[#00a884] transition-all"
+              />
+              <span className="absolute bottom-0 right-0 w-2.5 h-2.5 bg-[#00a884] rounded-full border border-[#202c33]" />
+            </div>
+            <div className="hidden sm:block">
+              <p className="text-sm font-medium text-slate-200 group-hover:text-white transition-colors truncate max-w-[130px]">
+                {user.name || 'Você'}
+              </p>
+            </div>
           </div>
-        </div>
+        )}
 
         {/* Action icons */}
         <div className="flex items-center space-x-1 text-slate-400">
+          <Button
+            variant="ghost"
+            size="icon"
+            onClick={() => {
+              setTargetConversationForLabels(null)
+              setLabelsDialogOpen(true)
+            }}
+            className="hover:text-white hover:bg-[#374248]/50 rounded-full"
+            title="Gerenciar Etiquetas"
+          >
+            <Tag className="w-5 h-5" />
+          </Button>
+
           <Button
             variant="ghost"
             size="icon"
@@ -152,6 +236,16 @@ export const Sidebar: React.FC<SidebarProps> = ({
                 Novo contato
               </DropdownMenuItem>
               <DropdownMenuItem
+                onClick={() => {
+                  setTargetConversationForLabels(null)
+                  setLabelsDialogOpen(true)
+                }}
+                className="cursor-pointer hover:bg-[#182229]"
+              >
+                <Tag className="w-4 h-4 mr-2 text-[#00a884]" />
+                Etiquetas coloridas
+              </DropdownMenuItem>
+              <DropdownMenuItem
                 onClick={onOpenProfile}
                 className="cursor-pointer hover:bg-[#182229]"
               >
@@ -185,11 +279,15 @@ export const Sidebar: React.FC<SidebarProps> = ({
       </div>
 
       {/* Search Bar & Quick Filters */}
-      <div className="p-3 bg-[#111b21] space-y-2 border-b border-[#222d34]">
+      <div className="p-3 bg-[#111b21] space-y-2 border-b border-[#222d34] shrink-0">
         <div className="relative flex items-center">
           <Search className="w-4 h-4 absolute left-3 text-slate-400 pointer-events-none" />
           <Input
-            placeholder="Pesquisar ou começar uma nova conversa"
+            placeholder={
+              showArchivedView
+                ? 'Pesquisar conversas arquivadas'
+                : 'Pesquisar ou começar uma nova conversa'
+            }
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
             className="pl-9 bg-[#202c33] border-none text-white placeholder-slate-400 rounded-lg h-9 text-xs sm:text-sm focus-visible:ring-1 focus-visible:ring-[#00a884]"
@@ -197,7 +295,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
         </div>
 
         {/* Filter Pills */}
-        <div className="flex items-center space-x-1.5 pt-1 overflow-x-auto text-xs">
+        <div className="flex items-center space-x-1.5 pt-1 overflow-x-auto text-xs no-scrollbar">
           <button
             type="button"
             onClick={() => setFilterType('all')}
@@ -231,29 +329,128 @@ export const Sidebar: React.FC<SidebarProps> = ({
           >
             Grupos
           </button>
+
+          {/* Filtro rápido por Etiquetas */}
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <button
+                type="button"
+                className={`px-3 py-1 rounded-full transition-colors whitespace-nowrap flex items-center space-x-1 ${
+                  selectedLabelFilter
+                    ? 'bg-[#00a884] text-white font-medium'
+                    : 'bg-[#202c33] text-slate-300 hover:bg-[#2a3942]'
+                }`}
+              >
+                <Tag className="w-3 h-3" />
+                <span>
+                  {selectedLabelFilter
+                    ? labels.find((l) => l.id === selectedLabelFilter)?.name || 'Etiqueta'
+                    : 'Etiquetas'}
+                </span>
+                <ChevronDown className="w-3 h-3 opacity-70" />
+              </button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent
+              align="start"
+              className="bg-[#233138] border-[#2a3942] text-slate-200"
+            >
+              <DropdownMenuItem
+                onClick={() => setSelectedLabelFilter(null)}
+                className="cursor-pointer hover:bg-[#182229]"
+              >
+                Todas as etiquetas
+              </DropdownMenuItem>
+              <DropdownMenuSeparator className="bg-[#2a3942]" />
+              {labels.map((lbl) => (
+                <DropdownMenuItem
+                  key={lbl.id}
+                  onClick={() => setSelectedLabelFilter(lbl.id)}
+                  className="cursor-pointer hover:bg-[#182229] flex items-center space-x-2"
+                >
+                  <span
+                    className="w-2.5 h-2.5 rounded-full"
+                    style={{ backgroundColor: lbl.color }}
+                  />
+                  <span>{lbl.name}</span>
+                </DropdownMenuItem>
+              ))}
+              <DropdownMenuSeparator className="bg-[#2a3942]" />
+              <DropdownMenuItem
+                onClick={() => {
+                  setTargetConversationForLabels(null)
+                  setLabelsDialogOpen(true)
+                }}
+                className="cursor-pointer hover:bg-[#182229] text-[#00a884]"
+              >
+                Gerenciar etiquetas...
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
+
+          {selectedLabelFilter && (
+            <button
+              type="button"
+              onClick={() => setSelectedLabelFilter(null)}
+              className="px-2 py-1 rounded-full bg-[#202c33] text-slate-400 hover:text-white flex items-center text-[10px]"
+              title="Limpar filtro de etiqueta"
+            >
+              <X className="w-3 h-3 mr-0.5" /> Limpar
+            </button>
+          )}
         </div>
       </div>
 
+      {/* Item da Seção "Arquivadas" (estilo WhatsApp Web) no topo da lista principal */}
+      {!showArchivedView && archivedConversations.length > 0 && (
+        <div
+          onClick={() => setShowArchivedView(true)}
+          className="flex items-center justify-between px-4 py-3 bg-[#111b21] hover:bg-[#202c33] cursor-pointer border-b border-[#202c33] transition-colors"
+        >
+          <div className="flex items-center space-x-3">
+            <div className="w-10 h-10 rounded-full bg-[#202c33] flex items-center justify-center text-[#00a884]">
+              <Archive className="w-5 h-5" />
+            </div>
+            <div>
+              <p className="text-sm font-semibold text-slate-100">Arquivadas</p>
+              <p className="text-xs text-slate-400">
+                {archivedConversations.length}{' '}
+                {archivedConversations.length === 1 ? 'conversa' : 'conversas'}
+              </p>
+            </div>
+          </div>
+          <span className="text-xs text-[#00a884] font-medium hover:underline">Ver todas</span>
+        </div>
+      )}
+
       {/* Conversations List */}
       <div className="flex-1 overflow-y-auto divide-y divide-[#202c33]/40">
-        {filteredConversations.length === 0 ? (
+        {sortedConversations.length === 0 ? (
           <div className="text-center py-12 px-4 text-slate-400 text-sm">
             <MessageSquare className="w-10 h-10 mx-auto text-slate-600 mb-2 opacity-50" />
-            <p className="font-medium text-slate-300">Nenhuma conversa encontrada</p>
+            <p className="font-medium text-slate-300">
+              {showArchivedView
+                ? 'Nenhuma conversa arquivada'
+                : selectedLabelFilter
+                  ? 'Nenhuma conversa com esta etiqueta'
+                  : 'Nenhuma conversa encontrada'}
+            </p>
             <p className="text-xs text-slate-500 mt-1">
-              Inicie um chat clicando no ícone de contatos acima.
+              {showArchivedView
+                ? 'Para arquivar uma conversa, clique no menu de opções ao lado dela.'
+                : 'Inicie um chat clicando no ícone de contatos acima.'}
             </p>
           </div>
         ) : (
-          filteredConversations.map((conv) => {
+          sortedConversations.map((conv) => {
             const isActive = conv.id === activeChatId
             const isMine = conv.lastMessage?.senderId === 'me'
+            const convLabels = labels.filter((l) => (conv.labelIds || []).includes(l.id))
 
             return (
               <div
                 key={conv.id}
                 onClick={() => handleSelectChat(conv)}
-                className={`flex items-center px-3 py-3 cursor-pointer transition-colors relative ${
+                className={`flex items-center px-3 py-3 cursor-pointer transition-colors relative group ${
                   isActive ? 'bg-[#2a3942]' : 'hover:bg-[#202c33] bg-[#111b21]'
                 }`}
               >
@@ -285,28 +482,131 @@ export const Sidebar: React.FC<SidebarProps> = ({
                   </div>
 
                   <div className="flex items-center justify-between mt-1 text-xs text-slate-400">
-                    <p className="truncate pr-2 flex items-center">
+                    <p className="truncate pr-2 flex items-center min-w-0 flex-1">
                       {renderStatus(conv.lastMessage?.status, isMine)}
                       <span className="truncate">
                         {conv.lastMessage?.text || 'Nenhuma mensagem recente'}
                       </span>
                     </p>
 
-                    <div className="flex items-center space-x-1 shrink-0">
-                      {conv.pinned && <Pin className="w-3.5 h-3.5 text-slate-400 rotate-45" />}
+                    <div className="flex items-center space-x-1 shrink-0 ml-1">
+                      {conv.pinned && !showArchivedView && (
+                        <Pin className="w-3.5 h-3.5 text-slate-400 rotate-45 shrink-0" />
+                      )}
                       {(conv.unreadCount || 0) > 0 && (
                         <span className="bg-[#00a884] text-white text-[10px] font-bold px-1.5 py-0.5 rounded-full min-w-5 text-center">
                           {conv.unreadCount}
                         </span>
                       )}
+
+                      {/* Dropdown de ações da conversa (Fixar / Arquivar / Etiquetas) */}
+                      <DropdownMenu>
+                        <DropdownMenuTrigger asChild>
+                          <button
+                            type="button"
+                            onClick={(e) => e.stopPropagation()}
+                            className="w-6 h-6 rounded-full flex items-center justify-center text-slate-400 hover:text-white opacity-0 group-hover:opacity-100 transition-opacity hover:bg-[#374248]"
+                            title="Opções da conversa"
+                          >
+                            <ChevronDown className="w-4 h-4" />
+                          </button>
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent
+                          align="end"
+                          className="bg-[#233138] border-[#2a3942] text-slate-200"
+                        >
+                          <DropdownMenuItem
+                            onClick={(e) => {
+                              e.stopPropagation()
+                              togglePinConversation(conv.id)
+                              toast({
+                                title: conv.pinned ? 'Conversa desafixada' : 'Conversa fixada',
+                                description: conv.pinned
+                                  ? `${conv.name} não está mais no topo.`
+                                  : `${conv.name} foi fixada no topo da lista.`,
+                              })
+                            }}
+                            className="cursor-pointer hover:bg-[#182229]"
+                          >
+                            <Pin className="w-4 h-4 mr-2" />
+                            {conv.pinned ? 'Desafixar conversa' : 'Fixar conversa'}
+                          </DropdownMenuItem>
+
+                          <DropdownMenuItem
+                            onClick={(e) => {
+                              e.stopPropagation()
+                              toggleArchiveConversation(conv.id)
+                              toast({
+                                title: conv.archived
+                                  ? 'Conversa desarquivada'
+                                  : 'Conversa arquivada',
+                                description: conv.archived
+                                  ? `${conv.name} retornou à lista principal.`
+                                  : `${conv.name} foi movida para Arquivadas.`,
+                              })
+                            }}
+                            className="cursor-pointer hover:bg-[#182229]"
+                          >
+                            {conv.archived ? (
+                              <>
+                                <ArchiveRestore className="w-4 h-4 mr-2" />
+                                Desarquivar conversa
+                              </>
+                            ) : (
+                              <>
+                                <Archive className="w-4 h-4 mr-2" />
+                                Arquivar conversa
+                              </>
+                            )}
+                          </DropdownMenuItem>
+
+                          <DropdownMenuItem
+                            onClick={(e) => handleOpenLabelsForChat(conv.id, e)}
+                            className="cursor-pointer hover:bg-[#182229]"
+                          >
+                            <Tag className="w-4 h-4 mr-2 text-[#00a884]" />
+                            Etiquetas da conversa
+                          </DropdownMenuItem>
+                        </DropdownMenuContent>
+                      </DropdownMenu>
                     </div>
                   </div>
+
+                  {/* Chips coloridos das etiquetas abaixo da mensagem */}
+                  {convLabels.length > 0 && (
+                    <div className="flex flex-wrap items-center gap-1 mt-1.5">
+                      {convLabels.map((lbl) => (
+                        <span
+                          key={lbl.id}
+                          className="inline-flex items-center text-[10px] font-medium px-1.5 py-0.5 rounded-full shadow-sm"
+                          style={{
+                            backgroundColor: `${lbl.color}25`,
+                            color: lbl.color,
+                            border: `1px solid ${lbl.color}40`,
+                          }}
+                        >
+                          <span
+                            className="w-1.5 h-1.5 rounded-full mr-1"
+                            style={{ backgroundColor: lbl.color }}
+                          />
+                          {lbl.name}
+                        </span>
+                      ))}
+                    </div>
+                  )}
                 </div>
               </div>
             )
           })
         )}
       </div>
+
+      {/* Diálogo de Gerenciamento / Atribuição de Etiquetas */}
+      <LabelsManagerDialog
+        open={labelsDialogOpen}
+        onOpenChange={setLabelsDialogOpen}
+        targetConversationId={targetConversationForLabels}
+      />
     </div>
   )
 }

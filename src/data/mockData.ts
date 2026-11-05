@@ -73,6 +73,7 @@ export const INITIAL_CONVERSATIONS: Conversation[] = [
     },
     unreadCount: 1,
     pinned: true,
+    labelIds: ['lbl-cliente', 'lbl-urgente'],
   },
   {
     id: 'conv-group-1',
@@ -88,6 +89,7 @@ export const INITIAL_CONVERSATIONS: Conversation[] = [
     },
     unreadCount: 0,
     pinned: true,
+    labelIds: ['lbl-trabalho'],
   },
   {
     id: 'conv-2',
@@ -102,6 +104,7 @@ export const INITIAL_CONVERSATIONS: Conversation[] = [
       status: 'read',
     },
     unreadCount: 0,
+    labelIds: ['lbl-trabalho'],
   },
   {
     id: 'conv-3',
@@ -130,6 +133,7 @@ export const INITIAL_CONVERSATIONS: Conversation[] = [
       status: 'delivered',
     },
     unreadCount: 0,
+    labelIds: ['lbl-pessoal'],
   },
   {
     id: 'conv-4',

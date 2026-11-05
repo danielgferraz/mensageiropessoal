@@ -2,8 +2,10 @@ import React, { createContext, useContext, useState, useEffect } from 'react'
 import {
   Contact,
   Conversation,
+  ConversationLabel,
   CrmStageId,
   Message,
+  QuickReply,
   UserProfile,
   MessageMedia,
 } from '@/types/whatsapp'
@@ -19,6 +21,7 @@ import {
   DEFAULT_CRM_STAGE_LIST,
   DEFAULT_CRM_STAGES,
 } from '@/data/crmData'
+import { DEFAULT_LABELS, DEFAULT_QUICK_REPLIES } from '@/data/labelsData'
 
 interface WhatsAppContextType {
   user: UserProfile
@@ -46,6 +49,23 @@ interface WhatsAppContextType {
   renameCrmStage: (stageId: CrmStageId, label: string) => void
   deleteCrmStage: (stageId: CrmStageId, moveContactsTo: CrmStageId) => void
   moveCrmStage: (stageId: CrmStageId, direction: -1 | 1) => void
+  // Etiquetas (Labels)
+  labels: ConversationLabel[]
+  createLabel: (name: string, color: string) => ConversationLabel | null
+  updateLabel: (labelId: string, name: string, color: string) => void
+  deleteLabel: (labelId: string) => void
+  setConversationLabels: (conversationId: string, labelIds: string[]) => void
+  toggleConversationLabel: (conversationId: string, labelId: string) => void
+  // Arquivar & Fixar
+  togglePinConversation: (conversationId: string) => void
+  toggleArchiveConversation: (conversationId: string) => void
+  // Reações a mensagens
+  toggleMessageReaction: (conversationId: string, messageId: string, emoji: string) => void
+  // Respostas Rápidas
+  quickReplies: QuickReply[]
+  createQuickReply: (text: string, shortcut?: string) => QuickReply | null
+  updateQuickReply: (id: string, text: string, shortcut?: string) => void
+  deleteQuickReply: (id: string) => void
 }
 
 const WhatsAppContext = createContext<WhatsAppContextType | undefined>(undefined)
@@ -57,6 +77,8 @@ const STORAGE_KEYS = {
   MESSAGES: 'wa_clone_messages',
   CRM_STAGES: 'wa_clone_crm_stages',
   CRM_STAGE_LIST: 'wa_clone_crm_stage_list',
+  LABELS: 'wa_clone_labels',
+  QUICK_REPLIES: 'wa_clone_quick_replies',
 }
 
 export const WhatsAppProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
@@ -118,6 +140,34 @@ export const WhatsAppProvider: React.FC<{ children: React.ReactNode }> = ({ chil
     return DEFAULT_CRM_STAGE_LIST
   })
 
+  // Etiquetas (Labels) das conversas
+  const [labels, setLabels] = useState<ConversationLabel[]>(() => {
+    const saved = localStorage.getItem(STORAGE_KEYS.LABELS)
+    try {
+      const parsed = saved ? (JSON.parse(saved) as unknown) : null
+      if (Array.isArray(parsed) && parsed.length > 0) {
+        return parsed.filter((l) => l && typeof l.id === 'string' && typeof l.name === 'string')
+      }
+    } catch {
+      // usa o padrão
+    }
+    return DEFAULT_LABELS
+  })
+
+  // Respostas Rápidas
+  const [quickReplies, setQuickReplies] = useState<QuickReply[]>(() => {
+    const saved = localStorage.getItem(STORAGE_KEYS.QUICK_REPLIES)
+    try {
+      const parsed = saved ? (JSON.parse(saved) as unknown) : null
+      if (Array.isArray(parsed) && parsed.length > 0) {
+        return parsed.filter((q) => q && typeof q.id === 'string' && typeof q.text === 'string')
+      }
+    } catch {
+      // usa o padrão
+    }
+    return DEFAULT_QUICK_REPLIES
+  })
+
   // Persist state to localStorage for seamless refreshing
   useEffect(() => {
     localStorage.setItem(STORAGE_KEYS.USER, JSON.stringify(user))
@@ -142,6 +192,14 @@ export const WhatsAppProvider: React.FC<{ children: React.ReactNode }> = ({ chil
   useEffect(() => {
     localStorage.setItem(STORAGE_KEYS.CRM_STAGE_LIST, JSON.stringify(crmStageList))
   }, [crmStageList])
+
+  useEffect(() => {
+    localStorage.setItem(STORAGE_KEYS.LABELS, JSON.stringify(labels))
+  }, [labels])
+
+  useEffect(() => {
+    localStorage.setItem(STORAGE_KEYS.QUICK_REPLIES, JSON.stringify(quickReplies))
+  }, [quickReplies])
 
   const setUser = (updated: UserProfile) => {
     setUserState(updated)
@@ -458,12 +516,155 @@ export const WhatsAppProvider: React.FC<{ children: React.ReactNode }> = ({ chil
     })
   }
 
+  // ==== CRUD e Atribuição de Etiquetas ====
+
+  const createLabel = (name: string, color: string): ConversationLabel | null => {
+    const trimmed = name.trim()
+    if (!trimmed) return null
+    const newLabel: ConversationLabel = {
+      id: `lbl-${Date.now()}-${Math.random().toString(36).substring(2, 6)}`,
+      name: trimmed,
+      color: color || '#00a884',
+    }
+    setLabels((prev) => [...prev, newLabel])
+    return newLabel
+  }
+
+  const updateLabel = (labelId: string, name: string, color: string) => {
+    const trimmed = name.trim()
+    if (!trimmed) return
+    setLabels((prev) => prev.map((l) => (l.id === labelId ? { ...l, name: trimmed, color } : l)))
+  }
+
+  const deleteLabel = (labelId: string) => {
+    setLabels((prev) => prev.filter((l) => l.id !== labelId))
+    // Remove das conversas que tinham essa etiqueta
+    setConversations((prev) =>
+      prev.map((c) => ({
+        ...c,
+        labelIds: (c.labelIds || []).filter((id) => id !== labelId),
+      })),
+    )
+  }
+
+  const setConversationLabels = (conversationId: string, labelIds: string[]) => {
+    setConversations((prev) => prev.map((c) => (c.id === conversationId ? { ...c, labelIds } : c)))
+  }
+
+  const toggleConversationLabel = (conversationId: string, labelId: string) => {
+    setConversations((prev) =>
+      prev.map((c) => {
+        if (c.id !== conversationId) return c
+        const current = c.labelIds || []
+        const exists = current.includes(labelId)
+        const updated = exists ? current.filter((id) => id !== labelId) : [...current, labelId]
+        return { ...c, labelIds: updated }
+      }),
+    )
+  }
+
+  // ==== Fixar e Arquivar ====
+
+  const togglePinConversation = (conversationId: string) => {
+    setConversations((prev) =>
+      prev.map((c) => (c.id === conversationId ? { ...c, pinned: !c.pinned } : c)),
+    )
+  }
+
+  const toggleArchiveConversation = (conversationId: string) => {
+    setConversations((prev) =>
+      prev.map((c) => {
+        if (c.id !== conversationId) return c
+        const nextArchived = !c.archived
+        return {
+          ...c,
+          archived: nextArchived,
+          // Ao arquivar, desafixa por padrão como no WhatsApp
+          pinned: nextArchived ? false : c.pinned,
+        }
+      }),
+    )
+  }
+
+  // ==== Reações a mensagens ====
+
+  const toggleMessageReaction = (conversationId: string, messageId: string, emoji: string) => {
+    setMessages((prev) => {
+      const convMsgs = prev[conversationId] || []
+      const updated = convMsgs.map((msg) => {
+        if (msg.id !== messageId) return msg
+
+        const currentList = msg.reactionList || []
+        const myExisting = currentList.find((r) => r.userId === 'me')
+
+        let nextList: { emoji: string; userId: string }[]
+        if (myExisting) {
+          if (myExisting.emoji === emoji) {
+            // Remove reação se clicou no mesmo emoji
+            nextList = currentList.filter((r) => r.userId !== 'me')
+          } else {
+            // Alterna para o novo emoji
+            nextList = currentList.map((r) => (r.userId === 'me' ? { ...r, emoji } : r))
+          }
+        } else {
+          // Adiciona nova reação
+          nextList = [...currentList, { emoji, userId: 'me' }]
+        }
+
+        // Reconstrói o mapa agregado { [emoji]: count }
+        const nextReactions: Record<string, number> = {}
+        nextList.forEach((r) => {
+          nextReactions[r.emoji] = (nextReactions[r.emoji] || 0) + 1
+        })
+
+        return {
+          ...msg,
+          reactionList: nextList,
+          reactions: Object.keys(nextReactions).length > 0 ? nextReactions : undefined,
+        }
+      })
+
+      return { ...prev, [conversationId]: updated }
+    })
+  }
+
+  // ==== Respostas Rápidas ====
+
+  const createQuickReply = (text: string, shortcut?: string): QuickReply | null => {
+    const trimmed = text.trim()
+    if (!trimmed) return null
+    const newReply: QuickReply = {
+      id: `qr-${Date.now()}-${Math.random().toString(36).substring(2, 6)}`,
+      text: trimmed,
+      shortcut: shortcut?.trim() || undefined,
+    }
+    setQuickReplies((prev) => [...prev, newReply])
+    return newReply
+  }
+
+  const updateQuickReply = (id: string, text: string, shortcut?: string) => {
+    const trimmed = text.trim()
+    if (!trimmed) return
+    setQuickReplies((prev) =>
+      prev.map((q) =>
+        q.id === id ? { ...q, text: trimmed, shortcut: shortcut?.trim() || undefined } : q,
+      ),
+    )
+  }
+
+  const deleteQuickReply = (id: string) => {
+    setQuickReplies((prev) => prev.filter((q) => q.id !== id))
+  }
+
   const resetData = () => {
     localStorage.removeItem(STORAGE_KEYS.USER)
     localStorage.removeItem(STORAGE_KEYS.CONTACTS)
     localStorage.removeItem(STORAGE_KEYS.CONVERSATIONS)
     localStorage.removeItem(STORAGE_KEYS.MESSAGES)
     localStorage.removeItem(STORAGE_KEYS.CRM_STAGES)
+    localStorage.removeItem(STORAGE_KEYS.CRM_STAGE_LIST)
+    localStorage.removeItem(STORAGE_KEYS.LABELS)
+    localStorage.removeItem(STORAGE_KEYS.QUICK_REPLIES)
     setUserState(DEFAULT_USER)
     setContacts(INITIAL_CONTACTS)
     setConversations(INITIAL_CONVERSATIONS)
@@ -471,8 +672,9 @@ export const WhatsAppProvider: React.FC<{ children: React.ReactNode }> = ({ chil
     setActiveChatId(null)
     setActiveMedia(null)
     setCrmStages(DEFAULT_CRM_STAGES)
-    localStorage.removeItem(STORAGE_KEYS.CRM_STAGE_LIST)
     setCrmStageList(DEFAULT_CRM_STAGE_LIST)
+    setLabels(DEFAULT_LABELS)
+    setQuickReplies(DEFAULT_QUICK_REPLIES)
   }
 
   return (
@@ -501,6 +703,19 @@ export const WhatsAppProvider: React.FC<{ children: React.ReactNode }> = ({ chil
         renameCrmStage,
         deleteCrmStage,
         moveCrmStage,
+        labels,
+        createLabel,
+        updateLabel,
+        deleteLabel,
+        setConversationLabels,
+        toggleConversationLabel,
+        togglePinConversation,
+        toggleArchiveConversation,
+        toggleMessageReaction,
+        quickReplies,
+        createQuickReply,
+        updateQuickReply,
+        deleteQuickReply,
       }}
     >
       {children}
