@@ -141,7 +141,7 @@ export const WhatsAppProvider: React.FC<{ children: React.ReactNode }> = ({ chil
 
   const [activeMedia, setActiveMedia] = useState<MessageMedia | null>(null)
 
-  // CRM: estágio de cada contato no pipeline (dados de exemplo, persistidos localmente)
+  // CRM: estágio de cada contato no pipeline, persistido localmente
   const [crmStages, setCrmStages] = useState<Record<string, CrmStageId>>(() => {
     const saved = localStorage.getItem(STORAGE_KEYS.CRM_STAGES)
     try {
@@ -201,15 +201,7 @@ export const WhatsAppProvider: React.FC<{ children: React.ReactNode }> = ({ chil
     } catch {
       // ignora
     }
-    // Valores iniciais sincronizados com as conversas padrão
-    return {
-      c1: ['lbl-cliente', 'lbl-urgente'],
-      c2: [],
-      c3: ['lbl-trabalho'],
-      c4: [],
-      c5: [],
-      c6: [],
-    }
+    return {}
   })
 
   // Respostas Rápidas
@@ -259,20 +251,7 @@ export const WhatsAppProvider: React.FC<{ children: React.ReactNode }> = ({ chil
     } catch {
       // ignora
     }
-    const nowStr = new Date().toLocaleTimeString('pt-BR', {
-      hour: '2-digit',
-      minute: '2-digit',
-      second: '2-digit',
-    })
-    return [
-      {
-        id: `log-init-1`,
-        timestamp: nowStr,
-        action: 'app_start',
-        description: 'Sessão iniciada e dados do WhatsApp carregados.',
-        level: 'info',
-      },
-    ]
+    return []
   })
 
   // A conexão vem exclusivamente do servidor; nenhuma chave fica no navegador.
@@ -767,7 +746,7 @@ export const WhatsAppProvider: React.FC<{ children: React.ReactNode }> = ({ chil
     localStorage.removeItem(STORAGE_KEYS.CONTACT_NOTES)
     localStorage.removeItem(STORAGE_KEYS.LOGS)
     localStorage.removeItem(STORAGE_KEYS.CONNECTIONS)
-    setUserState(DEFAULT_USER)
+    setUserState({ ...DEFAULT_USER, name: adminUser?.fullName || 'Administrador' })
     setContacts([])
     setConversations([])
     setMessages({})

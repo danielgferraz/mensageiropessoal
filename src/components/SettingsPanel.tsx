@@ -111,7 +111,7 @@ export const SettingsPanel: React.FC<SettingsPanelProps> = ({ onClose, onOpenMob
     setConfirmResetOpen(false)
     toast({
       title: 'Dados restaurados',
-      description: 'Conversas, contatos e configurações foram reiniciados.',
+      description: 'Dados locais limpos; as conversas serão recarregadas do WhatsApp.',
     })
   }
 
@@ -322,12 +322,10 @@ export const SettingsPanel: React.FC<SettingsPanelProps> = ({ onClose, onOpenMob
               className="w-full bg-[#182229] border-red-500/40 text-red-400 hover:text-red-300 hover:bg-red-500/10 space-x-2"
             >
               <RotateCcw className="w-3.5 h-3.5" />
-              <span>Restaurar dados originais</span>
+              <span>Limpar dados locais</span>
             </Button>
             <p className="text-[11px] text-slate-500 leading-relaxed">
-              WhatsApp Clone — demonstração com persistência local. As preferências (tema, tamanho
-              de fonte, notas internas, logs e conexões da Evolution API) são salvas neste
-              navegador.
+              Preferências, etiquetas, respostas rápidas, notas internas e logs são salvos neste navegador. A conexão WhatsApp é gerenciada pelo servidor.
             </p>
           </section>
         </div>
@@ -338,11 +336,10 @@ export const SettingsPanel: React.FC<SettingsPanelProps> = ({ onClose, onOpenMob
         <AlertDialogContent className="bg-[#202c33] border-[#2a3942] text-slate-100 w-[95vw] max-w-sm rounded-2xl p-4 sm:p-6">
           <AlertDialogHeader>
             <AlertDialogTitle className="text-base text-slate-100">
-              Restaurar dados de exemplo?
+              Limpar dados deste navegador?
             </AlertDialogTitle>
             <AlertDialogDescription className="text-xs text-slate-300 leading-relaxed">
-              Todas as mensagens enviadas, notas internas criadas, registros de logs e conexões da
-              Evolution API serão apagados e restaurados para o padrão de demonstração.
+              As notas internas, etiquetas, respostas rápidas, estágios de contatos e logs locais serão apagados. Conversas reais serão recarregadas do WhatsApp; mensagens no celular e conexões no servidor não serão apagadas.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter className="flex-col-reverse sm:flex-row gap-2 sm:gap-0 sm:space-x-2 pt-2">
@@ -356,7 +353,7 @@ export const SettingsPanel: React.FC<SettingsPanelProps> = ({ onClose, onOpenMob
               onClick={handleConfirmReset}
               className="bg-red-600 hover:bg-red-700 text-white text-xs font-semibold h-10 w-full sm:w-auto"
             >
-              Restaurar tudo
+              Limpar dados locais
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>

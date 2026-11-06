@@ -30,15 +30,7 @@ export const CRM_STAGE_COLORS: { dot: string; accent: string; label: string }[] 
   { dot: 'bg-fuchsia-400', accent: 'text-fuchsia-400', label: 'Magenta' },
 ]
 
-// Distribuição inicial dos contatos de exemplo no pipeline
-export const DEFAULT_CRM_STAGES: Record<string, CrmStageId> = {
-  c1: 'em-negociacao',
-  c2: 'em-contato',
-  c3: 'novo',
-  c4: 'novo',
-  c5: 'fechado',
-  c6: 'em-contato',
-}
+export const DEFAULT_CRM_STAGES: Record<string, CrmStageId> = {}
 
 // Busca a configuração de um estágio em qualquer lista (com fallback seguro)
 export const findStage = (

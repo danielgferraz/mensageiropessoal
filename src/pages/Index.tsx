@@ -1,6 +1,6 @@
 import React, { useState } from 'react'
 import { useWhatsApp } from '@/context/WhatsAppContext'
-import { EntryScreen } from '@/components/EntryScreen'
+import { useAuth } from '@/context/AuthContext'
 import { Sidebar } from '@/components/Sidebar'
 import { ChatArea } from '@/components/ChatArea'
 import { NewGroupPanel } from '@/components/NewGroupPanel'
@@ -18,9 +18,8 @@ import { LabelsManagerDialog } from '@/components/LabelsManagerDialog'
 import { NewInstanceDialog } from '@/components/NewInstanceDialog'
 
 export default function Index() {
+  const { logout } = useAuth()
   const {
-    user,
-    setUser,
     contacts,
     activeChatId,
     setActiveChatId,
@@ -58,13 +57,8 @@ export default function Index() {
   const [fabLabelsOpen, setFabLabelsOpen] = useState(false)
   const [newInstanceOpen, setNewInstanceOpen] = useState(false)
 
-  // If user has not set their name yet, show entry onboarding screen
-  if (!user.name) {
-    return <EntryScreen onComplete={() => setActiveLeftPanel('chats')} />
-  }
-
   const handleLogout = () => {
-    setUser({ ...user, name: '' })
+    logout()
     setActiveChatId(null)
   }
 

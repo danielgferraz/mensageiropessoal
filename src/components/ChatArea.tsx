@@ -231,7 +231,7 @@ export const ChatArea: React.FC<ChatAreaProps> = ({
             onClick={() =>
               toast({
                 title: 'Chamadas de voz',
-                description: 'Recurso fora do escopo desta versão demonstrativa.',
+                description: 'Chamadas não estão disponíveis neste painel. Use o WhatsApp.',
               })
             }
             className="w-10 h-10 wa-header-btn rounded-full hidden lg:inline-flex"
@@ -246,7 +246,7 @@ export const ChatArea: React.FC<ChatAreaProps> = ({
             onClick={() =>
               toast({
                 title: 'Chamadas de vídeo',
-                description: 'Recurso fora do escopo desta versão demonstrativa.',
+                description: 'Chamadas não estão disponíveis neste painel. Use o WhatsApp.',
               })
             }
             className="w-10 h-10 wa-header-btn rounded-full hidden lg:inline-flex"

@@ -120,7 +120,7 @@ export const GroupInfoPanel: React.FC<GroupInfoPanelProps> = ({ conversationId, 
             onClick={() =>
               toast({
                 title: 'Silenciar grupo',
-                description: 'Grupo silenciado por 8 horas (simulação).',
+                description: 'Silencie o grupo pelo WhatsApp. Esta ação não está disponível neste painel.',
               })
             }
             className="w-full p-3 flex items-center space-x-3 text-slate-300 hover:text-white hover:bg-[#202c33] transition-colors text-sm"
@@ -134,7 +134,7 @@ export const GroupInfoPanel: React.FC<GroupInfoPanelProps> = ({ conversationId, 
             onClick={() => {
               toast({
                 title: 'Sair do grupo',
-                description: 'Recurso simulado de saída de grupo.',
+                description: 'Saia do grupo pelo WhatsApp. Esta ação não está disponível neste painel.',
               })
               onClose()
             }}
