@@ -80,8 +80,8 @@ export const ContactsPanel: React.FC<ContactsPanelProps> = ({ onClose }) => {
           </div>
         ) : (
           filteredContacts.map((contact) => {
-            const stage = crmStages[contact.id] || 'novo'
-            const stageConfig = CRM_STAGES.find((s) => s.id === stage)
+            const stage = crmStages[contact.id]
+            const stageConfig = stage ? CRM_STAGES.find((s) => s.id === stage) : null
 
             return (
               <div
@@ -104,13 +104,23 @@ export const ContactsPanel: React.FC<ContactsPanelProps> = ({ onClose }) => {
                   <div className="flex items-center justify-between">
                     <h3 className="text-sm font-medium text-slate-100 truncate">{contact.name}</h3>
                     <div className="flex items-center space-x-2 shrink-0">
-                      <span
-                        className={`flex items-center text-[10px] font-medium px-2 py-0.5 rounded-full bg-[#202c33] border border-[#2a3942] text-slate-300`}
-                        title="Estágio no CRM"
-                      >
-                        <span className={`w-1.5 h-1.5 rounded-full ${stageConfig?.dot} mr-1`} />
-                        {stageConfig?.label}
-                      </span>
+                      {stage ? (
+                        <span
+                          className={`flex items-center text-[10px] font-medium px-2 py-0.5 rounded-full bg-[#202c33] border border-[#2a3942] text-slate-300`}
+                          title="Estágio no CRM"
+                        >
+                          <span className={`w-1.5 h-1.5 rounded-full ${stageConfig?.dot || 'bg-sky-400'} mr-1`} />
+                          {stageConfig?.label || stage}
+                        </span>
+                      ) : (
+                        <span
+                          className={`flex items-center text-[10px] font-medium px-2 py-0.5 rounded-full bg-[#182229] border border-[#222d34] text-slate-500`}
+                          title="Fora do pipeline"
+                        >
+                          <span className="w-1.5 h-1.5 rounded-full bg-slate-500 mr-1" />
+                          Sem estágio
+                        </span>
+                      )}
                       <MessageCircle
                         className="w-4 h-4 text-slate-400 opacity-60 hover:opacity-100"
                         onClick={(e) => {

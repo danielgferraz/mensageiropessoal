@@ -120,6 +120,28 @@ export const ContactFiltersBar: React.FC<ContactFiltersBarProps> = ({
 
       {/* Linha de filtros com rolagem horizontal touch-friendly no mobile (estágios) */}
       <div className="flex items-center gap-1.5 overflow-x-auto pb-0.5 no-scrollbar flex-nowrap sm:flex-wrap">
+        {/* Chip para filtrar contatos sem estágio */}
+        <button
+          type="button"
+          onClick={() => onToggleStage('none')}
+          className={cn(
+            'inline-flex items-center space-x-1.5 px-2.5 py-1.5 rounded-full text-xs font-medium border transition-all shrink-0 active:scale-95',
+            selectedStages.includes('none')
+              ? 'bg-[#00a884] border-[#00a884] text-white shadow-sm'
+              : 'bg-[#202c33] border-[#2a3942] text-slate-300 hover:text-white hover:border-[#374248]',
+          )}
+          title="Filtrar contatos que não estão no pipeline"
+        >
+          <span
+            className={cn(
+              'w-2 h-2 rounded-full shrink-0 bg-slate-500',
+              selectedStages.includes('none') && 'bg-white',
+            )}
+          />
+          <span className="whitespace-nowrap">Sem estágio</span>
+          {selectedStages.includes('none') && <Check className="w-3 h-3 text-white ml-0.5" />}
+        </button>
+
         {/* Chips rápidos de estágio para toque direto */}
         {stageList.map((stage) => {
           const isSelected = selectedStages.includes(stage.id)

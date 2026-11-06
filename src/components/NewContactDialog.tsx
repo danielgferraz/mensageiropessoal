@@ -30,13 +30,13 @@ export const NewContactDialog: React.FC<NewContactDialogProps> = ({
   const [name, setName] = useState('')
   const [phone, setPhone] = useState('')
   const [about, setAbout] = useState('')
-  const [stageId, setStageId] = useState<CrmStageId>('novo')
+  const [stageId, setStageId] = useState<CrmStageId | ''>('')
 
   const resetForm = () => {
     setName('')
     setPhone('')
     setAbout('')
-    setStageId(crmStageList[0]?.id || 'novo')
+    setStageId('')
   }
 
   const handleSubmit = (e: React.FormEvent) => {
@@ -142,6 +142,18 @@ export const NewContactDialog: React.FC<NewContactDialogProps> = ({
           <div>
             <label className="block text-xs text-slate-300 mb-1.5">Estágio inicial no CRM</label>
             <div className="flex flex-wrap gap-1.5">
+              <button
+                type="button"
+                onClick={() => setStageId('')}
+                className={`flex items-center px-2.5 py-1 rounded-full text-xs font-medium border transition-colors ${
+                  stageId === ''
+                    ? 'bg-[#2a3942] border-[#00a884] text-white'
+                    : 'bg-[#182229] border-[#2a3942] text-slate-400 hover:text-slate-200'
+                }`}
+              >
+                <span className="w-2 h-2 rounded-full bg-slate-500 mr-1.5" />
+                Nenhum (fora do pipeline)
+              </button>
               {crmStageList.map((s) => (
                 <button
                   key={s.id}

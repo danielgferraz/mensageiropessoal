@@ -50,12 +50,13 @@ interface WhatsAppContextType {
   addContact: (name: string, phone: string, about?: string) => Contact
   saveConversationAsContact: (conversationId: string, name: string) => Contact
   updateContact: (contactId: string, name: string, about?: string, phone?: string) => void
+  deleteContact: (contactId: string) => void
   startChatWithContact: (contactId: string) => string
   markAsRead: (conversationId: string) => void
   resetData: () => void
   // CRM (pipeline de negócios em memória)
   crmStages: Record<string, CrmStageId>
-  setContactStage: (contactId: string, stage: CrmStageId) => void
+  setContactStage: (contactId: string, stage: CrmStageId | null) => void
   // CRUD de estágios do pipeline ("status")
   crmStageList: CrmStageConfig[]
   addCrmStage: (label: string, colorIndex?: number) => CrmStageConfig | null
@@ -480,9 +481,41 @@ export const WhatsAppProvider: React.FC<{ children: React.ReactNode }> = ({ chil
     return newConvId
   }
 
-  const setContactStage = (contactId: string, stage: CrmStageId) => {
-    setCrmStages((prev) => ({ ...prev, [contactId]: stage }))
+  const deleteContact = (contactId: string) => {
+    const target = savedContacts.find((c) => c.id === contactId) || contacts.find((c) => c.id === contactId)
+    setSavedContacts((prev) => prev.filter((c) => c.id !== contactId))
+    setCrmStages((prev) => {
+      if (!(contactId in prev)) return prev
+      const next = { ...prev }
+      delete next[contactId]
+      return next
+    })
+    setContactLabelsState((prev) => {
+      if (!(contactId in prev)) return prev
+      const next = { ...prev }
+      delete next[contactId]
+      return next
+    })
+    addLog('contact_deleted', `Contato excluído: "${target?.name || contactId}".`, 'warn')
+  }
+
+  const setContactStage = (contactId: string, stage: CrmStageId | null) => {
     const targetContact = contacts.find((c) => c.id === contactId)
+    if (!stage) {
+      setCrmStages((prev) => {
+        if (!(contactId in prev)) return prev
+        const next = { ...prev }
+        delete next[contactId]
+        return next
+      })
+      addLog(
+        'crm_stage_changed',
+        `Estágio CRM de "${targetContact?.name || contactId}" removido (fora do pipeline).`,
+        'info',
+      )
+      return
+    }
+    setCrmStages((prev) => ({ ...prev, [contactId]: stage }))
     const stageName = crmStageList.find((s) => s.id === stage)?.label || stage
     addLog(
       'crm_stage_changed',
@@ -810,6 +843,7 @@ export const WhatsAppProvider: React.FC<{ children: React.ReactNode }> = ({ chil
         addContact,
         saveConversationAsContact,
         updateContact,
+        deleteContact,
         startChatWithContact,
         markAsRead,
         resetData,

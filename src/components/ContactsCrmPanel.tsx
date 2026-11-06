@@ -32,9 +32,9 @@ const ContactsList: React.FC<{
   search: string
   hasActiveFilters: boolean
   onClearFilters: () => void
-  stageOf: (contactId: string) => CrmStageId
-  stageLabelOf: (stage: CrmStageId) => string
-  stageDotOf: (stage: CrmStageId) => string
+  stageOf: (contactId: string) => CrmStageId | null
+  stageLabelOf: (stage: CrmStageId | null) => string
+  stageDotOf: (stage: CrmStageId | null) => string
   getContactLabelIds: (contactId: string) => string[]
   labels: { id: string; name: string; color: string }[]
   onSelectContact: (contact: Contact) => void
@@ -101,13 +101,23 @@ const ContactsList: React.FC<{
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center justify-between gap-2">
                     <h3 className="text-sm font-medium text-slate-100 truncate">{contact.name}</h3>
-                    <span
-                      className="flex items-center text-[10px] font-medium px-2 py-0.5 rounded-full bg-[#202c33] border border-[#2a3942] text-slate-300 shrink-0"
-                      title="Estágio no CRM"
-                    >
-                      <span className={cn('w-1.5 h-1.5 rounded-full mr-1', stageDotOf(stage))} />
-                      {stageLabelOf(stage)}
-                    </span>
+                    {stage ? (
+                      <span
+                        className="flex items-center text-[10px] font-medium px-2 py-0.5 rounded-full bg-[#202c33] border border-[#2a3942] text-slate-300 shrink-0"
+                        title="Estágio no CRM"
+                      >
+                        <span className={cn('w-1.5 h-1.5 rounded-full mr-1', stageDotOf(stage))} />
+                        {stageLabelOf(stage)}
+                      </span>
+                    ) : (
+                      <span
+                        className="flex items-center text-[10px] font-medium px-2 py-0.5 rounded-full bg-[#182229] border border-[#222d34] text-slate-500 shrink-0"
+                        title="Fora do pipeline"
+                      >
+                        <span className="w-1.5 h-1.5 rounded-full mr-1 bg-slate-500" />
+                        Sem estágio
+                      </span>
+                    )}
                   </div>
                   <p className="text-xs text-slate-400 truncate mt-0.5">{contact.phone}</p>
                   {contact.about && (
@@ -165,9 +175,11 @@ export const ContactsCrmPanel: React.FC<ContactsCrmPanelProps> = ({
   const { toast } = useToast()
   const isMobile = useIsMobile()
 
-  const stageOf = (contactId: string): CrmStageId => crmStages[contactId] || crmStageList[0].id
-  const stageLabelOf = (stage: CrmStageId) => getStageLabelIn(crmStageList, stage)
-  const stageDotOf = (stage: CrmStageId) => findStage(crmStageList, stage).dot
+  const stageOf = (contactId: string): CrmStageId | null => crmStages[contactId] || null
+  const stageLabelOf = (stage: CrmStageId | null) =>
+    stage ? getStageLabelIn(crmStageList, stage) : 'Sem estágio'
+  const stageDotOf = (stage: CrmStageId | null) =>
+    stage ? findStage(crmStageList, stage).dot : 'bg-slate-500'
 
   const handleToggleStage = (stageId: CrmStageId) => {
     setSelectedStages((prev) =>
@@ -206,10 +218,13 @@ export const ContactsCrmPanel: React.FC<ContactsCrmPanelProps> = ({
         }
       }
 
-      // 2. Filtro de Estágio do CRM (multi-seleção)
+      // 2. Filtro de Estágio do CRM (multi-seleção: 'none' para sem estágio)
       if (selectedStages.length > 0) {
         const contactStage = stageOf(c.id)
-        if (!selectedStages.includes(contactStage)) {
+        const matches = contactStage
+          ? selectedStages.includes(contactStage)
+          : selectedStages.includes('none')
+        if (!matches) {
           return false
         }
       }
@@ -243,26 +258,44 @@ export const ContactsCrmPanel: React.FC<ContactsCrmPanelProps> = ({
     getContactLabelIds,
   ])
 
+  // Pipeline agrupa APENAS contatos que possuem estágio atribuído
   const dealsByStage = useMemo(() => {
     const map: Record<string, Contact[]> = {}
     crmStageList.forEach((s) => {
       map[s.id] = []
     })
     filteredContacts.forEach((c) => {
-      const stage = stageOf(c.id)
-      if (map[stage]) map[stage].push(c)
+      const stage = crmStages[c.id]
+      if (stage && map[stage]) {
+        map[stage].push(c)
+      }
     })
     return map
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [filteredContacts, crmStages, crmStageList])
 
-  const moveToStage = (contact: Contact, stage: CrmStageId) => {
+  const totalPipelineDeals = useMemo(
+    () => contacts.filter((c) => Boolean(crmStages[c.id])).length,
+    [contacts, crmStages],
+  )
+  const filteredPipelineDeals = useMemo(
+    () => filteredContacts.filter((c) => Boolean(crmStages[c.id])).length,
+    [filteredContacts, crmStages],
+  )
+
+  const moveToStage = (contact: Contact, stage: CrmStageId | null) => {
     if (stageOf(contact.id) === stage) return
     setContactStage(contact.id, stage)
-    toast({
-      title: 'Negócio atualizado',
-      description: `${contact.name} movido para "${stageLabelOf(stage)}".`,
-    })
+    if (!stage) {
+      toast({
+        title: 'Removido do pipeline',
+        description: `${contact.name} agora está sem estágio no CRM.`,
+      })
+    } else {
+      toast({
+        title: 'Negócio atualizado',
+        description: `${contact.name} movido para "${stageLabelOf(stage)}".`,
+      })
+    }
   }
 
   const handleDrop = (stage: CrmStageId) => {
@@ -326,7 +359,7 @@ export const ContactsCrmPanel: React.FC<ContactsCrmPanelProps> = ({
               Contatos e CRM
             </h2>
             <p className="text-[11px] wa-header-subtitle leading-tight">
-              {contacts.length} contatos • {contacts.length} negócios
+              {contacts.length} contatos • {totalPipelineDeals} no pipeline
             </p>
           </div>
         </div>
@@ -372,7 +405,7 @@ export const ContactsCrmPanel: React.FC<ContactsCrmPanelProps> = ({
                     : 'text-slate-400 hover:text-slate-200',
                 )}
               >
-                <span>Pipeline ({filteredContacts.length})</span>
+                <span>Pipeline ({filteredPipelineDeals})</span>
               </button>
             </div>
           </div>

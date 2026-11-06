@@ -10,6 +10,7 @@ import {
   Briefcase,
   Sparkles,
   Tag,
+  Ban,
 } from 'lucide-react'
 import { Contact, CrmStageId, MessageMedia } from '@/types/whatsapp'
 import { useWhatsApp } from '@/context/WhatsAppContext'
@@ -69,8 +70,8 @@ export const ContactDetailsDrawer: React.FC<ContactDetailsDrawerProps> = ({
   if (!contact) return null
 
   const contactNotesCount = getNotesByContact(contact.id).length
-  const stage: CrmStageId = crmStages[contact.id] || crmStageList[0]?.id || 'novo'
-  const stageConfig = findStage(crmStageList, stage)
+  const stage: CrmStageId | null = crmStages[contact.id] || null
+  const stageConfig = stage ? findStage(crmStageList, stage) : null
 
   const handleOpenFullscreen = () => {
     const avatarMedia: MessageMedia = {
@@ -114,13 +115,20 @@ export const ContactDetailsDrawer: React.FC<ContactDetailsDrawerProps> = ({
     })
   }
 
-  const handleMoveStage = (next: CrmStageId) => {
+  const handleMoveStage = (next: CrmStageId | null) => {
     if (next === stage) return
     setContactStage(contact.id, next)
-    toast({
-      title: 'Negócio atualizado',
-      description: `${contact.name} movido para "${getStageLabelIn(crmStageList, next)}".`,
-    })
+    if (!next) {
+      toast({
+        title: 'Removido do pipeline',
+        description: `${contact.name} foi removido do pipeline.`,
+      })
+    } else {
+      toast({
+        title: 'Negócio atualizado',
+        description: `${contact.name} movido para "${getStageLabelIn(crmStageList, next)}".`,
+      })
+    }
   }
 
   return (
@@ -288,6 +296,19 @@ export const ContactDetailsDrawer: React.FC<ContactDetailsDrawerProps> = ({
             </div>
 
             <div className="flex flex-wrap gap-1.5 pt-1">
+              <button
+                type="button"
+                onClick={() => handleMoveStage(null)}
+                className={`flex items-center px-2.5 py-1.5 rounded-full text-xs font-medium border transition-colors ${
+                  !stage
+                    ? 'bg-[#2a3942] border-[#00a884] text-white shadow-sm'
+                    : 'bg-[#202c33] border-[#222d34] text-slate-400 hover:text-slate-200'
+                }`}
+                title="Remover do pipeline"
+              >
+                <Ban className="w-3 h-3 text-slate-400 mr-1.5" />
+                Nenhum (fora do pipeline)
+              </button>
               {crmStageList.map((s) => (
                 <button
                   key={s.id}

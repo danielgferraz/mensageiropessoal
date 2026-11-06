@@ -1,4 +1,3 @@
-import React, { useState } from 'react'
 import {
   MoreVertical,
   MessageCircle,
@@ -9,6 +8,7 @@ import {
   Trash2,
   ChevronLeft,
   ChevronRight,
+  XCircle,
 } from 'lucide-react'
 import { Contact, CrmStageId } from '@/types/whatsapp'
 import { CrmStageConfig } from '@/data/crmData'
@@ -28,8 +28,8 @@ interface PipelineBoardProps {
   stageList: CrmStageConfig[]
   /** contatos filtrados, agrupados por estágio */
   dealsByStage: Record<CrmStageId, Contact[]>
-  stageOf: (contactId: string) => CrmStageId
-  moveToStage: (contact: Contact, stage: CrmStageId) => void
+  stageOf: (contactId: string) => CrmStageId | null
+  moveToStage: (contact: Contact, stage: CrmStageId | null) => void
   onOpenChat: (contactId: string) => void
   onSelectContact: (contact: Contact) => void
   dragId: string | null
@@ -55,7 +55,7 @@ export const PipelineBoard: React.FC<PipelineBoardProps> = ({
     useWhatsApp()
   const [dialog, setDialog] = useState<StageDialogState>({ kind: 'none' })
 
-  const handleMove = (contact: Contact, stage: CrmStageId) => moveToStage(contact, stage)
+  const handleMove = (contact: Contact, stage: CrmStageId | null) => moveToStage(contact, stage)
 
   return (
     <div className="relative flex-1 min-h-0 flex flex-col w-full h-full overflow-hidden">
@@ -277,6 +277,13 @@ export const PipelineBoard: React.FC<PipelineBoardProps> = ({
                                   </DropdownMenuItem>
                                 ))}
                               <DropdownMenuSeparator className="bg-[#2a3942]" />
+                              <DropdownMenuItem
+                                onClick={() => handleMove(contact, null)}
+                                className="cursor-pointer hover:bg-rose-950/40 text-rose-300 hover:text-rose-200"
+                              >
+                                <XCircle className="w-4 h-4 mr-2 text-rose-400" />
+                                Remover do pipeline
+                              </DropdownMenuItem>
                               <DropdownMenuItem
                                 onClick={() => onOpenChat(contact.id)}
                                 className="cursor-pointer hover:bg-[#182229]"
