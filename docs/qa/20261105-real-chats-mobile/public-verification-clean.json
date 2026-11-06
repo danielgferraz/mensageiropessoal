@@ -1,0 +1,66 @@
+{
+  "release": "20261106-real-chats-clean",
+  "commit": "84573e7968562b39f00a3b9cefde70ef30e8b2be",
+  "checks": [
+    {
+      "path": "dist/assets/index-B4A9asjc.css",
+      "status": 200,
+      "sha256": "649e61f1bebda9950458011a88908f82e579922015e4f6d87bf5eb78bdcc28da",
+      "match": true
+    },
+    {
+      "path": "dist/assets/index-Ccnknqgn.js",
+      "status": 200,
+      "sha256": "0f75c2d9cf3493a927893f1cb39e702b81221dbf16f1c77595862a2049ede79b",
+      "match": true
+    },
+    {
+      "path": "dist/favicon.ico",
+      "status": 200,
+      "sha256": "7084cbc769760dfc13d55e6c62e5fb7fcc665a62a7b6c814ec555045b435f5cb",
+      "match": true
+    },
+    {
+      "path": "dist/icon-512.svg",
+      "status": 200,
+      "sha256": "16f9c9298a4df2aabd2a2e2e025df948a3616f311e582396132d763dbe496e04",
+      "match": true
+    },
+    {
+      "path": "dist/index.html",
+      "status": 200,
+      "sha256": "75eb6d018c37b4b45640245c351725ad3b1fea228455b5e90320517964ca620e",
+      "match": true
+    },
+    {
+      "path": "dist/manifest.webmanifest",
+      "status": 200,
+      "sha256": "46ff58f7e96b9a871d28bc1314c67cb863773b260aa3348d2336c7388ce58aa8",
+      "match": true
+    },
+    {
+      "path": "dist/og-image.png",
+      "status": 200,
+      "sha256": "6fa221b9bb224501fd6bcc2e17a1fa02ab7d3c4d1652c9bde838707f2c7d2b5c",
+      "match": true
+    },
+    {
+      "path": "dist/placeholder.svg",
+      "status": 200,
+      "sha256": "6833c9ab6f19d1e566a3bb0b70fd0bea2ea33ec834fb8df19d4d7566ceb0577c",
+      "match": true
+    },
+    {
+      "path": "dist/skip.png",
+      "status": 200,
+      "sha256": "03c618fa93166559331ae20cf512f903b77a1f643e9186c4d03f041be029d9a0",
+      "match": true
+    },
+    {
+      "path": "dist/sw.js",
+      "status": 200,
+      "sha256": "02dda43b4a7824a236edf0cd87b5936d513be8a5b73b7ca4188ffb580f272580",
+      "match": true
+    }
+  ]
+}

@@ -27,7 +27,9 @@
 
 ## Produção e limites
 - Infra informou Evolution v2.3.7 e confirmou EVOLUTION_APIKEY no ambiente systemd. Os formatos sanitizados enviados correspondem aos adaptadores implementados.
-- A confirmação de publicação/rollback e os smoke tests autenticados da VPS ainda são aguardados. Não declarar publicado antes desse retorno.
+- Publicação do frontend final confirmada diretamente por este agente: os 10 arquivos dist da URL pública respondem200 e os SHA256 coincidem com o pacote clean do commit84573e7. Ver public-verification-clean.json.
+- API pública sem autenticação confirmada401. Infra informou serviço ativo, WAopen, backup preservado e hash do backend a610418acf735b05a6b8e85166b7532fbf7f2eb44521a777bfa0150e6f1f5515; essas observações da VPS são relatadas pelo Infra.
+- Ainda aguardados os smoke tests autenticados do proxy na VPS: admin200 em instâncias/chats/histórico e não-admin403. O retorno inicial do Infra não inclui esses testes.
 - Não houve envio externo para testes: destinatário não foi especificado. Teclado físico iOS/Android e instalação standalone não testados; somente redução de viewport.
 - Mídias recebidas têm resumo textual; envio de mídia/áudio, criação de grupos e reações remotas permanecem indisponíveis.
 - Notas, etiquetas e CRM permanecem locais ao navegador nesta entrega.
