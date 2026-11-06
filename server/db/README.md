@@ -13,5 +13,19 @@
 - **Rollback:**
   1. Remova o drop-in, rode `daemon-reload` e reinicie o `mensageiro`. As rotas `/state` passam a responder 503 e o resto do app continua funcionando.
   2. Rode `DROP DATABASE mensageiro; DROP ROLE mensageiro_app;`.
-- **Risco residual:** o role consegue *conectar* aos bancos `postgres` e `_supabase`, porque o CONNECT vem de PUBLIC no stack legado. Lá ele não lê `auth` nem `storage`, mas tem acesso de PUBLIC ao `pg_net` (`net.http_*`). Para fechar isso sem mexer no stack, a proposta é um login event trigger (PG17) nesses dois bancos, que barra `mensageiro_app`. Ainda não foi aplicado: falta aprovação.
+- **Login compartilhado, dados isolados:** o login do Mensageiro usa o auth do TechAgenda pelo Kong `127.0.0.1:18180` (`/auth/v1` + `profiles` no `techagenda-core-db-1`). Isso foi mantido de propósito. Notas, CRM, estado por conversa e auditoria ficam só no banco `mensageiro`, que é outro Postgres (o do stack legado). O banco `mensageiro` não tem nenhuma tabela de usuário.
+- **Bloqueio dos outros bancos (`002_block_other_dbs.sql`, aplicado em 06/11/2026):** um login event trigger, `mensageiro_block_login`, nos bancos `postgres` e `_supabase` recusa conexões de `mensageiro_app`. Isso corta o acesso PUBLIC ao `pg_net`. Nenhum outro role é afetado.
+  - Para aplicar de novo, rode em cada banco:
+    ```sh
+    sudo docker exec -i supabase-db psql -U supabase_admin -d postgres -v ON_ERROR_STOP=1 < 002_block_other_dbs.sql
+    ```
+  - Ao aplicar pela primeira vez, encerre as sessões de `mensageiro_app` que o pooler já tinha abertas nesses bancos:
+    ```sql
+    SELECT pg_terminate_backend(pid) FROM pg_stat_activity WHERE usename='mensageiro_app' AND datname IN ('postgres','_supabase');
+    ```
+  - Rollback, em cada banco:
+    ```sql
+    DROP EVENT TRIGGER IF EXISTS mensageiro_block_login; DROP FUNCTION IF EXISTS public.mensageiro_block_login();
+    ```
+  - Emergência: `PGOPTIONS='-c event_triggers=off'` como superusuário.
 - **Modo:** só sugestão. `COPILOT_ALLOW_AUTOMATIC` continua proibido e nenhuma rota envia mensagem sozinha.
