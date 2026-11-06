@@ -5,6 +5,7 @@ import { fileURLToPath } from 'node:url';
 import { execFile } from 'node:child_process';
 import { createStore, suggestReply, validateConfig } from './copilot.mjs';
 import { loadKnowledge } from './rag.mjs';
+import { createStateDb, validJid } from './state-db.mjs';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -19,6 +20,12 @@ const COPILOT_DATA_DIR = process.env.COPILOT_DATA_DIR || path.resolve(__dirname,
 const NEBRIA_DIR = process.env.NEBRIA_DIR || '';
 const COPILOT_ALLOW_AUTOMATIC = process.env.COPILOT_ALLOW_AUTOMATIC === '1';
 const copilotStore = createStore(COPILOT_DATA_DIR);
+// Banco isolado do Mensageiro (estado por conversa, notas, CRM, auditoria). Sem URL, as rotas /state respondem 503.
+const MENSAGEIRO_DATABASE_URL = process.env.MENSAGEIRO_DATABASE_URL || '';
+let stateDb = null;
+const stateDbReady = createStateDb(MENSAGEIRO_DATABASE_URL)
+  .then((db) => { stateDb = db; return db; })
+  .catch((err) => { console.error('[state-db] indisponível:', err.message); return null; });
 let knowledgeCache = { at: 0, key: '', value: null };
 function currentKnowledge(config) {
   const key = JSON.stringify([NEBRIA_DIR, config.ragFolders]);
@@ -27,11 +34,18 @@ function currentKnowledge(config) {
   }
   return knowledgeCache.value;
 }
+// O agy não recebe segredos do Mensageiro (banco e Evolution)
+function agyEnv() {
+  const env = { ...process.env, PATH: `${process.env.PATH}:/home/opc/.local/bin` };
+  delete env.MENSAGEIRO_DATABASE_URL;
+  delete env.EVOLUTION_APIKEY;
+  return env;
+}
 function runAgy(prompt) {
   return new Promise((resolve, reject) => {
     if (!fs.existsSync(AGY_BIN)) return reject(new Error('agy indisponível'));
     execFile(AGY_BIN, ['-p', prompt], { timeout: 90000, maxBuffer: 2 * 1024 * 1024,
-      env: { ...process.env, PATH: `${process.env.PATH}:/home/opc/.local/bin` } },
+      env: agyEnv() },
     (error, stdout) => (error ? reject(error) : resolve(stdout)));
   });
 }
@@ -358,6 +372,70 @@ async function handleApi(req, res, apiPath) {
     }
   }
 
+  // Estado por conversa / notas / CRM / sugestões / auditoria (banco isolado; modo somente sugestão)
+  if (apiPath.startsWith('/state/')) {
+    const db = stateDb || await stateDbReady;
+    if (!db) return sendJson(res, 503, { error: 'Banco do Mensageiro não configurado no servidor.' });
+    const jidOf = (raw) => { try { const j = decodeURIComponent(raw); return validJid(j) ? j : null; } catch { return null; } };
+    const fail = (err) => {
+      if (err.statusCode) return sendJson(res, err.statusCode, { error: err.message });
+      console.error('[state-db]', err.message);
+      return sendJson(res, 500, { error: 'Falha no banco do Mensageiro.' });
+    };
+    try {
+      if (apiPath === '/state/health' && method === 'GET') return sendJson(res, 200, await db.health());
+      const conv = apiPath.match(/^\/state\/conversations\/([^/]+)$/);
+      if (conv) {
+        const jid = jidOf(conv[1]);
+        if (!jid) return sendJson(res, 400, { error: 'JID inválido.' });
+        if (method === 'GET') return sendJson(res, 200, await db.getState(jid));
+        if (method === 'PUT') {
+          const body = await parseBody(req);
+          return sendJson(res, 200, { conversation: await db.updateConversation(jid, { aiEnabled: body.aiEnabled, mode: body.mode }, 'humano') });
+        }
+      }
+      const notes = apiPath.match(/^\/state\/conversations\/([^/]+)\/notes$/);
+      if (notes && method === 'POST') {
+        const jid = jidOf(notes[1]);
+        const body = await parseBody(req);
+        const note = text(body.text, 8000).trim();
+        if (!jid || !note) return sendJson(res, 400, { error: 'Informe JID válido e texto da nota.' });
+        // Origem "ia" só quando a nota vem de uma ferramenta da IA; a UI grava como humano.
+        const author = body.author === 'ia' ? 'ia' : 'humano';
+        return sendJson(res, 201, { note: await db.addNote(jid, author, note) });
+      }
+      const noteDel = apiPath.match(/^\/state\/notes\/(\d{1,18})$/);
+      if (noteDel && method === 'DELETE') return sendJson(res, (await db.deleteNote(noteDel[1])) ? 200 : 404, {});
+      const crm = apiPath.match(/^\/state\/conversations\/([^/]+)\/crm$/);
+      if (crm && method === 'PUT') {
+        const jid = jidOf(crm[1]);
+        const body = await parseBody(req);
+        const stage = body.stage == null || body.stage === '' ? null : text(body.stage, 64);
+        if (!jid) return sendJson(res, 400, { error: 'JID inválido.' });
+        return sendJson(res, 200, { crm: await db.setCrmStage(jid, stage, 'humano') });
+      }
+      const crmSug = apiPath.match(/^\/state\/conversations\/([^/]+)\/crm-suggestion$/);
+      if (crmSug && method === 'POST') {
+        const jid = jidOf(crmSug[1]);
+        const body = await parseBody(req);
+        const stage = text(body.stage, 64);
+        if (!jid || !stage) return sendJson(res, 400, { error: 'Informe JID válido e estágio sugerido.' });
+        return sendJson(res, 201, { suggestion: await db.suggestCrmStage(jid, stage, text(body.reason, 500)) });
+      }
+      const resolve = apiPath.match(/^\/state\/suggestions\/(\d{1,18})\/(accept|dismiss)$/);
+      if (resolve && method === 'POST') {
+        const r = await db.resolveSuggestion(resolve[1], resolve[2] === 'accept' ? 'accepted' : 'dismissed');
+        return r ? sendJson(res, 200, r) : sendJson(res, 404, { error: 'Sugestão não encontrada ou já resolvida.' });
+      }
+      if (apiPath === '/state/audit' && method === 'GET') {
+        const jid = new URL(req.url, 'http://localhost').searchParams.get('jid');
+        if (jid && !validJid(jid)) return sendJson(res, 400, { error: 'JID inválido.' });
+        return sendJson(res, 200, { entries: await db.listAudit(jid || null, 100) });
+      }
+      return sendJson(res, 404, { error: 'Rota não encontrada.' });
+    } catch (err) { return fail(err); }
+  }
+
   // Atendente Copilot: configuração, auditoria e rascunhos (nunca envia mensagens)
   if (apiPath.startsWith('/copilot/')) {
     if (apiPath === '/copilot/config' && method === 'GET') {
@@ -383,11 +461,25 @@ async function handleApi(req, res, apiPath) {
       const messages = Array.isArray(body.messages) ? body.messages.slice(-20).map((m) => ({ fromMe: !!m?.fromMe, text: text(m?.text, 800) })).filter((m) => m.text) : [];
       const lastIncoming = [...messages].reverse().find((m) => !m.fromMe)?.text || '';
       if (!text(body.contactId, 200) || !lastIncoming) return sendJson(res, 400, { error: 'Conversa sem mensagem do cliente para responder.' });
+      // Controle por conversa: sugestão só com a IA ligada nesta conversa e sem humano assumindo
+      const db = stateDb || await stateDbReady;
+      const convJid = validJid(body.contactId) ? body.contactId : null;
+      if (db && convJid) {
+        const state = await db.getConversation(convJid).catch(() => null);
+        if (state && (!state.aiEnabled || state.mode === 'human')) {
+          return sendJson(res, 200, { draft: null, blocked: true, code: state.mode === 'human' ? 'human_takeover' : 'conversation_off',
+            reason: state.mode === 'human' ? 'Conversa assumida por humano: devolva para a IA para receber sugestões.' : 'Sugestões da IA desligadas nesta conversa.', sources: [] });
+        }
+      }
       const config = copilotStore.readConfig();
       const result = await suggestReply({ store: copilotStore, knowledge: currentKnowledge(config), runModel: runAgy, user: auth.user,
         request: { contactId: text(body.contactId, 200), isSaved: body.isSaved === true, isGroup: body.isGroup === true,
           labelIds: Array.isArray(body.labelIds) ? body.labelIds.filter((id) => typeof id === 'string').slice(0, 50) : [],
-          contactPhone: text(body.contactPhone, 30).replace(/D/g, ''), messages, lastIncoming } });
+          contactPhone: text(body.contactPhone, 30).replace(/\D/g, ''), messages, lastIncoming } });
+      if (db && convJid && result?.draft) {
+        const sug = await db.recordReplySuggestion(convJid, String(result.draft).slice(0, 10000)).catch((err) => { console.error('[state-db]', err.message); return null; });
+        if (sug) result.suggestionId = sug.id;
+      }
       return sendJson(res, 200, result);
     }
     return sendJson(res, 404, { error: 'Rota não encontrada.' });
@@ -627,6 +719,17 @@ async function handleApi(req, res, apiPath) {
         }),
       });
       const data = await resp.json();
+      // Autoria: enviado sempre por humano; se o texto veio de uma sugestão da IA aprovada, marca como "ia"
+      const db = stateDb || await stateDbReady;
+      const sentJid = validJid(body.jid) ? body.jid : null;
+      if (resp.ok && db && sentJid) {
+        const suggestionId = /^\d{1,18}$/.test(String(body.suggestionId || '')) ? String(body.suggestionId) : null;
+        const author = suggestionId ? 'ia' : 'humano';
+        try {
+          if (suggestionId) await db.resolveSuggestion(suggestionId, 'accepted');
+          await db.recordSent(sentJid, typeof data?.key?.id === 'string' ? data.key.id : null, author);
+        } catch (err) { console.error('[state-db]', err.message); }
+      }
       return sendJson(res, resp.status, data);
     } catch (err) {
       if (err.statusCode) return sendJson(res, err.statusCode, { error: err.message });
