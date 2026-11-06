@@ -45,7 +45,7 @@ interface WhatsAppContextType {
   setActiveChatId: (id: string | null) => void
   activeMedia: MessageMedia | null
   setActiveMedia: (media: MessageMedia | null) => void
-  sendMessage: (conversationId: string, text?: string, media?: MessageMedia) => Promise<void>
+  sendMessage: (conversationId: string, text?: string, media?: MessageMedia, opts?: { suggestionId?: string; jid?: string }) => Promise<void>
   createGroup: (name: string, participantIds: string[], avatar?: string) => string
   addContact: (name: string, phone: string, about?: string) => Contact
   saveConversationAsContact: (conversationId: string, name: string) => Contact
@@ -368,7 +368,7 @@ export const WhatsAppProvider: React.FC<{ children: React.ReactNode }> = ({ chil
     )
   }
 
-  const sendMessage = async (conversationId: string, text?: string, media?: MessageMedia) => {
+  const sendMessage = async (conversationId: string, text?: string, media?: MessageMedia, opts?: { suggestionId?: string; jid?: string }) => {
     if (media) throw new Error('Envio de fotos e vídeos ainda não está disponível.')
     if (!text?.trim()) return
     if (conversationId === 'conv-antigravity') {
@@ -385,6 +385,8 @@ export const WhatsAppProvider: React.FC<{ children: React.ReactNode }> = ({ chil
     const name = remote.instance.name
     const data = await evolutionRequest(`/whatsapp/send-message/${encodeURIComponent(name)}`, {
       number: conversationId, text: text.trim(),
+      // Autoria no banco do Mensageiro: jid da conversa e, se o texto veio da IA, a sugestão de origem
+      jid: opts?.jid || conversationId, suggestionId: opts?.suggestionId,
     })
     if (remote.instanceRef.current !== name) throw new Error('A instância mudou durante o envio. Confira a conversa no WhatsApp.')
     const sent = normalizeMessage(data, conversationId)

@@ -32,6 +32,7 @@ export interface CopilotDraft {
   code: string
   reason: string
   sources: { source: string; title: string; version?: string }[]
+  suggestionId?: string
 }
 
 async function call<T>(path: string, init?: RequestInit): Promise<T> {

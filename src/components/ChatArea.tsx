@@ -41,6 +41,8 @@ import { MessageReactionPicker } from './chat/MessageReactionPicker'
 import { QuickRepliesDialog } from './QuickRepliesDialog'
 import { SaveContactDialog } from './SaveContactDialog'
 import { requestCopilotDraft, CopilotDraft } from '@/lib/copilot'
+import { getConversationSnapshot, ConversationSnapshot, StateUnavailableError } from '@/lib/conversation-state'
+import { ConversationAiBar } from './chat/ConversationAiBar'
 
 interface ChatAreaProps {
   onBackMobile?: () => void
@@ -120,6 +122,22 @@ export const ChatArea: React.FC<ChatAreaProps> = ({
     if (activeContact && onOpenContactDetails) onOpenContactDetails(activeContact.id)
   }
 
+  // Estado da IA por conversa (banco do Mensageiro). Só conversas individuais.
+  const stateJid = activeConversation && !activeConversation.isGroup && activeConversation.id.includes('@')
+    ? (activeContact?.id || activeConversation.id) : null
+  const [snapshot, setSnapshot] = useState<ConversationSnapshot | null>(null)
+  const [stateError, setStateError] = useState<string | null>(null)
+  const [stateReload, setStateReload] = useState(0)
+  const usedSuggestion = React.useRef<{ chatId: string; id: string; text: string } | null>(null)
+  React.useEffect(() => {
+    if (!stateJid) { setSnapshot(null); setStateError(null); return }
+    let alive = true
+    getConversationSnapshot(stateJid)
+      .then((s) => { if (alive) { setSnapshot(s); setStateError(null) } })
+      .catch((e) => { if (alive) { setSnapshot(null); setStateError(e instanceof StateUnavailableError ? 'controle indisponível no servidor.' : e instanceof Error ? e.message : 'falha ao carregar.') } })
+    return () => { alive = false }
+  }, [stateJid, stateReload])
+
   const scrollRef = React.useRef<HTMLDivElement>(null)
   const nearBottom = React.useRef(true)
   React.useEffect(() => {
@@ -180,7 +198,12 @@ export const ChatArea: React.FC<ChatAreaProps> = ({
     const chatId = activeConversation.id
     setSending(true); setSendError(null)
     try {
-      await sendMessage(chatId, text.trim())
+      // Só conta como "IA" se o texto enviado é exatamente o rascunho aprovado; editado vira humano
+      const used = usedSuggestion.current
+      const suggestionId = used && used.chatId === chatId && used.text.trim() === text.trim() ? used.id : undefined
+      await sendMessage(chatId, text.trim(), undefined, { suggestionId, jid: stateJid || undefined })
+      if (suggestionId) usedSuggestion.current = null
+      setStateReload((n) => n + 1)
       if (drafts.current[chatId] === text) {
         drafts.current[chatId] = ''
         if (activeChatRef.current === chatId) setInputText('')
@@ -405,6 +428,8 @@ export const ChatArea: React.FC<ChatAreaProps> = ({
         </div>
       )}
 
+      {stateJid && <ConversationAiBar jid={stateJid} snapshot={snapshot?.conversation.jid === stateJid ? snapshot : null} error={stateError} onChange={() => setStateReload((n) => n + 1)} />}
+
       {/* Messages viewport */}
       <div ref={scrollRef} onScroll={() => {
         const el = scrollRef.current
@@ -550,6 +575,7 @@ export const ChatArea: React.FC<ChatAreaProps> = ({
 
                   {/* Message timestamp and status tick */}
                   <div className="flex items-center justify-end space-x-1 float-right mt-1 ml-2 text-[11px] text-slate-300/70 select-none">
+                    {isMe && snapshot?.authorship[msg.id] === 'ia' && <span className="inline-flex items-center gap-0.5 rounded bg-[#00a884]/20 px-1 text-[10px] text-[#7fe3cb]" title="Texto sugerido pela IA e aprovado por você"><Bot className="h-3 w-3" aria-hidden />IA</span>}
                     <span>{msg.timestamp}</span>
                     {isMe && renderStatusTicks(msg.status)}
                   </div>
@@ -626,7 +652,9 @@ export const ChatArea: React.FC<ChatAreaProps> = ({
             <p className="whitespace-pre-wrap">{copilotResult.draft}</p>
             {copilotResult.sources.length > 0 && <p className="text-[11px] text-slate-400">Fontes: {copilotResult.sources.map((s) => s.title).join(', ')}</p>}
             <div className="flex gap-2">
-              <Button type="button" size="sm" onClick={() => { const text = copilotResult.draft!; setInputText(text); drafts.current[activeConversation.id] = text; setCopilotResult(null) }} className="bg-[#00a884] text-white hover:bg-[#008f72]">Usar no campo de mensagem</Button>
+              <Button type="button" size="sm" onClick={() => { const text = copilotResult.draft!; setInputText(text); drafts.current[activeConversation.id] = text
+                usedSuggestion.current = copilotResult.suggestionId ? { chatId: activeConversation.id, id: copilotResult.suggestionId, text } : null
+                setCopilotResult(null) }} className="bg-[#00a884] text-white hover:bg-[#008f72]">Usar no campo de mensagem</Button>
               <Button type="button" size="sm" variant="ghost" onClick={() => setCopilotResult(null)} className="text-slate-200">Descartar</Button>
             </div>
           </> : <>
