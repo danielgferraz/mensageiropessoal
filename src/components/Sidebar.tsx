@@ -1,3 +1,4 @@
+import { FALLBACK_AVATAR } from '@/lib/evolution'
 import React, { useState } from 'react'
 import {
   MessageSquare,
@@ -184,6 +185,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
                   src={user.avatar}
                   alt={user.name}
                   className="w-10 h-10 rounded-full object-cover ring-1 ring-white/20 group-hover:ring-[#00a884] transition-all"
+                  onError={(e) => { const t = e.currentTarget; t.onerror = null; t.src = FALLBACK_AVATAR }}
                 />
                 <span className="absolute bottom-0 right-0 w-2.5 h-2.5 bg-[#00a884] rounded-full border border-[var(--wa-header-sidebar-bg)]" />
               </div>
@@ -528,6 +530,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
                     src={conv.avatar}
                     alt={conv.name}
                     className="w-12 h-12 rounded-full object-cover ring-1 ring-white/10"
+                    onError={(e) => { const t = e.currentTarget; t.onerror = null; t.src = FALLBACK_AVATAR }}
                   />
                   {conv.isGroup && (
                     <div className="absolute -bottom-1 -right-1 bg-[#202c33] p-0.5 rounded-full">

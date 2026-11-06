@@ -1,3 +1,5 @@
+import React, { useState } from 'react'
+import { FALLBACK_AVATAR } from '@/lib/evolution'
 import {
   MoreVertical,
   MessageCircle,
@@ -215,6 +217,7 @@ export const PipelineBoard: React.FC<PipelineBoardProps> = ({
                             alt={contact.name}
                             className="w-9 h-9 rounded-full object-cover ring-1 ring-white/10 shrink-0"
                             draggable={false}
+                            onError={(e) => { const t = e.currentTarget; t.onerror = null; t.src = FALLBACK_AVATAR }}
                           />
 
                           <div className="flex-1 min-w-0">

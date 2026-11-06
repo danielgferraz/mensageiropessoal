@@ -1,3 +1,4 @@
+import { FALLBACK_AVATAR } from '@/lib/evolution'
 import React from 'react'
 import { X, Users, UserPlus, ShieldAlert, BellOff, LogOut, Info } from 'lucide-react'
 import { useWhatsApp } from '@/context/WhatsAppContext'
@@ -44,6 +45,7 @@ export const GroupInfoPanel: React.FC<GroupInfoPanelProps> = ({ conversationId, 
             src={conversation.avatar}
             alt={conversation.name}
             className="w-28 h-28 rounded-full object-cover shadow-lg mb-3"
+            onError={(e) => { const t = e.currentTarget; t.onerror = null; t.src = FALLBACK_AVATAR }}
           />
           <h3 className="text-lg font-semibold text-slate-100">{conversation.name}</h3>
           <p className="text-xs text-slate-400 mt-1">
@@ -74,6 +76,7 @@ export const GroupInfoPanel: React.FC<GroupInfoPanelProps> = ({ conversationId, 
                 src={user.avatar}
                 alt={user.name}
                 className="w-10 h-10 rounded-full object-cover"
+                onError={(e) => { const t = e.currentTarget; t.onerror = null; t.src = FALLBACK_AVATAR }}
               />
               <div className="flex-1 min-w-0">
                 <div className="flex items-center justify-between">
@@ -102,6 +105,7 @@ export const GroupInfoPanel: React.FC<GroupInfoPanelProps> = ({ conversationId, 
                     src={c.avatar}
                     alt={c.name}
                     className="w-10 h-10 rounded-full object-cover"
+                    onError={(e) => { const t = e.currentTarget; t.onerror = null; t.src = FALLBACK_AVATAR }}
                   />
                   <div className="flex-1 min-w-0">
                     <p className="text-sm font-medium text-slate-200 truncate">{c.name}</p>

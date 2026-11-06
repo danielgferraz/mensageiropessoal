@@ -1,4 +1,5 @@
 import React, { useState } from 'react'
+import { FALLBACK_AVATAR } from '@/lib/evolution'
 import {
   X,
   Phone,
@@ -203,6 +204,7 @@ export const ContactDetailsDrawer: React.FC<ContactDetailsDrawerProps> = ({
                 className="w-32 h-32 rounded-full object-cover shadow-xl ring-2 ring-white/10 group-hover:brightness-95 transition-all cursor-pointer"
                 onClick={handleOpenFullscreen}
                 title="Clique para ver a foto em tela cheia"
+                onError={(e) => { const t = e.currentTarget; t.onerror = null; t.src = FALLBACK_AVATAR }}
               />
               {/* Botão de abrir em tela cheia sobre a foto */}
               <button

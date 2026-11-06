@@ -1,4 +1,5 @@
 import React, { useMemo, useState } from 'react'
+import { FALLBACK_AVATAR } from '@/lib/evolution'
 import { ArrowLeft, Users, Search, UserPlus, MessageCircle, RotateCcw, XCircle } from 'lucide-react'
 import { useWhatsApp } from '@/context/WhatsAppContext'
 import { Contact, CrmStageId } from '@/types/whatsapp'
@@ -95,6 +96,7 @@ const ContactsList: React.FC<{
                     src={contact.avatar}
                     alt={contact.name}
                     className="w-11 h-11 rounded-full object-cover"
+                    onError={(e) => { const t = e.currentTarget; t.onerror = null; t.src = FALLBACK_AVATAR }}
                   />
                 </div>
 

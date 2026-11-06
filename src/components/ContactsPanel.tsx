@@ -1,4 +1,5 @@
 import React, { useState } from 'react'
+import { FALLBACK_AVATAR } from '@/lib/evolution'
 import { ArrowLeft, UserPlus, Search, MessageCircle } from 'lucide-react'
 import { useWhatsApp } from '@/context/WhatsAppContext'
 import { Contact } from '@/types/whatsapp'
@@ -94,6 +95,7 @@ export const ContactsPanel: React.FC<ContactsPanelProps> = ({ onClose }) => {
                     src={contact.avatar}
                     alt={contact.name}
                     className="w-11 h-11 rounded-full object-cover"
+                    onError={(e) => { const t = e.currentTarget; t.onerror = null; t.src = FALLBACK_AVATAR }}
                   />
                   {contact.online && (
                     <span className="absolute bottom-0 right-0 w-2.5 h-2.5 bg-[#00a884] rounded-full border border-[#111b21]" />

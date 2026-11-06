@@ -1,4 +1,5 @@
 import React, { useState } from 'react'
+import { FALLBACK_AVATAR } from '@/lib/evolution'
 import { ArrowLeft, Users, Check, Search, Sparkles, Camera } from 'lucide-react'
 import { useWhatsApp } from '@/context/WhatsAppContext'
 import { Button } from '@/components/ui/button'
@@ -101,7 +102,7 @@ export const NewGroupPanel: React.FC<NewGroupPanelProps> = ({ onClose, onGroupCr
                     className="flex items-center space-x-1.5 bg-[#202c33] border border-[#2f3b43] text-xs px-2.5 py-1 rounded-full cursor-pointer hover:bg-red-950/40 hover:border-red-500/50 transition-colors shrink-0"
                     title="Clique para remover"
                   >
-                    <img src={c.avatar} alt={c.name} className="w-4 h-4 rounded-full" />
+                    <img src={c.avatar} alt={c.name} className="w-4 h-4 rounded-full" onError={(e) => { const t = e.currentTarget; t.onerror = null; t.src = FALLBACK_AVATAR }} />
                     <span className="truncate max-w-[90px]">{c.name}</span>
                     <span className="text-slate-400 hover:text-red-400 text-sm">×</span>
                   </div>
@@ -140,6 +141,7 @@ export const NewGroupPanel: React.FC<NewGroupPanelProps> = ({ onClose, onGroupCr
                       src={contact.avatar}
                       alt={contact.name}
                       className="w-11 h-11 rounded-full object-cover"
+                      onError={(e) => { const t = e.currentTarget; t.onerror = null; t.src = FALLBACK_AVATAR }}
                     />
                     {isSelected && (
                       <div className="absolute -bottom-1 -right-1 bg-[#00a884] rounded-full p-0.5 border border-[#111b21]">

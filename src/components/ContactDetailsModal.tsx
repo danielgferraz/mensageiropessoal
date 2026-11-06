@@ -1,4 +1,5 @@
 import React, { useEffect, useState } from 'react'
+import { FALLBACK_AVATAR } from '@/lib/evolution'
 import {
   X,
   MessageCircle,
@@ -159,6 +160,7 @@ export const ContactDetailsModal: React.FC<ContactDetailsModalProps> = ({
             src={contact.avatar}
             alt={contact.name}
             className="w-20 h-20 rounded-full object-cover ring-2 ring-white/15 shadow-md"
+            onError={(e) => { const t = e.currentTarget; t.onerror = null; t.src = FALLBACK_AVATAR }}
           />
           {editing ? (
             <Input

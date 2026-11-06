@@ -1,3 +1,4 @@
+import { FALLBACK_AVATAR } from '@/lib/evolution'
 import React, { useState } from 'react'
 import {
   Smile,
@@ -260,6 +261,7 @@ export const ChatArea: React.FC<ChatAreaProps> = ({
               src={activeConversation.avatar}
               alt={activeConversation.name}
               className="w-10 h-10 rounded-full object-cover ring-1 ring-white/10"
+              onError={(e) => { const t = e.currentTarget; t.onerror = null; t.src = FALLBACK_AVATAR }}
             />
 
           </div>
