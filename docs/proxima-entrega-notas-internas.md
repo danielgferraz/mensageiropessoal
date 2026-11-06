@@ -11,4 +11,5 @@ Prioridade comunicada pelo usuário via Verificador. Iniciar após fechamento da
 - Validar isolamento por contato, cronologia, autoria, CRUD, navegação por teclado e mobile.
 
 ## Situação
-Escopo registrado, sem implementação iniciada. O armazenamento atual de notas é local ao navegador; persistência e sincronização entre dispositivos precisam ser definidas no início dessa entrega.
+Implementada e validada localmente após autorização do Verificador em 05/11/2026. Relatório: docs/qa/20261105-internal-notes/report.md.
+Armazenamento local existente preservado; sincronização entre dispositivos não faz parte desta entrega. Sem commit ou publicação desta feature.

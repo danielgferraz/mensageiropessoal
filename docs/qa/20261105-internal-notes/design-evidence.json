@@ -1,0 +1,59 @@
+{
+  "contract": "Contato individual: registrar nota interna separadamente do envio, exibir cronologia com autor/data e destaque âmbar; CRUD nos detalhes e modal CRM; clique rola/foca a nota; persistir antes de confirmar; preservar legados e rascunhos em erro. Desktop e mobile sem overflow.",
+  "targetViewports": [
+    "390x844",
+    "1440x900",
+    "320x568"
+  ],
+  "accessibility": {
+    "status": "pass",
+    "evidence": "Campos e ações rotulados; modo selecionado com aria-pressed; nota focável com tabIndex=-1 e anel de foco visível; callback dos detalhes e do CRM levou foco ao article; menu de dados/notas acessível por botão; movimento reduzido respeitado."
+  },
+  "responsive": {
+    "status": "pass",
+    "evidence": "390x844,1440x900 e320x568 inspecionados no navegador. Card quebra texto e metadados; viewport320 tem textarea281x72/bottom504 e nenhum overflow horizontal. Teclado físico não testado."
+  },
+  "contentStates": {
+    "loading": {
+      "status": "not-applicable",
+      "reason": "Notas carregadas sincronicamente do armazenamento local; não há nova requisição assíncrona. Loading das mensagens remotas permanece existente."
+    },
+    "empty": {
+      "status": "pass",
+      "evidence": "Primeira nota registrada na conversa inicialmente sem notas; mensagem/nota usam formulários distintos; helper filtra lista vazia e contato ausente sem fabricar registros."
+    },
+    "error": {
+      "status": "pass",
+      "evidence": "Quota simulada no navegador manteve rascunho e não confirmou salvamento; armazenamento inválido preservado e alertado."
+    },
+    "partial": {
+      "status": "pass",
+      "evidence": "Notas locais inválidas exibem alerta enquanto mensagens remotas permanecem legíveis (revisão53)."
+    },
+    "success": {
+      "status": "pass",
+      "evidence": "Criar/editar/excluir e recarregar confirmados; navegação no drawer e modal CRM focou o article correto."
+    },
+    "permission": {
+      "status": "pass",
+      "evidence": "Feature permanece dentro de AdminGuard existente. Suíte de proxy cobre anônimo401/não-admin403; sessão admin fictícia foi necessária para acessar o fluxo de UI. Não alterado o contrato de autorização."
+    }
+  },
+  "renderedEvidence": [
+    {
+      "viewport": "390x844",
+      "artifact": "browser-integration.json",
+      "observation": "Nota âmbar separada dos balões, autor/data legíveis, modo de nota com texto de privacidade e textarea própria. CRUD e drawer/foco exercitados nesta largura."
+    },
+    {
+      "viewport": "1440x900",
+      "artifact": "browser-integration.json",
+      "observation": "Build final: nota entre mensagens, destaque/foco âmbar, autor/data e composer separado; menu/CRM/modal navegáveis."
+    },
+    {
+      "viewport": "320x568",
+      "artifact": "browser-integration.json",
+      "observation": "Build final: card com quebra de linhas e área de mensagens rolável; composer visível; textarea281x72, bottom504, sem overflow horizontal. Movimento reduzido habilitado."
+    }
+  ]
+}

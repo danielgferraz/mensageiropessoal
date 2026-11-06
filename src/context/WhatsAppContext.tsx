@@ -1,7 +1,9 @@
-import React, { createContext, useContext, useState, useEffect } from 'react'
+import React, { createContext, useContext, useState, useEffect, useRef, useCallback, useMemo } from 'react'
+import { createContactNote, editContactNote, noteTimestamp, readContactNotes, writeContactNotes } from '@/lib/contact-notes'
 import { useAuth } from '@/context/AuthContext'
 import { useEvolution, evolutionRequest } from '@/hooks/use-evolution'
 import { FALLBACK_AVATAR, normalizeMessage } from '@/lib/evolution'
+import { canonicalizeKeys, formatPhone } from '@/lib/jids'
 import {
   Contact,
   Conversation,
@@ -46,6 +48,7 @@ interface WhatsAppContextType {
   sendMessage: (conversationId: string, text?: string, media?: MessageMedia) => Promise<void>
   createGroup: (name: string, participantIds: string[], avatar?: string) => string
   addContact: (name: string, phone: string, about?: string) => Contact
+  saveConversationAsContact: (conversationId: string, name: string) => Contact
   updateContact: (contactId: string, name: string, about?: string, phone?: string) => void
   startChatWithContact: (contactId: string) => string
   markAsRead: (conversationId: string) => void
@@ -80,6 +83,10 @@ interface WhatsAppContextType {
   updateQuickReply: (id: string, text: string, shortcut?: string) => void
   deleteQuickReply: (id: string) => void
   // Notas Internas de Contatos
+  noteStorageError: string | null
+  noteFocusRequest: { noteId: string; contactId: string; requestId: number } | null
+  focusContactNote: (noteId: string) => void
+  clearNoteFocus: () => void
   contactNotes: ContactNote[]
   getNotesByContact: (contactId: string) => ContactNote[]
   addContactNote: (contactId: string, text: string) => ContactNote | null
@@ -120,6 +127,7 @@ const STORAGE_KEYS = {
   CONTACT_LABELS: 'wa_clone_contact_labels',
   QUICK_REPLIES: 'wa_clone_quick_replies',
   CONTACT_NOTES: 'wa_clone_contact_notes',
+  SAVED_CONTACTS: 'wa_clone_saved_contacts',
   LOGS: 'wa_clone_event_logs',
   CONNECTIONS: 'wa_clone_evolution_connections',
 }
@@ -128,7 +136,26 @@ export const WhatsAppProvider: React.FC<{ children: React.ReactNode }> = ({ chil
   const { user: adminUser } = useAuth()
   const [activeChatId, setActiveChatId] = useState<string | null>(null)
   const remote = useEvolution(activeChatId)
-  const { contacts, setContacts, conversations, setConversations, messages, setMessages } = remote
+  const { conversations: remoteConversations, setConversations, messages, setMessages } = remote
+  // Contatos e pipeline só contêm quem foi adicionado de propósito; conversas avulsas não viram contato.
+  const [savedContacts, setSavedContacts] = useState<Contact[]>(() => {
+    try {
+      const parsed = JSON.parse(localStorage.getItem(STORAGE_KEYS.SAVED_CONTACTS) || '[]') as unknown
+      return Array.isArray(parsed) ? parsed.filter((c) => c && typeof c.id === 'string' && typeof c.name === 'string') : []
+    } catch { return [] }
+  })
+  useEffect(() => { localStorage.setItem(STORAGE_KEYS.SAVED_CONTACTS, JSON.stringify(savedContacts)) }, [savedContacts])
+  const matchesContact = (conversation: Conversation, contactId: string) =>
+    conversation.id === contactId || !!conversation.aliases?.includes(contactId)
+  const conversations = useMemo(() => remoteConversations.map((conversation) => {
+    if (conversation.isGroup || !conversation.id.includes('@')) return conversation
+    const saved = savedContacts.find((contact) => matchesContact(conversation, contact.id))
+    return saved ? { ...conversation, name: saved.name, isSaved: true } : { ...conversation, isSaved: false }
+  }), [remoteConversations, savedContacts])
+  const contacts = useMemo(() => savedContacts.map((contact) => {
+    const conversation = remoteConversations.find((c) => matchesContact(c, contact.id))
+    return conversation && conversation.avatar !== FALLBACK_AVATAR ? { ...contact, avatar: conversation.avatar } : contact
+  }), [savedContacts, remoteConversations])
   const [user, setUserState] = useState<UserProfile>({ ...DEFAULT_USER, name: adminUser?.fullName || 'Administrador' })
   useEffect(() => {
     if (remote.instance) setUserState({
@@ -219,24 +246,39 @@ export const WhatsAppProvider: React.FC<{ children: React.ReactNode }> = ({ chil
   })
 
   // Notas internas de contatos (salvas por contactId)
-  const [contactNotes, setContactNotes] = useState<ContactNote[]>(() => {
-    const saved = localStorage.getItem(STORAGE_KEYS.CONTACT_NOTES)
-    try {
-      const parsed = saved ? (JSON.parse(saved) as unknown) : null
-      if (Array.isArray(parsed)) {
-        return parsed.filter(
-          (n) =>
-            n &&
-            typeof n.id === 'string' &&
-            typeof n.contactId === 'string' &&
-            typeof n.text === 'string',
-        )
-      }
-    } catch {
-      // ignora
-    }
-    return []
+  const [initialNotes] = useState(() => {
+    try { return { notes: readContactNotes(localStorage, STORAGE_KEYS.CONTACT_NOTES), error: false } }
+    catch { return { notes: [] as ContactNote[], error: true } }
   })
+  const [contactNotes, setContactNotes] = useState<ContactNote[]>(initialNotes.notes)
+  const notesRef = useRef(contactNotes)
+  const [noteFocusRequest, setNoteFocusRequest] = useState<{ noteId: string; contactId: string; requestId: number } | null>(null)
+  const clearNoteFocus = useCallback(() => setNoteFocusRequest(null), [])
+  const saveNotes = (next: ContactNote[]) => {
+    if (initialNotes.error) throw new Error('As notas locais não puderam ser lidas. Os dados existentes foram preservados; recarregue após verificar o armazenamento.')
+    writeContactNotes(localStorage, STORAGE_KEYS.CONTACT_NOTES, next)
+    notesRef.current = next
+    setContactNotes(next)
+  }
+
+  // Quando um @lid passa a ter telefone conhecido, dados locais gravados sob o @lid migram para o id canônico.
+  useEffect(() => {
+    const aliasMap: Record<string, string> = {}
+    remoteConversations.forEach((c) => c.aliases?.forEach((alias) => { aliasMap[alias] = c.id }))
+    if (!Object.keys(aliasMap).length) return
+    setCrmStages((prev) => canonicalizeKeys(prev, aliasMap))
+    setContactLabelsState((prev) => canonicalizeKeys(prev, aliasMap, (a, b) => [...new Set([...a, ...b])]))
+    setSavedContacts((prev) => {
+      if (!prev.some((c) => aliasMap[c.id])) return prev
+      const moved = prev.map((c) => (aliasMap[c.id] ? { ...c, id: aliasMap[c.id] } : c))
+      return moved.filter((c, i) => moved.findIndex((o) => o.id === c.id) === i)
+    })
+    if (!initialNotes.error && notesRef.current.some((n) => aliasMap[n.contactId])) {
+      try { saveNotes(notesRef.current.map((n) => (aliasMap[n.contactId] ? { ...n, contactId: aliasMap[n.contactId] } : n))) }
+      catch { /* o aviso de armazenamento já é exibido pelas notas */ }
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [remoteConversations])
 
   // Logs de eventos do aplicativo
   const [logs, setLogs] = useState<AppEventLog[]>(() => {
@@ -281,9 +323,6 @@ export const WhatsAppProvider: React.FC<{ children: React.ReactNode }> = ({ chil
     localStorage.setItem(STORAGE_KEYS.QUICK_REPLIES, JSON.stringify(quickReplies))
   }, [quickReplies])
 
-  useEffect(() => {
-    localStorage.setItem(STORAGE_KEYS.CONTACT_NOTES, JSON.stringify(contactNotes))
-  }, [contactNotes])
 
   useEffect(() => {
     localStorage.setItem(STORAGE_KEYS.LOGS, JSON.stringify(logs))
@@ -362,7 +401,9 @@ export const WhatsAppProvider: React.FC<{ children: React.ReactNode }> = ({ chil
   }
 
   const addContact = (name: string, phone: string, about?: string): Contact => {
-    const newContactId = `${phone.replace(/\D/g, '')}@s.whatsapp.net`
+    const digits = phone.replace(/\D/g, '')
+    if (digits.length < 8) throw new Error('Informe o telefone com DDD.')
+    const newContactId = `${digits}@s.whatsapp.net`
     const existing = contacts.find((c) => c.id === newContactId)
     if (existing) return existing
     const newContact: Contact = {
@@ -374,14 +415,29 @@ export const WhatsAppProvider: React.FC<{ children: React.ReactNode }> = ({ chil
 
     }
 
-    setContacts((prev) => [newContact, ...prev])
+    setSavedContacts((prev) => [newContact, ...prev.filter((c) => c.id !== newContactId)])
     addLog('contact_created', `Novo contato criado: "${name}" (${phone}).`, 'success')
     return newContact
   }
 
+  // Ação explícita "Salvar como contato": promove uma conversa avulsa ao cadastro (e só então ao CRM).
+  const saveConversationAsContact = (conversationId: string, name: string): Contact => {
+    const conversation = remoteConversations.find((c) => c.id === conversationId)
+    if (!conversation || conversation.isGroup || !conversation.id.includes('@')) throw new Error('Só conversas individuais do WhatsApp podem virar contato.')
+    const trimmed = name.trim()
+    if (!trimmed) throw new Error('Digite o nome do contato.')
+    const existing = savedContacts.find((c) => matchesContact(conversation, c.id))
+    if (existing) return existing
+    const contact: Contact = { id: conversation.id, name: trimmed, phone: conversation.phone ? formatPhone(conversation.phone) : '',
+      avatar: conversation.avatar, about: '' }
+    setSavedContacts((prev) => [contact, ...prev])
+    addLog('contact_created', `Conversa salva como contato: "${trimmed}".`, 'success')
+    return contact
+  }
+
   // Atualiza nome/recado/telefone de um contato existente (modal de detalhes e drawer)
   const updateContact = (contactId: string, name: string, about?: string, phone?: string) => {
-    setContacts((prev) =>
+    setSavedContacts((prev) =>
       prev.map((c) => {
         if (c.id !== contactId) return c
         addLog('contact_updated', `Contato atualizado: "${name}".`, 'info')
@@ -400,7 +456,7 @@ export const WhatsAppProvider: React.FC<{ children: React.ReactNode }> = ({ chil
     if (!contact) return ''
 
     // Check if conversation already exists
-    const existing = conversations.find((c) => !c.isGroup && c.participants?.includes(contactId))
+    const existing = conversations.find((c) => !c.isGroup && (c.participants?.includes(contactId) || c.aliases?.includes(contactId)))
 
     if (existing) {
       setActiveChatId(existing.id)
@@ -668,64 +724,31 @@ export const WhatsAppProvider: React.FC<{ children: React.ReactNode }> = ({ chil
   }
 
   // ==== NOTAS INTERNAS DE CONTATO ====
-  const getNotesByContact = (contactId: string): ContactNote[] => {
-    return contactNotes
-      .filter((n) => n.contactId === contactId)
-      .sort((a, b) => b.id.localeCompare(a.id))
-  }
+  const getNotesByContact = (contactId: string): ContactNote[] => contactNotes
+    .filter((note) => note.contactId === contactId)
+    .sort((a, b) => noteTimestamp(b) - noteTimestamp(a) || b.id.localeCompare(a.id))
 
   const addContactNote = (contactId: string, text: string): ContactNote | null => {
-    const trimmed = text.trim()
-    if (!trimmed) return null
-    const now = new Date()
-    const formattedDate = `${now.toLocaleDateString('pt-BR', {
-      day: '2-digit',
-      month: '2-digit',
-      year: 'numeric',
-    })} às ${now.toLocaleTimeString('pt-BR', {
-      hour: '2-digit',
-      minute: '2-digit',
-    })}`
-
-    const newNote: ContactNote = {
-      id: `note-${Date.now()}-${Math.random().toString(36).substring(2, 6)}`,
-      contactId,
-      text: trimmed,
-      createdAt: formattedDate,
-    }
-
-    setContactNotes((prev) => [newNote, ...prev])
-    const contact = contacts.find((c) => c.id === contactId)
-    addLog(
-      'contact_note_added',
-      `Nova nota interna adicionada para "${contact?.name || contactId}".`,
-      'info',
-    )
-    return newNote
+    if (!adminUser || !contacts.some((contact) => contact.id === contactId)) throw new Error('Contato ou sessão não identificado.')
+    const note = createContactNote(contactId, text, { id: adminUser.id, name: adminUser.fullName || adminUser.email })
+    saveNotes([...notesRef.current, note])
+    return note
   }
 
   const updateContactNote = (noteId: string, text: string) => {
-    const trimmed = text.trim()
-    if (!trimmed) return
-    const now = new Date()
-    const formattedDate = `${now.toLocaleDateString('pt-BR', {
-      day: '2-digit',
-      month: '2-digit',
-      year: 'numeric',
-    })} às ${now.toLocaleTimeString('pt-BR', {
-      hour: '2-digit',
-      minute: '2-digit',
-    })}`
-
-    setContactNotes((prev) =>
-      prev.map((n) => (n.id === noteId ? { ...n, text: trimmed, updatedAt: formattedDate } : n)),
-    )
-    addLog('contact_note_updated', `Nota interna de contato atualizada.`, 'info')
+    if (!notesRef.current.some((note) => note.id === noteId)) throw new Error('Nota não encontrada. Reabra os detalhes do contato.')
+    saveNotes(notesRef.current.map((note) => note.id === noteId ? editContactNote(note, text) : note))
   }
 
   const deleteContactNote = (noteId: string) => {
-    setContactNotes((prev) => prev.filter((n) => n.id !== noteId))
-    addLog('contact_note_deleted', `Nota interna de contato removida.`, 'warn')
+    saveNotes(notesRef.current.filter((note) => note.id !== noteId))
+  }
+
+  const focusContactNote = (noteId: string) => {
+    const note = notesRef.current.find((entry) => entry.id === noteId)
+    if (!note) return
+    const chatId = startChatWithContact(note.contactId)
+    if (chatId) setNoteFocusRequest({ noteId, contactId: note.contactId, requestId: Date.now() })
   }
 
   // A seleção e credenciais são administradas na VPS.
@@ -747,7 +770,7 @@ export const WhatsAppProvider: React.FC<{ children: React.ReactNode }> = ({ chil
     localStorage.removeItem(STORAGE_KEYS.LOGS)
     localStorage.removeItem(STORAGE_KEYS.CONNECTIONS)
     setUserState({ ...DEFAULT_USER, name: adminUser?.fullName || 'Administrador' })
-    setContacts([])
+    setSavedContacts([])
     setConversations([])
     setMessages({})
     setActiveChatId(null)
@@ -756,6 +779,7 @@ export const WhatsAppProvider: React.FC<{ children: React.ReactNode }> = ({ chil
     setCrmStageList(DEFAULT_CRM_STAGE_LIST)
     setLabels(DEFAULT_LABELS)
     setQuickReplies(DEFAULT_QUICK_REPLIES)
+    notesRef.current = []
     setContactNotes([])
     setLogs([])
     remote.refresh()
@@ -784,6 +808,7 @@ export const WhatsAppProvider: React.FC<{ children: React.ReactNode }> = ({ chil
         sendMessage,
         createGroup,
         addContact,
+        saveConversationAsContact,
         updateContact,
         startChatWithContact,
         markAsRead,
@@ -811,6 +836,10 @@ export const WhatsAppProvider: React.FC<{ children: React.ReactNode }> = ({ chil
         createQuickReply,
         updateQuickReply,
         deleteQuickReply,
+        noteStorageError: initialNotes.error ? 'Não foi possível ler as notas locais. Os dados existentes foram preservados. Verifique o armazenamento e recarregue a página.' : null,
+        noteFocusRequest,
+        focusContactNote,
+        clearNoteFocus,
         contactNotes,
         getNotesByContact,
         addContactNote,

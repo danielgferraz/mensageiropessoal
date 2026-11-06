@@ -2,7 +2,7 @@ import { useCallback, useEffect, useRef, useState } from 'react'
 import { apiFetch } from '@/lib/api'
 import { FALLBACK_AVATAR, mergeMessages, parseChats, parseInstances, parseMessages, selectInstance } from '@/lib/evolution'
 import type { Instance } from '@/lib/evolution'
-import type { Contact, Conversation, Message } from '@/types/whatsapp'
+import type { Conversation, Message } from '@/types/whatsapp'
 
 export async function evolutionRequest(path: string, body?: unknown, signal?: AbortSignal) {
   const res = await apiFetch(`/mensageiro/api${path}`, {
@@ -23,7 +23,6 @@ const COPILOT: Conversation = { id: 'conv-antigravity', name: 'Antigravity Copil
 
 export function useEvolution(activeChatId: string | null) {
   const [instance, setInstance] = useState<Instance | null>(null)
-  const [contacts, setContacts] = useState<Contact[]>([])
   const [conversations, setConversations] = useState<Conversation[]>([COPILOT])
   const [messages, setMessages] = useState<Record<string, Message[]>>({})
   const [loading, setLoading] = useState(true)
@@ -34,7 +33,9 @@ export function useEvolution(activeChatId: string | null) {
   const [loadedPages, setLoadedPages] = useState<Record<string, number>>({})
   const [retry, setRetry] = useState(0)
   const instanceRef = useRef<string | null>(null)
+  const conversationsRef = useRef<Conversation[]>([COPILOT])
   const refresh = useCallback(() => setRetry((n) => n + 1), [])
+  useEffect(() => { conversationsRef.current = conversations }, [conversations])
 
   useEffect(() => {
     let stopped = false
@@ -52,20 +53,20 @@ export function useEvolution(activeChatId: string | null) {
         }
         if (instanceRef.current !== selected.name) {
           instanceRef.current = selected.name
-          setMessages({}); setConversations([COPILOT]); setContacts([])
+          setMessages({}); setConversations([COPILOT])
           setLoadedPages({}); setHistoryPages({})
         }
         setInstance(selected)
         const result = parseChats(await evolutionRequest(`/whatsapp/chats/${encodeURIComponent(selected.name)}`, {}, controller.signal))
         if (stopped) return
         setConversations((previous) => {
-          const seen = new Set(result.conversations.map((c) => c.id))
+          const known = new Set(result.conversations.flatMap((c) => [c.id, ...(c.aliases || [])]))
           return [...result.conversations.map((c) => {
-            const saved = previous.find((p) => p.id === c.id)
+            // Uma conversa antes listada pelo @lid passa a herdar fixar/arquivar/etiquetas ao ganhar o telefone.
+            const saved = previous.find((p) => p.id === c.id) || previous.find((p) => c.aliases?.includes(p.id))
             return { ...c, pinned: saved?.pinned, archived: saved?.archived, labelIds: saved?.labelIds }
-          }), ...previous.filter((c) => !seen.has(c.id))]
+          }), ...previous.filter((c) => !known.has(c.id))]
         })
-        setContacts((previous) => [...result.contacts, ...previous.filter((p) => !result.contacts.some((c) => c.id === p.id))])
         setSyncError(null)
       } catch (error) {
         if (!stopped) setSyncError(error instanceof Error ? error.message : 'Falha na sincronização.')
@@ -82,10 +83,13 @@ export function useEvolution(activeChatId: string | null) {
   const loadMessages = useCallback(async (jid: string, page = 1, signal?: AbortSignal) => {
     const name = instanceRef.current
     if (!name || !jid.includes('@')) return
-    const result = parseMessages(await evolutionRequest(`/whatsapp/messages/${encodeURIComponent(name)}`, {
-      where: { key: { remoteJid: jid } }, page, offset: 50,
-    }, signal), jid)
+    // O mesmo contato pode ter mensagens gravadas sob o telefone e sob o @lid: consulta todos e une por id.
+    const aliases = conversationsRef.current.find((c) => c.id === jid)?.aliases || []
+    const results = await Promise.all([jid, ...aliases].map(async (remoteJid) => parseMessages(await evolutionRequest(`/whatsapp/messages/${encodeURIComponent(name)}`, {
+      where: { key: { remoteJid } }, page, offset: 50,
+    }, signal), jid, aliases)))
     if (signal?.aborted || instanceRef.current !== name) return
+    const result = { records: results.flatMap((r) => r.records), pages: Math.max(...results.map((r) => r.pages)) }
     setMessages((previous) => ({ ...previous, [jid]: mergeMessages(previous[jid] || [], result.records) }))
     setHistoryPages((previous) => ({ ...previous, [jid]: result.pages }))
     setLoadedPages((previous) => ({ ...previous, [jid]: Math.max(page, previous[jid] || 1) }))
@@ -116,7 +120,7 @@ export function useEvolution(activeChatId: string | null) {
     finally { setLoadingMessages(false) }
   }
 
-  return { instance, instanceRef, contacts, setContacts, conversations, setConversations, messages, setMessages,
+  return { instance, instanceRef, conversations, setConversations, messages, setMessages,
     loading, syncError, messageError, loadingMessages, refresh, loadOlder,
     hasOlder: !!activeChatId && (historyPages[activeChatId] || 1) > (loadedPages[activeChatId] || 1) }
 }

@@ -65,7 +65,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
   } = useWhatsApp()
 
   const [searchQuery, setSearchQuery] = useState('')
-  const [filterType, setFilterType] = useState<'all' | 'unread' | 'groups'>('all')
+  const [filterType, setFilterType] = useState<'all' | 'unread' | 'contacts' | 'groups'>('all')
   const [selectedLabelFilter, setSelectedLabelFilter] = useState<string | null>(null)
   const [showArchivedView, setShowArchivedView] = useState(false)
 
@@ -87,9 +87,13 @@ export const Sidebar: React.FC<SidebarProps> = ({
   // Filtro e busca
   const filteredConversations = currentBaseList.filter((c) => {
     // Busca de texto
+    const query = searchQuery.toLowerCase()
+    const digits = searchQuery.replace(/D/g, '')
     const matchesSearch =
-      c.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      (c.lastMessage?.text || '').toLowerCase().includes(searchQuery.toLowerCase())
+      c.name.toLowerCase().includes(query) ||
+      (c.pushName || '').toLowerCase().includes(query) ||
+      (digits.length >= 3 && (c.phone || '').includes(digits)) ||
+      (c.lastMessage?.text || '').toLowerCase().includes(query)
 
     if (!matchesSearch) return false
 
@@ -99,6 +103,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
     }
 
     if (filterType === 'unread') return (c.unreadCount || 0) > 0
+    if (filterType === 'contacts') return !!c.isSaved
     if (filterType === 'groups') return c.isGroup
     return true
   })
@@ -362,6 +367,17 @@ export const Sidebar: React.FC<SidebarProps> = ({
             }`}
           >
             Não lidas
+          </button>
+          <button
+            type="button"
+            onClick={() => setFilterType('contacts')}
+            className={`px-3 py-1 rounded-full transition-colors whitespace-nowrap ${
+              filterType === 'contacts'
+                ? 'bg-[#00a884] text-white font-medium'
+                : 'bg-[#202c33] text-slate-300 hover:bg-[#2a3942]'
+            }`}
+          >
+            Contatos
           </button>
           <button
             type="button"

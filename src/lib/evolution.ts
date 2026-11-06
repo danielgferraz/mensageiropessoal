@@ -1,4 +1,5 @@
-import type { Contact, Conversation, Message, MessageStatus } from '../types/whatsapp.ts'
+import type { Conversation, Message, MessageStatus } from '../types/whatsapp.ts'
+import { chatIdentity, formatPhone, isGroupJid, phoneOf } from './jids.ts'
 
 export const FALLBACK_AVATAR = '/mensageiro/icon-512.svg'
 export interface Instance {
@@ -57,8 +58,8 @@ function clock(seconds: number): string {
   return seconds ? new Date(seconds * 1000).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' }) : ''
 }
 
-export function normalizeMessage(row: any, jid: string): Message | null {
-  if (!row?.key?.id || (row.key.remoteJid && row.key.remoteJid !== jid)) return null
+export function normalizeMessage(row: any, jid: string, aliases: string[] = []): Message | null {
+  if (!row?.key?.id || (row.key.remoteJid && row.key.remoteJid !== jid && !aliases.includes(row.key.remoteJid))) return null
   const sentAt = secondsOf(row)
   const updates = row.MessageUpdate || []
   return {
@@ -73,12 +74,12 @@ export function normalizeMessage(row: any, jid: string): Message | null {
   }
 }
 
-export function parseMessages(data: any, jid: string): { records: Message[]; pages: number } {
+export function parseMessages(data: any, jid: string, aliases: string[] = []): { records: Message[]; pages: number } {
   const envelope = data?.messages || data
   const rows = Array.isArray(envelope) ? envelope : envelope?.records
   if (!Array.isArray(rows)) throw new Error('Resposta inválida ao carregar mensagens.')
   return {
-    records: rows.map((row) => normalizeMessage(row, jid)).filter(Boolean) as Message[],
+    records: rows.map((row) => normalizeMessage(row, jid, aliases)).filter(Boolean) as Message[],
     pages: Math.max(1, Number(envelope.pages) || 1),
   }
 }
@@ -94,26 +95,43 @@ export function mergeMessages(previous: Message[], incoming: Message[]): Message
   return [...byId.values()].sort((a, b) => (a.sentAt || 0) - (b.sentAt || 0))
 }
 
-export function parseChats(data: any): { conversations: Conversation[]; contacts: Contact[] } {
+export function parseChats(data: any): { conversations: Conversation[] } {
   const rows = Array.isArray(data) ? data : data?.chats
   if (!Array.isArray(rows)) throw new Error('Resposta inválida ao carregar conversas.')
-  const contacts: Contact[] = []
-  const conversations: Conversation[] = []
-  for (const row of rows) {
-    const jid = row.remoteJid || row.lastMessage?.key?.remoteJid
-    if (typeof jid !== 'string' || !/^\d+(?:-\d+)?@(s\.whatsapp\.net|g\.us|lid)$/.test(jid)) continue
-    const isGroup = jid.endsWith('@g.us')
-    const name = row.name || row.subject || row.pushName || jid.split('@')[0]
-    const avatar = /^https:\/\//.test(row.profilePicUrl || '') ? row.profilePicUrl : FALLBACK_AVATAR
-    const last = row.lastMessage && normalizeMessage(row.lastMessage, jid)
-    if (!isGroup) contacts.push({ id: jid, name, phone: jid.split('@')[0], avatar })
-    conversations.push({
-      id: jid, name, isGroup, avatar, participants: isGroup ? [] : [jid],
-      unreadCount: row.unreadCount || 0,
-      lastMessage: last ? { text: last.text || '', timestamp: last.timestamp, senderId: last.senderId, status: last.status } : undefined,
-      updatedAt: last?.sentAt || secondsOf(row),
-    })
+  const entries = rows.flatMap((row) => { const identity = chatIdentity(row); return identity ? [{ row, identity }] : [] })
+  // Um @lid sem telefone declarado na própria linha herda o telefone de outra linha que o cita como alias.
+  const phoneByAlias = new Map<string, string>()
+  for (const { identity } of entries) for (const alias of identity.aliases) if (phoneOf(identity.id)) phoneByAlias.set(alias, identity.id)
+  const groups = new Map<string, { identity: { id: string; aliases: string[] }; rows: any[] }>()
+  for (const { row, identity } of entries) {
+    const id = phoneByAlias.get(identity.id) || identity.id
+    const aliases = identity.id === id ? identity.aliases : [...identity.aliases, identity.id]
+    const group = groups.get(id) || { identity: { id, aliases: [] }, rows: [] }
+    group.identity.aliases = [...new Set([...group.identity.aliases, ...aliases])].filter((alias) => alias !== id)
+    group.rows.push(row)
+    groups.set(id, group)
   }
+  const conversations: Conversation[] = [...groups.values()].map(({ identity, rows: members }) => {
+    const isGroup = isGroupJid(identity.id)
+    const text = (read: (row: any) => unknown) => members.map(read).find((v) => typeof v === 'string' && v.trim()) as string | undefined
+    const pushName = text((r) => r.pushName) || text((r) => (r.lastMessage?.key?.fromMe ? undefined : r.lastMessage?.pushName))
+    const phone = phoneOf(identity.id)
+    const name = isGroup ? text((r) => r.subject) || text((r) => r.name) || identity.id.split('@')[0]
+      : phone ? formatPhone(phone) : pushName || 'Número não identificado'
+    const picture = text((r) => (/^https:\/\//.test(r.profilePicUrl || '') ? r.profilePicUrl : undefined))
+    const withLast = members.filter((r) => r.lastMessage).map((r) => ({ r, last: normalizeMessage(r.lastMessage, identity.id, identity.aliases) }))
+      .filter((entry) => entry.last).sort((a, b) => (b.last!.sentAt || 0) - (a.last!.sentAt || 0))[0]
+    const last = withLast?.last
+    return {
+      id: identity.id, name, isGroup, avatar: picture || FALLBACK_AVATAR,
+      aliases: identity.aliases.length ? identity.aliases : undefined,
+      phone, pushName: isGroup ? undefined : pushName,
+      participants: isGroup ? [] : [identity.id],
+      unreadCount: members.reduce((sum, r) => sum + (Number(r.unreadCount ?? r.unreadMessages) || 0), 0),
+      lastMessage: last ? { text: last.text || '', timestamp: last.timestamp, senderId: last.senderId, status: last.status } : undefined,
+      updatedAt: last?.sentAt || Math.max(0, ...members.map(secondsOf)),
+    }
+  })
   conversations.sort((a, b) => (b.updatedAt || 0) - (a.updatedAt || 0))
-  return { conversations, contacts }
+  return { conversations }
 }

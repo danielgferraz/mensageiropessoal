@@ -56,6 +56,10 @@ export interface Conversation {
   updatedAt?: number
   isGroup: boolean
   avatar: string
+  aliases?: string[] // outros JIDs do mesmo contato (ex.: @lid)
+  phone?: string // só dígitos; ausente quando o telefone não é conhecido
+  pushName?: string // nome público informado pelo WhatsApp (não é nome salvo)
+  isSaved?: boolean // há contato cadastrado na plataforma
   participants?: string[] // Contact IDs or names
   lastMessage?: {
     text: string
@@ -86,6 +90,8 @@ export interface ContactNote {
   contactId: string
   text: string
   createdAt: string // ISO string ou formatado
+  authorId?: string
+  authorName?: string
   updatedAt?: string
 }
 

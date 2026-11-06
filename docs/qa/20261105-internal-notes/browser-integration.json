@@ -1,0 +1,97 @@
+{
+  "environment": "Docker local node:22-alpine, backend e upstream fictício em testes/browser-fixture.mjs; navegador OpenBot http://localhost:3334. Sem chamadas à produção.",
+  "unitAndProxyTests": {
+    "total": 43,
+    "newNoteTests": 14,
+    "passed": 43,
+    "dockerNetworkNone": true,
+    "typescript": "pass",
+    "lint": "0 erros; avisos legados",
+    "build": "pass"
+  },
+  "integration": [
+    {
+      "check": "Criar na timeline",
+      "revision": 7,
+      "result": "Nota destacada, autor Administrador de teste e data/hora; foco no article; textarea limpa após persistência."
+    },
+    {
+      "check": "Navegação dos detalhes",
+      "revision": 17,
+      "result": "Drawer fechado; verificação após requestAnimationFrame confirmou foco ARTICLE e data-note-id correto, top303.5."
+    },
+    {
+      "check": "Editar / criar / excluir nos detalhes",
+      "revisions": [
+        23,
+        27,
+        30,
+        35
+      ],
+      "result": "Edição refletiu no chat e preservou criação/autor; segunda nota criada e excluída com confirmação; primeira preservada após reload."
+    },
+    {
+      "check": "Isolamento de envio",
+      "result": "GET fixture /__stats retornou sentCount0 após CRUD de notas. Trocar para Mensagem mostrou campo vazio; envio comum ao upstream de teste elevou sentCount para1. Novas operações de notas mantiveram1. Não houve envio externo."
+    },
+    {
+      "check": "Falha de escrita",
+      "revision": 37,
+      "result": "Quota de localStorage simulada apenas na origem QA: mensagem de erro, rascunho preservado e nenhuma nova nota inserida."
+    },
+    {
+      "check": "Modal do CRM",
+      "revisions": [
+        45,
+        47
+      ],
+      "result": "Lista de notas no modal; clique abriu a conversa e depois foco ARTICLE/data-note-id correto, modal fechado, sem overflow horizontal."
+    },
+    {
+      "check": "Nota legada",
+      "revision": 50,
+      "result": "Data pt-BR preservada e autor exibido como Autor não registrado; não atribuiu autoria da sessão atual."
+    },
+    {
+      "check": "Isolamento de contexto",
+      "result": "Ao selecionar grupo, DOM retornou noteCards0 e noteComposerPresentfalse. Unitários cobrem dois contatos diferentes."
+    },
+    {
+      "check": "Armazenamento inválido",
+      "revision": 53,
+      "result": "Mensagens continuam legíveis; aviso de erro das notas. Tentativa de gravação manteve raw original inválido e rascunho; nenhuma nota criada."
+    }
+  ],
+  "rendered": [
+    {
+      "viewport": "390x844",
+      "revision": 8,
+      "observation": "Nota âmbar separada dos balões, autor/data legíveis, modo de nota com texto de privacidade e textarea própria. CRUD e drawer/foco exercitados nesta largura."
+    },
+    {
+      "viewport": "1440x900",
+      "revision": 57,
+      "observation": "Build final: nota entre mensagens, destaque/foco âmbar, autor/data e composer separado; menu/CRM/modal navegáveis."
+    },
+    {
+      "viewport": "320x568",
+      "revision": 59,
+      "observation": "Build final: card com quebra de linhas e área de mensagens rolável; composer visível; textarea281x72, bottom504, sem overflow horizontal. Movimento reduzido habilitado."
+    }
+  ],
+  "cleanup": {
+    "origin": "http://localhost:3334",
+    "localStorageEntries": 0,
+    "sessionStorageEntries": 0,
+    "caches": 0,
+    "serviceWorkers": 0,
+    "tabClosed": true,
+    "containerRemoved": "mensageiro-notes-qa"
+  },
+  "limitations": [
+    "Armazenamento continua local ao navegador; sem sincronização entre dispositivos e sem novo banco/backend.",
+    "Notas legadas não têm autor inventado.",
+    "Sem teste em teclado físico ou instalação standalone.",
+    "Sem publicação, commit ou push desta feature; manifest.json não rastreado preservado."
+  ]
+}

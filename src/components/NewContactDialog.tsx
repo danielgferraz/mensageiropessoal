@@ -58,7 +58,13 @@ export const NewContactDialog: React.FC<NewContactDialogProps> = ({
       return
     }
 
-    const created = addContact(name.trim(), phone.trim(), about.trim() || undefined)
+    let created: Contact
+    try {
+      created = addContact(name.trim(), phone.trim(), about.trim() || undefined)
+    } catch (error) {
+      toast({ title: 'Telefone inválido', description: error instanceof Error ? error.message : 'Confira o número.', variant: 'destructive' })
+      return
+    }
     if (stageId) {
       setContactStage(created.id, stageId)
     }

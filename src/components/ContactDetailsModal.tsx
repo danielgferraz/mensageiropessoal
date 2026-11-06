@@ -6,11 +6,13 @@ import { findStage, getStageLabelIn } from '@/data/crmData'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { useToast } from '@/hooks/use-toast'
+import { ContactNotesTab } from '@/components/ContactNotesTab'
 
 interface ContactDetailsModalProps {
   contact: Contact | null
   onClose: () => void
   onOpenChat: (contactId: string) => void
+  onFocusNote?: (noteId: string) => void
 }
 
 // Modal de detalhes do contato: foto, dados, nota e estágio no CRM,
@@ -19,6 +21,7 @@ export const ContactDetailsModal: React.FC<ContactDetailsModalProps> = ({
   contact,
   onClose,
   onOpenChat,
+  onFocusNote,
 }) => {
   const {
     crmStages,
@@ -28,6 +31,7 @@ export const ContactDetailsModal: React.FC<ContactDetailsModalProps> = ({
     labels,
     getContactLabelIds,
     toggleContactLabel,
+    focusContactNote,
   } = useWhatsApp()
   const { toast } = useToast()
 
@@ -102,6 +106,7 @@ export const ContactDetailsModal: React.FC<ContactDetailsModalProps> = ({
         className="w-full sm:max-w-sm max-h-[92vh] flex flex-col rounded-t-2xl sm:rounded-2xl bg-[#111b21] border border-[#2a3942] shadow-2xl overflow-y-auto animate-scale-in"
         onClick={(e) => e.stopPropagation()}
         role="dialog"
+        aria-label={`Dados de ${contact.name}`}
         aria-modal="true"
       >
         {/* Cabeçalho com foto grande */}
@@ -251,6 +256,14 @@ export const ContactDetailsModal: React.FC<ContactDetailsModalProps> = ({
             )}
           </div>
         </div>
+
+        <section className="px-5 pb-5 space-y-3" aria-labelledby="contact-modal-notes-title">
+          <h4 id="contact-modal-notes-title" className="text-sm font-semibold text-amber-200">Notas internas</h4>
+          <ContactNotesTab key={contact.id} contactId={contact.id} contactName={contact.name} onFocusNote={(noteId) => {
+            if (onFocusNote) onFocusNote(noteId)
+            else { onOpenChat(contact.id); focusContactNote(noteId); onClose() }
+          }} />
+        </section>
 
         {/* Ações */}
         <div className="px-5 pb-5 pt-1 flex items-center space-x-2 bg-[#111b21]">

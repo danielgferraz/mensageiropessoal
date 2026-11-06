@@ -26,6 +26,7 @@ export default function Index() {
     activeMedia,
     setActiveMedia,
     startChatWithContact,
+    focusContactNote,
   } = useWhatsApp()
 
   // Track active subpanels on the left side
@@ -47,6 +48,13 @@ export default function Index() {
     setActiveContactDrawerId(null)
     setActiveLeftPanel('chats')
     startChatWithContact(contactId)
+  }
+
+  const openNoteInChat = (noteId: string) => {
+    setModalContactId(null)
+    setActiveContactDrawerId(null)
+    setActiveLeftPanel('chats')
+    focusContactNote(noteId)
   }
 
   // Track right-side info panel (e.g. Group Info)
@@ -167,6 +175,7 @@ export default function Index() {
                 <div className="fixed inset-0 z-40 md:static md:inset-auto md:z-20 flex justify-end bg-black/60 md:bg-transparent animate-fade-in">
                   <ContactDetailsDrawer
                     contactId={activeContactDrawerId}
+                    onFocusNote={openNoteInChat}
                     onClose={() => setActiveContactDrawerId(null)}
                     onOpenFullscreenAvatar={(media) => setActiveMedia(media)}
                   />
@@ -180,6 +189,7 @@ export default function Index() {
       {/* Modal de detalhes do contato (a partir de diálogos ou listas modais) */}
       <ContactDetailsModal
         contact={modalContact}
+        onFocusNote={openNoteInChat}
         onClose={() => setModalContactId(null)}
         onOpenChat={openChatWithContact}
       />

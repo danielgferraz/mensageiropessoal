@@ -16,10 +16,16 @@ import {
   Zap,
   Clock,
   AlertCircle,
+  FileText,
+  LockKeyhole,
+  UserPlus,
+  Bot,
 } from 'lucide-react'
 import { useWhatsApp } from '@/context/WhatsAppContext'
 import { Message } from '@/types/whatsapp'
 import { Button } from '@/components/ui/button'
+import { buildChatTimeline, formatNoteDate } from '@/lib/contact-notes'
+import { Textarea } from '@/components/ui/textarea'
 import { Input } from '@/components/ui/input'
 import {
   DropdownMenu,
@@ -32,6 +38,8 @@ import { useToast } from '@/hooks/use-toast'
 import { MessageMediaDialog } from './chat/MessageMediaDialog'
 import { MessageReactionPicker } from './chat/MessageReactionPicker'
 import { QuickRepliesDialog } from './QuickRepliesDialog'
+import { SaveContactDialog } from './SaveContactDialog'
+import { requestCopilotDraft, CopilotDraft } from '@/lib/copilot'
 
 interface ChatAreaProps {
   onBackMobile?: () => void
@@ -55,8 +63,16 @@ export const ChatArea: React.FC<ChatAreaProps> = ({
     contacts,
     toggleMessageReaction,
     messageError, loadingMessages, refresh, loadOlder, hasOlder, instanceName, syncError,
+    getContactLabelIds, noteStorageError, contactNotes, addContactNote, focusContactNote, noteFocusRequest, clearNoteFocus,
   } = useWhatsApp()
 
+  const [composerMode, setComposerMode] = useState<'message' | 'note'>('message')
+  const [saveContactFor, setSaveContactFor] = useState<string | null>(null)
+  const [suggesting, setSuggesting] = useState(false)
+  const [copilotResult, setCopilotResult] = useState<(CopilotDraft & { chatId: string }) | { chatId: string; error: string } | null>(null)
+  const [noteText, setNoteText] = useState('')
+  const [noteError, setNoteError] = useState<string | null>(null)
+  const noteDrafts = React.useRef<Record<string, string>>({})
   const [inputText, setInputText] = useState('')
   const drafts = React.useRef<Record<string, string>>({})
   const [sending, setSending] = useState(false)
@@ -82,6 +98,23 @@ export const ChatArea: React.FC<ChatAreaProps> = ({
   const activeContact = activeConversation?.participants?.length
     ? contacts.find((c) => c.id === activeConversation.participants![0])
     : undefined
+  const canSaveContact = !!activeConversation && !activeConversation.isGroup && activeConversation.id.includes('@') && !activeConversation.isSaved
+  const canSuggest = !!activeConversation && !!activeContact && !activeConversation.isGroup && activeConversation.id.includes('@')
+  const suggestReply = async () => {
+    if (!activeConversation || !activeContact || suggesting) return
+    const chatId = activeConversation.id
+    setSuggesting(true); setCopilotResult(null)
+    try {
+      const result = await requestCopilotDraft({
+        contactId: activeContact.id, isSaved: true, isGroup: false, labelIds: getContactLabelIds(activeContact.id),
+        contactPhone: activeConversation.phone,
+        messages: chatMessages.filter((m) => m.text).slice(-20).map((m) => ({ fromMe: m.senderId === 'me', text: m.text || '' })),
+      })
+      if (activeChatRef.current === chatId) setCopilotResult({ ...result, chatId })
+    } catch (e) {
+      if (activeChatRef.current === chatId) setCopilotResult({ chatId, error: e instanceof Error ? e.message : 'Não foi possível pedir o rascunho.' })
+    } finally { setSuggesting(false) }
+  }
   const handleOpenDetails = () => {
     if (activeContact && onOpenContactDetails) onOpenContactDetails(activeContact.id)
   }
@@ -91,12 +124,33 @@ export const ChatArea: React.FC<ChatAreaProps> = ({
   React.useEffect(() => {
     setInputText(drafts.current[activeChatId || ''] || '')
     setSendError(null)
+    setComposerMode('message')
+    setNoteText(noteDrafts.current[activeChatId || ''] || '')
+    setNoteError(null)
+    setCopilotResult(null)
     nearBottom.current = true
   }, [activeChatId])
-  const lastMessage = chatMessages.at(-1)
+  const timeline = buildChatTimeline(chatMessages, contactNotes, activeContact?.id,
+    noteFocusRequest?.contactId === activeContact?.id ? '' : chatSearchQuery)
+  const lastEntry = timeline.at(-1)
   React.useEffect(() => {
-    if (nearBottom.current) messagesEndRef.current?.scrollIntoView({ block: 'end' })
-  }, [activeChatId, lastMessage?.id])
+    if (noteFocusRequest?.contactId !== activeContact?.id || !noteFocusRequest) return
+    setChatSearchQuery('')
+    setChatSearchOpen(false)
+    nearBottom.current = false
+    const frame = requestAnimationFrame(() => {
+      const target = document.getElementById(`internal-${noteFocusRequest.noteId}`)
+      if (target) {
+        target.scrollIntoView({ behavior: window.matchMedia('(prefers-reduced-motion: reduce)').matches ? 'instant' : 'smooth', block: 'center' })
+        target.focus({ preventScroll: true })
+        clearNoteFocus()
+      }
+    })
+    return () => cancelAnimationFrame(frame)
+  }, [noteFocusRequest, activeContact?.id, timeline.length, clearNoteFocus])
+  React.useEffect(() => {
+    if (nearBottom.current && !noteFocusRequest) messagesEndRef.current?.scrollIntoView({ block: 'end' })
+  }, [activeChatId, lastEntry?.id, noteFocusRequest])
 
   if (!activeConversation) {
     return (
@@ -147,11 +201,20 @@ export const ChatArea: React.FC<ChatAreaProps> = ({
     drafts.current[activeConversation.id] = text
   }
 
-  const filteredMessages = chatSearchQuery.trim()
-    ? chatMessages.filter((m) =>
-        (m.text || m.media?.caption || '').toLowerCase().includes(chatSearchQuery.toLowerCase()),
-      )
-    : chatMessages
+  const saveInternalNote = (event: React.FormEvent) => {
+    event.preventDefault()
+    if (!activeContact) return
+    try {
+      const note = addContactNote(activeContact.id, noteText)
+      if (!note) return
+      noteDrafts.current[activeConversation.id] = ''
+      setNoteText(''); setNoteError(null)
+      focusContactNote(note.id)
+      toast({ title: 'Nota interna salva', description: 'Salva neste navegador. Nenhuma mensagem foi enviada ao WhatsApp.' })
+    } catch (error) {
+      setNoteError(error instanceof Error ? error.message : 'Não foi possível salvar a nota. Seu texto foi preservado.')
+    }
+  }
 
   const renderStatusTicks = (status: Message['status']) => {
     switch (status) {
@@ -270,6 +333,12 @@ export const ChatArea: React.FC<ChatAreaProps> = ({
               align="end"
               className="bg-[#233138] border-[#2a3942] text-slate-200"
             >
+              {canSaveContact && <DropdownMenuItem onClick={() => setSaveContactFor(activeConversation.id)} className="cursor-pointer hover:bg-[#182229]">
+                <UserPlus className="mr-2 h-4 w-4 text-[#00a884]" />Salvar como contato
+              </DropdownMenuItem>}
+              {activeContact && <DropdownMenuItem onClick={handleOpenDetails} className="cursor-pointer hover:bg-[#182229]">
+                <FileText className="mr-2 h-4 w-4 text-amber-200" />Dados e notas do contato
+              </DropdownMenuItem>}
               {activeConversation.isGroup && (
                 <DropdownMenuItem
                   onClick={onOpenGroupInfo}
@@ -345,17 +414,36 @@ export const ChatArea: React.FC<ChatAreaProps> = ({
           </div>
         </div>
 
+        {activeContact && noteStorageError && <p role="alert" className="rounded-lg bg-[#30291a] p-3 text-sm text-amber-100">{noteStorageError}</p>}
         {messageError && <div role="alert" className="text-sm text-red-300 p-3 bg-[#202c33] rounded-lg">{messageError} <button onClick={refresh} className="underline">Tentar novamente</button></div>}
         {hasOlder && <div className="text-center"><Button variant="secondary" disabled={loadingMessages} onClick={() => void loadOlder()}>Carregar anteriores</Button></div>}
         {loadingMessages && <p role="status" className="text-center text-sm text-slate-400">Carregando mensagens…</p>}
-        {filteredMessages.length === 0 && !loadingMessages && !messageError ? (
+        {timeline.length === 0 && !loadingMessages && !messageError ? (
           <div className="text-center py-12 text-slate-500 text-sm">
             {chatSearchQuery
               ? 'Nenhuma mensagem encontrada com esse termo.'
               : 'Nenhuma mensagem nesta conversa ainda. Diga oi!'}
           </div>
         ) : (
-          filteredMessages.map((msg) => {
+          timeline.map((entry) => {
+            if (entry.kind === 'note') {
+              const note = entry.note
+              return <article key={`note-${note.id}`} id={`internal-${note.id}`} data-note-id={note.id}
+                tabIndex={-1} aria-label={`Nota interna de ${note.authorName || 'Autor não registrado'}`}
+                className="internal-note mx-auto max-w-full sm:max-w-[85%] rounded-xl border border-amber-500/50 bg-[#30291a] p-3 text-amber-50 shadow-sm outline-none focus:ring-2 focus:ring-amber-300 scroll-m-6">
+                <div className="flex flex-wrap items-center justify-between gap-2 text-xs text-amber-200">
+                  <span className="flex items-center gap-1 font-semibold"><LockKeyhole className="h-4 w-4" />Nota interna</span>
+                  <span>Não enviada ao WhatsApp</span>
+                </div>
+                <p className="my-2 whitespace-pre-wrap break-words text-sm leading-relaxed">{note.text}</p>
+                <footer className="flex flex-wrap items-center gap-x-2 gap-y-1 text-xs text-amber-100/80">
+                  <span className="max-w-full break-words">{note.authorName || 'Autor não registrado'}</span>
+                  <time dateTime={entry.timestamp ? new Date(entry.timestamp).toISOString() : undefined}>{formatNoteDate(note.createdAt)}</time>
+                  {note.updatedAt && <span>· editada em {formatNoteDate(note.updatedAt)}</span>}
+                </footer>
+              </article>
+            }
+            const msg = entry.message
             const isMe = msg.senderId === 'me'
             const isSystem = msg.senderId === 'system'
             const isHovered = activeConversation.id === 'conv-antigravity' && hoveredMessageId === msg.id
@@ -529,6 +617,41 @@ export const ChatArea: React.FC<ChatAreaProps> = ({
       )}
 
       {sendError && <p role="alert" className="px-4 py-2 text-sm text-red-300 bg-[#202c33]">{sendError}</p>}
+      {copilotResult && copilotResult.chatId === activeConversation.id && <div role="status" className="shrink-0 space-y-2 border-t border-[#00a884]/40 bg-[#14262c] px-3 py-2 text-sm text-slate-200">
+        {'error' in copilotResult ? <p role="alert" className="text-red-300">{copilotResult.error}</p>
+          : copilotResult.draft ? <>
+            <p className="text-xs text-[#00a884]">Rascunho do atendente — revise antes de enviar. Nada foi enviado.</p>
+            <p className="whitespace-pre-wrap">{copilotResult.draft}</p>
+            {copilotResult.sources.length > 0 && <p className="text-[11px] text-slate-400">Fontes: {copilotResult.sources.map((s) => s.title).join(', ')}</p>}
+            <div className="flex gap-2">
+              <Button type="button" size="sm" onClick={() => { const text = copilotResult.draft!; setInputText(text); drafts.current[activeConversation.id] = text; setCopilotResult(null) }} className="bg-[#00a884] text-white hover:bg-[#008f72]">Usar no campo de mensagem</Button>
+              <Button type="button" size="sm" variant="ghost" onClick={() => setCopilotResult(null)} className="text-slate-200">Descartar</Button>
+            </div>
+          </> : <>
+            <p className="text-amber-200">{copilotResult.reason}</p>
+            <Button type="button" size="sm" variant="ghost" onClick={() => setCopilotResult(null)} className="text-slate-200">Fechar</Button>
+          </>}
+      </div>}
+      {canSaveContact && <div className="flex shrink-0 items-center justify-between gap-3 border-t border-[#2a3942] bg-[#202c33] px-3 py-2 text-xs text-slate-300">
+        <span>Conversa avulsa: não está em Contatos nem no pipeline.</span>
+        <Button type="button" size="sm" variant="ghost" onClick={() => setSaveContactFor(activeConversation!.id)} className="text-[#00a884]"><UserPlus className="mr-1 h-4 w-4" />Salvar como contato</Button>
+      </div>}
+      <SaveContactDialog conversationId={saveContactFor} onOpenChange={(open) => { if (!open) setSaveContactFor(null) }} />
+      {activeContact && <div className="flex shrink-0 items-center gap-1 border-t border-[#2a3942] bg-[#202c33] px-3 py-1" role="group" aria-label="Tipo de registro">
+        <Button type="button" variant="ghost" aria-pressed={composerMode === 'message'} onClick={() => setComposerMode('message')}
+          className={composerMode === 'message' ? 'text-emerald-300' : 'text-slate-400'}>Mensagem</Button>
+        <Button type="button" variant="ghost" aria-pressed={composerMode === 'note'} onClick={() => { setComposerMode('note'); setShowEmojiPicker(false) }}
+          className={composerMode === 'note' ? 'bg-amber-500/15 text-amber-200' : 'text-slate-400'}><FileText className="mr-2 h-4 w-4" />Nota interna</Button>
+      </div>}
+      {composerMode === 'note' && activeContact ? <form onSubmit={saveInternalNote} className="shrink-0 space-y-2 border-t border-amber-500/40 bg-[#30291a] p-3">
+        <label htmlFor="timeline-note" className="block text-xs font-medium text-amber-200">Nota interna · Apenas neste navegador. Não é enviada ao WhatsApp.</label>
+        <Textarea id="timeline-note" aria-label="Texto da nota interna" maxLength={10000} value={noteText} required
+          onChange={(event) => { setNoteText(event.target.value); noteDrafts.current[activeConversation.id] = event.target.value }}
+          aria-invalid={!!noteError} aria-describedby={noteError ? 'timeline-note-error' : undefined}
+          className="min-h-[72px] max-h-32 resize-y border-amber-500/40 bg-[#211e16] text-amber-50 focus-visible:ring-amber-300" />
+        {noteError && <p id="timeline-note-error" role="alert" className="text-sm text-red-300">{noteError}</p>}
+        <div className="flex justify-end"><Button type="submit" disabled={!noteText.trim()} className="min-h-11 bg-amber-300 text-slate-950 hover:bg-amber-200"><FileText className="mr-2 h-4 w-4" />Salvar nota interna</Button></div>
+      </form> : <>
       {/* Chat bottom input bar */}
       <div className="chat-composer min-h-16 bg-[#202c33] px-2 sm:px-3 py-2 flex items-center space-x-2 border-t border-[#2a3942] z-20 shrink-0">
         <Button
@@ -567,6 +690,14 @@ export const ChatArea: React.FC<ChatAreaProps> = ({
               <Zap className="w-4 h-4 mr-2 text-[#00a884]" />
               Respostas rápidas
             </DropdownMenuItem>
+            {canSuggest && <DropdownMenuItem
+              disabled={suggesting}
+              onClick={suggestReply}
+              className="cursor-pointer hover:bg-[#182229]"
+            >
+              <Bot className="w-4 h-4 mr-2 text-[#00a884]" />
+              {suggesting ? 'Gerando rascunho…' : 'Sugerir resposta (atendente)'}
+            </DropdownMenuItem>}
             <DropdownMenuItem
               disabled
               className="cursor-pointer hover:bg-[#182229]"
@@ -619,6 +750,8 @@ export const ChatArea: React.FC<ChatAreaProps> = ({
           )}
         </form>
       </div>
+
+      </>}
 
       {/* Diálogo de Mídia */}
       <MessageMediaDialog

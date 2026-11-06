@@ -3,6 +3,8 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { execFile } from 'node:child_process';
+import { createStore, suggestReply, validateConfig } from './copilot.mjs';
+import { loadKnowledge } from './rag.mjs';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -12,6 +14,28 @@ const EVOLUTION_URL = process.env.EVOLUTION_URL || 'http://127.0.0.1:8080';
 const EVOLUTION_APIKEY = process.env.EVOLUTION_APIKEY || '';
 const AGY_BIN = process.env.AGY_BIN || '/home/opc/.local/bin/agy';
 const DIST_DIR = path.resolve(__dirname, '../dist');
+// Atendente (Copilot): dados do servidor ficam fora do build; a base NebrIA é lida em modo somente leitura.
+const COPILOT_DATA_DIR = process.env.COPILOT_DATA_DIR || path.resolve(__dirname, 'data');
+const NEBRIA_DIR = process.env.NEBRIA_DIR || '';
+const COPILOT_ALLOW_AUTOMATIC = process.env.COPILOT_ALLOW_AUTOMATIC === '1';
+const copilotStore = createStore(COPILOT_DATA_DIR);
+let knowledgeCache = { at: 0, key: '', value: null };
+function currentKnowledge(config) {
+  const key = JSON.stringify([NEBRIA_DIR, config.ragFolders]);
+  if (!knowledgeCache.value || knowledgeCache.key !== key || Date.now() - knowledgeCache.at > 60000) {
+    knowledgeCache = { at: Date.now(), key, value: loadKnowledge(NEBRIA_DIR, config.ragFolders) };
+  }
+  return knowledgeCache.value;
+}
+function runAgy(prompt) {
+  return new Promise((resolve, reject) => {
+    if (!fs.existsSync(AGY_BIN)) return reject(new Error('agy indisponível'));
+    execFile(AGY_BIN, ['-p', prompt], { timeout: 90000, maxBuffer: 2 * 1024 * 1024,
+      env: { ...process.env, PATH: `${process.env.PATH}:/home/opc/.local/bin` } },
+    (error, stdout) => (error ? reject(error) : resolve(stdout)));
+  });
+}
+const text = (value, max) => (typeof value === 'string' ? value.slice(0, max) : '');
 
 function fetchUpstream(url, options = {}) {
   return fetch(url, { ...options, signal: AbortSignal.timeout(15000) });
@@ -304,6 +328,41 @@ async function handleApi(req, res, apiPath) {
     if (instancePath && !validInstanceName(instancePath[1])) {
       return sendJson(res, 400, { error: 'Nome de instância inválido.' });
     }
+  }
+
+  // Atendente Copilot: configuração, auditoria e rascunhos (nunca envia mensagens)
+  if (apiPath.startsWith('/copilot/')) {
+    if (apiPath === '/copilot/config' && method === 'GET') {
+      const config = copilotStore.readConfig();
+      const knowledge = currentKnowledge(config);
+      return sendJson(res, 200, { config, automaticAllowed: COPILOT_ALLOW_AUTOMATIC,
+        rag: { configured: !!NEBRIA_DIR, available: knowledge.available, documents: knowledge.documents, skipped: knowledge.skipped } });
+    }
+    if (apiPath === '/copilot/config' && method === 'PUT') {
+      const body = await parseBody(req);
+      const next = validateConfig(body, copilotStore.readConfig(), { allowAutomatic: COPILOT_ALLOW_AUTOMATIC });
+      next.updatedAt = new Date().toISOString();
+      next.updatedBy = auth.user?.email || auth.user?.id || null;
+      copilotStore.writeConfig(next);
+      copilotStore.audit({ action: 'config', user: next.updatedBy, enabled: next.enabled, paused: next.paused, mode: next.mode,
+        allowedContacts: next.allowedContactIds.length, allowedLabels: next.allowedLabelIds.length });
+      knowledgeCache = { at: 0, key: '', value: null };
+      return sendJson(res, 200, { config: next });
+    }
+    if (apiPath === '/copilot/audit' && method === 'GET') return sendJson(res, 200, { entries: copilotStore.readAudit(100) });
+    if (apiPath === '/copilot/suggest' && method === 'POST') {
+      const body = await parseBody(req);
+      const messages = Array.isArray(body.messages) ? body.messages.slice(-20).map((m) => ({ fromMe: !!m?.fromMe, text: text(m?.text, 800) })).filter((m) => m.text) : [];
+      const lastIncoming = [...messages].reverse().find((m) => !m.fromMe)?.text || '';
+      if (!text(body.contactId, 200) || !lastIncoming) return sendJson(res, 400, { error: 'Conversa sem mensagem do cliente para responder.' });
+      const config = copilotStore.readConfig();
+      const result = await suggestReply({ store: copilotStore, knowledge: currentKnowledge(config), runModel: runAgy, user: auth.user,
+        request: { contactId: text(body.contactId, 200), isSaved: body.isSaved === true, isGroup: body.isGroup === true,
+          labelIds: Array.isArray(body.labelIds) ? body.labelIds.filter((id) => typeof id === 'string').slice(0, 50) : [],
+          contactPhone: text(body.contactPhone, 30).replace(/D/g, ''), messages, lastIncoming } });
+      return sendJson(res, 200, result);
+    }
+    return sendJson(res, 404, { error: 'Rota não encontrada.' });
   }
 
   // Antigravity CLI Chat endpoint

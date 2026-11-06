@@ -92,9 +92,11 @@ test('chat parser filters non-chat JIDs, retains groups/lids and uses safe avata
     { remoteJid: '123456789@lid', pushName: 'Identificador de teste' },
   ]);
   assert.equal(result.conversations.length, 3);
-  assert.equal(result.contacts.length, 2);
-  const contact = result.contacts.find(item => item.id === JID);
-  assert.equal(contact.avatar, FALLBACK_AVATAR);
+  assert.equal(result.contacts, undefined);
+  const direct = result.conversations.find(item => item.id === JID);
+  assert.equal(direct.avatar, FALLBACK_AVATAR);
+  assert.equal(direct.name, '+5511000000000');
+  assert.equal(direct.phone, '5511000000000');
   const group = result.conversations.find(item => item.id === GROUP_JID);
   assert.equal(group.isGroup, true);
   assert.equal(group.name, 'Grupo de teste');

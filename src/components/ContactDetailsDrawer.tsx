@@ -24,6 +24,7 @@ import { cn } from '@/lib/utils'
 interface ContactDetailsDrawerProps {
   contactId: string
   onClose: () => void
+  onFocusNote?: (noteId: string) => void
   onOpenFullscreenAvatar?: (media: MessageMedia) => void
 }
 
@@ -31,6 +32,7 @@ export const ContactDetailsDrawer: React.FC<ContactDetailsDrawerProps> = ({
   contactId,
   onClose,
   onOpenFullscreenAvatar,
+  onFocusNote,
 }) => {
   const {
     contacts,
@@ -145,8 +147,9 @@ export const ContactDetailsDrawer: React.FC<ContactDetailsDrawerProps> = ({
           <button
             type="button"
             onClick={() => setActiveTab('details')}
+            aria-pressed={activeTab === 'details'}
             className={cn(
-              'flex-1 flex items-center justify-center space-x-1.5 py-1.5 rounded-md text-xs font-medium transition-colors',
+              'min-h-11 flex-1 flex items-center justify-center space-x-1.5 py-1.5 rounded-md text-xs font-medium transition-colors',
               activeTab === 'details'
                 ? 'bg-[#2a3942] text-white shadow-sm'
                 : 'text-slate-400 hover:text-slate-200',
@@ -158,15 +161,16 @@ export const ContactDetailsDrawer: React.FC<ContactDetailsDrawerProps> = ({
           <button
             type="button"
             onClick={() => setActiveTab('notes')}
+            aria-pressed={activeTab === 'notes'}
             className={cn(
-              'flex-1 flex items-center justify-center space-x-1.5 py-1.5 rounded-md text-xs font-medium transition-colors',
+              'min-h-11 flex-1 flex items-center justify-center space-x-1.5 py-1.5 rounded-md text-xs font-medium transition-colors',
               activeTab === 'notes'
                 ? 'bg-[#2a3942] text-white shadow-sm'
                 : 'text-slate-400 hover:text-slate-200',
             )}
           >
             <FileText className="w-3.5 h-3.5 text-[#00a884]" />
-            <span>Notas</span>
+            <span>Notas internas</span>
             {contactNotesCount > 0 && (
               <span className="ml-1 px-1.5 py-0.2 rounded-full text-[10px] font-semibold bg-[#00a884] text-white">
                 {contactNotesCount}
@@ -178,7 +182,7 @@ export const ContactDetailsDrawer: React.FC<ContactDetailsDrawerProps> = ({
 
       {activeTab === 'notes' ? (
         <div className="flex-1 overflow-y-auto p-4">
-          <ContactNotesTab contactId={contact.id} contactName={contact.name} />
+          <ContactNotesTab key={contact.id} contactId={contact.id} contactName={contact.name} onFocusNote={onFocusNote} />
         </div>
       ) : (
         <div className="flex-1 overflow-y-auto p-4 space-y-4">
