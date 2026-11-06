@@ -1,0 +1,39 @@
+{
+  "environment": "Local Docker node:22-alpine with tests/browser-fixture.mjs. All messages and credentials fictitious. No production sends.",
+  "viewports": [
+    {
+      "viewport": "320x568",
+      "revision": 48,
+      "observation": "Final build visually inspected: avatar keeps shape, long title truncates, back/search/menu and composer visible; no page horizontal overflow. Earlier measured composer 141x44 at x104 y514.5."
+    },
+    {
+      "viewport": "390x844",
+      "revision": 20,
+      "observation": "List/chat navigation, drawer Tab/Escape, text send and incoming polling, older messages and failed-send retained draft. Measured composer 211x44 at x116 y790.5. Later 390x400 reduced-height check: 211x44 at x104 y346.5, bottom390.5 within400."
+    },
+    {
+      "viewport": "768x1024",
+      "revision": 45,
+      "observation": "Final build: collapsed rail, 320px list and chat coexist; composer133x44 at x524 y932.5 within viewport. Fixed sidebar header flex and hidden call buttons."
+    },
+    {
+      "viewport": "1440x900",
+      "revision": 25,
+      "observation": "Expanded rail/list/chat visually inspected; long contact title, history, incoming and outgoing bubbles readable. Header avatar correction subsequently verified in narrow layouts."
+    }
+  ],
+  "states": {
+    "loading": "revision39 Conectando ao WhatsApp with stable structure during delayed fixture API",
+    "empty": "revision34 no WhatsApp chats with explanation and contact action; Copilot remains available",
+    "error": "revision31 disconnected instance with retry, revision15 send503 preserves draft without adding sent bubble",
+    "partial": "revision43 messages remain readable while chats/messages API503 shows retry",
+    "success": "revision13 local text accepted, incoming polling and older messages visible; no duplicate message",
+    "permission": "revision36 login403 non-admin blocked; unit tests assert anonymous401 and non-admin403 before reaching Evolution"
+  },
+  "limits": [
+    "Real Evolution response structure and service environment await Infra confirmation.",
+    "No message sent to a real recipient; no end-to-end external delivery claim.",
+    "Physical iOS/Android keyboard and standalone install untested. Reduced viewport was checked instead.",
+    "Remote media send, groups creation and remote reactions not implemented; received media represented as text."
+  ]
+}

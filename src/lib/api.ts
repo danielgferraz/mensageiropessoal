@@ -28,7 +28,7 @@ export function getStoredAdminToken(): string | null {
             const parsed = JSON.parse(val);
             if (parsed?.access_token) return parsed.access_token;
             if (parsed?.currentSession?.access_token) return parsed.currentSession.access_token;
-          } catch {}
+          } catch { /* Ignore unrelated local storage entries. */ }
         }
       }
     }

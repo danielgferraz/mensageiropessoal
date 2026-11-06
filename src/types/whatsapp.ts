@@ -1,4 +1,4 @@
-export type MessageStatus = 'sent' | 'delivered' | 'read'
+export type MessageStatus = 'pending' | 'sent' | 'delivered' | 'read' | 'failed'
 
 export type MediaType = 'image' | 'video'
 
@@ -24,6 +24,7 @@ export interface Message {
   media?: MessageMedia
   timestamp: string // ISO string or 'HH:mm'
   status: MessageStatus
+  sentAt?: number
   reactions?: { [emoji: string]: number } // legibilidade / contagem simples
   reactionList?: MessageReaction[] // lista detalhada para saber se 'me' reagiu
 }
@@ -52,6 +53,7 @@ export interface Contact {
 export interface Conversation {
   id: string
   name: string
+  updatedAt?: number
   isGroup: boolean
   avatar: string
   participants?: string[] // Contact IDs or names

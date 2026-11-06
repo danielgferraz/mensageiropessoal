@@ -15,8 +15,8 @@
     "format:check": "oxfmt --check",
     "preview": "vite preview",
     "serve": "node server/server.mjs",
-    "test": "echo \"there are no tests for this project\" && exit 0",
-    "test:watch": "echo \"there are no tests for this project\" && exit 0"
+    "test": "node --test server/*.test.mjs tests/*.test.mjs",
+    "test:watch": "node --test --watch server/*.test.mjs tests/*.test.mjs"
   },
   "dependencies": {
     "@hookform/resolvers": "^5.4.0",

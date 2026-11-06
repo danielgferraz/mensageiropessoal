@@ -9,9 +9,42 @@ const __dirname = path.dirname(__filename);
 
 const PORT = parseInt(process.env.PORT || '3333', 10);
 const EVOLUTION_URL = process.env.EVOLUTION_URL || 'http://127.0.0.1:8080';
-const EVOLUTION_APIKEY = process.env.EVOLUTION_APIKEY || '957b79630f4904dde12deebc6f063b5bd7bb0c2daba5484c8b41b6e31e35ac4e';
+const EVOLUTION_APIKEY = process.env.EVOLUTION_APIKEY || '';
 const AGY_BIN = process.env.AGY_BIN || '/home/opc/.local/bin/agy';
 const DIST_DIR = path.resolve(__dirname, '../dist');
+
+function fetchUpstream(url, options = {}) {
+  return fetch(url, { ...options, signal: AbortSignal.timeout(15000) });
+}
+
+export function sanitizeInstances(data) {
+  const rows = Array.isArray(data) ? data : Array.isArray(data?.instances) ? data.instances : [];
+  const stringValue = value => typeof value === 'string' ? value : null;
+  return rows.map(row => {
+    const instance = row?.instance || row;
+    return {
+      name: stringValue(instance?.name) || stringValue(instance?.instanceName) || '',
+      instanceName: stringValue(instance?.instanceName) || stringValue(instance?.name) || '',
+      connectionStatus: stringValue(instance?.connectionStatus) || stringValue(instance?.status) || stringValue(instance?.state) || 'close',
+      ownerJid: stringValue(instance?.ownerJid) || stringValue(instance?.owner),
+      profileName: stringValue(instance?.profileName),
+      profilePicUrl: stringValue(instance?.profilePicUrl) || stringValue(instance?.profilePictureUrl),
+    };
+  }).filter(instance => instance.name);
+}
+
+function validInstanceName(value) {
+  return typeof value === 'string' && /^[A-Za-z0-9_-]{1,100}$/.test(value);
+}
+
+export function normalizeRecipient(value) {
+  if (typeof value !== 'string') return null;
+  const number = value.trim();
+  if (/^\d+(?:-\d+)?@g\.us$/.test(number) || /^\d+@(s\.whatsapp\.net|lid)$/.test(number)) return number;
+  if (!/^[+\d ()-]+$/.test(number)) return null;
+  const digits = number.replace(/\D/g, '');
+  return /^\d{7,15}$/.test(digits) ? digits : null;
+}
 
 const SUPABASE_URL = process.env.SUPABASE_URL || 'http://127.0.0.1:18180';
 const SUPABASE_ANON_KEY = process.env.SUPABASE_ANON_KEY || 'eyJhbGciOiJFUzI1NiIsInR5cCI6IkpXVCIsImtpZCI6ImE3ZDQwYzk0LTYwYWUtNDg3Yi04MDNkLTU0Y2VmMzhhNTljMyJ9.eyJyb2xlIjoiYW5vbiIsImlzcyI6Imh0dHBzOi8vd3d3LnRlY2hhZ2VuZGEuYXBwLmJyL2F1dGgvdjEiLCJhdWQiOiJhdXRoZW50aWNhdGVkIiwiaWF0IjoxNzkzNjQ1MTQzLCJleHAiOjE3OTYyMzcxNDN9.bRw-pTO9XDbcQ1jnTkninnZvgFU6cUGDblxSmfr8ZiU4mwWsivy7NztFeSwwqQtY8b6PG-mThe1HXK2mckvs_A';
@@ -37,7 +70,7 @@ async function verifyAdminAuth(req) {
 
   try {
     // 1. Valida token com Supabase Auth
-    const userRes = await fetch(`${SUPABASE_URL}/auth/v1/user`, {
+    const userRes = await fetchUpstream(`${SUPABASE_URL}/auth/v1/user`, {
       headers: {
         apikey: SUPABASE_ANON_KEY,
         Authorization: `Bearer ${token}`,
@@ -54,7 +87,7 @@ async function verifyAdminAuth(req) {
     }
 
     // 2. Consulta perfil em public.profiles para validar role 'admin'
-    const profileRes = await fetch(`${SUPABASE_URL}/rest/v1/profiles?id=eq.${userData.id}&select=id,role,full_name`, {
+    const profileRes = await fetchUpstream(`${SUPABASE_URL}/rest/v1/profiles?id=eq.${userData.id}&select=id,role,full_name`, {
       headers: {
         apikey: SUPABASE_ANON_KEY,
         Authorization: `Bearer ${token}`,
@@ -133,9 +166,11 @@ async function parseBody(req) {
     req.on('end', () => {
       if (!data) return resolve({});
       try {
-        resolve(JSON.parse(data));
+        const parsed = JSON.parse(data);
+        if (!parsed || typeof parsed !== 'object' || Array.isArray(parsed)) throw new Error('Invalid JSON object');
+        resolve(parsed);
       } catch (err) {
-        resolve({ raw: data });
+        reject(Object.assign(new Error('JSON inválido.'), { statusCode: 400 }));
       }
     });
     req.on('error', reject);
@@ -145,6 +180,8 @@ async function parseBody(req) {
 function sendJson(res, statusCode, data) {
   res.writeHead(statusCode, {
     'Content-Type': 'application/json; charset=utf-8',
+    'Cache-Control': 'no-store',
+    'X-Content-Type-Options': 'nosniff',
     'Access-Control-Allow-Origin': '*',
     'Access-Control-Allow-Methods': 'GET, POST, PUT, DELETE, OPTIONS',
     'Access-Control-Allow-Headers': 'Content-Type, Authorization, apikey',
@@ -187,7 +224,7 @@ async function handleApi(req, res, apiPath) {
     }
 
     try {
-      const loginRes = await fetch(`${SUPABASE_URL}/auth/v1/token?grant_type=password`, {
+      const loginRes = await fetchUpstream(`${SUPABASE_URL}/auth/v1/token?grant_type=password`, {
         method: 'POST',
         headers: {
           apikey: SUPABASE_ANON_KEY,
@@ -205,7 +242,7 @@ async function handleApi(req, res, apiPath) {
       }
 
       const token = data.access_token;
-      const profileRes = await fetch(`${SUPABASE_URL}/rest/v1/profiles?id=eq.${data.user.id}&select=id,role,full_name`, {
+      const profileRes = await fetchUpstream(`${SUPABASE_URL}/rest/v1/profiles?id=eq.${data.user.id}&select=id,role,full_name`, {
         headers: {
           apikey: SUPABASE_ANON_KEY,
           Authorization: `Bearer ${token}`,
@@ -240,6 +277,7 @@ async function handleApi(req, res, apiPath) {
         user: adminUser,
       });
     } catch (err) {
+      if (err.statusCode) return sendJson(res, err.statusCode, { error: err.message });
       console.error('[Login Error]', err);
       return sendJson(res, 502, { success: false, error: 'Falha de comunicação com Supabase Auth.', details: err.message });
     }
@@ -258,6 +296,14 @@ async function handleApi(req, res, apiPath) {
   const auth = await verifyAdminAuth(req);
   if (!auth.authorized) {
     return sendJson(res, auth.status || 401, { error: auth.error, role: auth.role });
+  }
+
+  if (apiPath.startsWith('/whatsapp/')) {
+    if (!EVOLUTION_APIKEY) return sendJson(res, 503, { error: 'Evolution API não configurada no servidor.' });
+    const instancePath = apiPath.match(/^\/whatsapp\/(?:connect|status|instances|chats|messages|send-message)\/(.+)$/);
+    if (instancePath && !validInstanceName(instancePath[1])) {
+      return sendJson(res, 400, { error: 'Nome de instância inválido.' });
+    }
   }
 
   // Antigravity CLI Chat endpoint
@@ -306,12 +352,13 @@ async function handleApi(req, res, apiPath) {
   // Evolution API: Listar instâncias
   if (apiPath === '/whatsapp/instances' && method === 'GET') {
     try {
-      const resp = await fetch(`${EVOLUTION_URL}/instance/fetchInstances`, {
+      const resp = await fetchUpstream(`${EVOLUTION_URL}/instance/fetchInstances`, {
         headers: { apikey: EVOLUTION_APIKEY },
       });
       const data = await resp.json();
-      return sendJson(res, resp.status, data);
+      return sendJson(res, resp.status, resp.ok ? sanitizeInstances(data) : { error: 'Falha ao listar instâncias.' });
     } catch (err) {
+      if (err.statusCode) return sendJson(res, err.statusCode, { error: err.message });
       console.error('[Evolution API error]', err);
       return sendJson(res, 502, { error: 'Falha ao conectar com Evolution API', details: err.message });
     }
@@ -321,7 +368,7 @@ async function handleApi(req, res, apiPath) {
   if (apiPath === '/whatsapp/instances' && method === 'POST') {
     const body = await parseBody(req);
     const instanceName = body.instanceName || body.name;
-    if (!instanceName) {
+    if (!validInstanceName(instanceName)) {
       return sendJson(res, 400, { error: 'instanceName é obrigatório.' });
     }
 
@@ -340,7 +387,7 @@ async function handleApi(req, res, apiPath) {
         syncFullHistory: false,
       };
 
-      const resp = await fetch(`${EVOLUTION_URL}/instance/create`, {
+      const resp = await fetchUpstream(`${EVOLUTION_URL}/instance/create`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -349,8 +396,14 @@ async function handleApi(req, res, apiPath) {
         body: JSON.stringify(payload),
       });
       const data = await resp.json();
-      return sendJson(res, resp.status, data);
+      if (!resp.ok) return sendJson(res, resp.status, { error: 'Falha ao criar instância.' });
+      const qr = data.qrcode || {};
+      return sendJson(res, resp.status, {
+        instance: sanitizeInstances([data.instance || { name: instanceName }])[0],
+        qrcode: { base64: qr.base64, pairingCode: qr.pairingCode, code: qr.code },
+      });
     } catch (err) {
+      if (err.statusCode) return sendJson(res, err.statusCode, { error: err.message });
       console.error('[Evolution create error]', err);
       return sendJson(res, 502, { error: 'Falha ao criar instância no Evolution API', details: err.message });
     }
@@ -361,12 +414,13 @@ async function handleApi(req, res, apiPath) {
   if (connectMatch && method === 'GET') {
     const instanceName = connectMatch[1];
     try {
-      const resp = await fetch(`${EVOLUTION_URL}/instance/connect/${instanceName}`, {
+      const resp = await fetchUpstream(`${EVOLUTION_URL}/instance/connect/${encodeURIComponent(instanceName)}`, {
         headers: { apikey: EVOLUTION_APIKEY },
       });
       const data = await resp.json();
       return sendJson(res, resp.status, data);
     } catch (err) {
+      if (err.statusCode) return sendJson(res, err.statusCode, { error: err.message });
       console.error('[Evolution connect error]', err);
       return sendJson(res, 502, { error: 'Falha ao conectar instância', details: err.message });
     }
@@ -377,12 +431,13 @@ async function handleApi(req, res, apiPath) {
   if (statusMatch && method === 'GET') {
     const instanceName = statusMatch[1];
     try {
-      const resp = await fetch(`${EVOLUTION_URL}/instance/connectionState/${instanceName}`, {
+      const resp = await fetchUpstream(`${EVOLUTION_URL}/instance/connectionState/${encodeURIComponent(instanceName)}`, {
         headers: { apikey: EVOLUTION_APIKEY },
       });
       const data = await resp.json();
       return sendJson(res, resp.status, data);
     } catch (err) {
+      if (err.statusCode) return sendJson(res, err.statusCode, { error: err.message });
       console.error('[Evolution status error]', err);
       return sendJson(res, 502, { error: 'Falha ao obter status', details: err.message });
     }
@@ -393,13 +448,14 @@ async function handleApi(req, res, apiPath) {
   if (deleteMatch && method === 'DELETE') {
     const instanceName = deleteMatch[1];
     try {
-      const resp = await fetch(`${EVOLUTION_URL}/instance/delete/${instanceName}`, {
+      const resp = await fetchUpstream(`${EVOLUTION_URL}/instance/delete/${encodeURIComponent(instanceName)}`, {
         method: 'DELETE',
         headers: { apikey: EVOLUTION_APIKEY },
       });
       const data = await resp.json();
       return sendJson(res, resp.status, data);
     } catch (err) {
+      if (err.statusCode) return sendJson(res, err.statusCode, { error: err.message });
       console.error('[Evolution delete error]', err);
       return sendJson(res, 502, { error: 'Falha ao excluir instância', details: err.message });
     }
@@ -411,7 +467,7 @@ async function handleApi(req, res, apiPath) {
     const instanceName = chatsMatch[1];
     try {
       const body = await parseBody(req);
-      const resp = await fetch(`${EVOLUTION_URL}/chat/findChats/${instanceName}`, {
+      const resp = await fetchUpstream(`${EVOLUTION_URL}/chat/findChats/${encodeURIComponent(instanceName)}`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -422,6 +478,7 @@ async function handleApi(req, res, apiPath) {
       const data = await resp.json();
       return sendJson(res, resp.status, data);
     } catch (err) {
+      if (err.statusCode) return sendJson(res, err.statusCode, { error: err.message });
       console.error('[Evolution findChats error]', err);
       return sendJson(res, 502, { error: 'Falha ao buscar chats', details: err.message });
     }
@@ -433,7 +490,7 @@ async function handleApi(req, res, apiPath) {
     const instanceName = messagesMatch[1];
     try {
       const body = await parseBody(req);
-      const resp = await fetch(`${EVOLUTION_URL}/chat/findMessages/${instanceName}`, {
+      const resp = await fetchUpstream(`${EVOLUTION_URL}/chat/findMessages/${encodeURIComponent(instanceName)}`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -444,6 +501,7 @@ async function handleApi(req, res, apiPath) {
       const data = await resp.json();
       return sendJson(res, resp.status, data);
     } catch (err) {
+      if (err.statusCode) return sendJson(res, err.statusCode, { error: err.message });
       console.error('[Evolution findMessages error]', err);
       return sendJson(res, 502, { error: 'Falha ao buscar mensagens', details: err.message });
     }
@@ -455,13 +513,11 @@ async function handleApi(req, res, apiPath) {
     const instanceName = sendMatch[1];
     try {
       const body = await parseBody(req);
-      if (!body.number || !body.text) {
-        return sendJson(res, 400, { error: 'Campos number e text são obrigatórios.' });
+      const number = normalizeRecipient(body.number);
+      if (!number || typeof body.text !== 'string' || !body.text.trim() || body.text.length > 10000) {
+        return sendJson(res, 400, { error: 'Informe um destinatário válido e texto de 1 a 10000 caracteres.' });
       }
-
-      // Normaliza número
-      let number = String(body.number).replace(/\D/g, '');
-      const resp = await fetch(`${EVOLUTION_URL}/message/sendText/${instanceName}`, {
+      const resp = await fetchUpstream(`${EVOLUTION_URL}/message/sendText/${encodeURIComponent(instanceName)}`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -476,6 +532,7 @@ async function handleApi(req, res, apiPath) {
       const data = await resp.json();
       return sendJson(res, resp.status, data);
     } catch (err) {
+      if (err.statusCode) return sendJson(res, err.statusCode, { error: err.message });
       console.error('[Evolution sendText error]', err);
       return sendJson(res, 502, { error: 'Falha ao enviar mensagem', details: err.message });
     }
@@ -485,18 +542,21 @@ async function handleApi(req, res, apiPath) {
   return sendJson(res, 404, { error: 'Endpoint de API não encontrado.' });
 }
 
-const server = http.createServer(async (req, res) => {
+async function handleRequest(req, res) {
   const urlObj = new URL(req.url, `http://${req.headers.host || 'localhost'}`);
   let pathname = decodeURIComponent(urlObj.pathname);
+  if (pathname.includes('\\') || pathname.includes('\0')) {
+    return sendJson(res, 403, { error: 'Caminho inválido.' });
+  }
 
   // Normaliza caminhos com ou sem prefixo /mensageiro
   if (pathname.startsWith('/mensageiro/api/')) {
     const apiSubPath = pathname.replace('/mensageiro/api', '');
-    return handleApi(req, res, apiSubPath);
+    return await handleApi(req, res, apiSubPath);
   }
   if (pathname.startsWith('/api/')) {
     const apiSubPath = pathname.replace('/api', '');
-    return handleApi(req, res, apiSubPath);
+    return await handleApi(req, res, apiSubPath);
   }
 
   // Servir arquivos estáticos do Vite
@@ -513,7 +573,11 @@ const server = http.createServer(async (req, res) => {
     staticPath = 'index.html';
   }
 
-  const filePath = path.join(DIST_DIR, staticPath);
+  const filePath = path.resolve(DIST_DIR, staticPath.replace(/^[/\\]+/, ''));
+  const relativePath = path.relative(DIST_DIR, filePath);
+  if (relativePath.startsWith('..') || path.isAbsolute(relativePath)) {
+    return sendJson(res, 403, { error: 'Caminho inválido.' });
+  }
 
   // Verifica se o arquivo existe dentro do diretório dist
   if (fs.existsSync(filePath) && fs.statSync(filePath).isFile()) {
@@ -521,7 +585,8 @@ const server = http.createServer(async (req, res) => {
     const contentType = MIME_TYPES[ext] || 'application/octet-stream';
     res.writeHead(200, {
       'Content-Type': contentType,
-      'Cache-Control': ext === '.html' ? 'no-cache' : 'public, max-age=31536000, immutable',
+      'Cache-Control': ext === '.html' || path.basename(filePath) === 'sw.js' || ext === '.webmanifest' ? 'no-cache' : 'public, max-age=31536000, immutable',
+      'X-Content-Type-Options': 'nosniff',
     });
     fs.createReadStream(filePath).pipe(res);
     return;
@@ -540,9 +605,16 @@ const server = http.createServer(async (req, res) => {
 
   res.writeHead(404, { 'Content-Type': 'text/plain; charset=utf-8' });
   res.end('Build estático não encontrado. Execute npm run build primeiro.');
+}
+
+export const server = http.createServer((req, res) => {
+  handleRequest(req, res).catch(err => {
+    if (res.headersSent) return res.destroy();
+    sendJson(res, err instanceof URIError ? 400 : err.statusCode || 500, { error: err.statusCode ? err.message : 'Não foi possível processar a solicitação.' });
+  });
 });
 
-server.listen(PORT, '0.0.0.0', () => {
+if (process.argv[1] && path.resolve(process.argv[1]) === __filename) server.listen(PORT, '0.0.0.0', () => {
   console.log(`[Mensageiro Server] Rodando na porta ${PORT}`);
   console.log(`[Mensageiro Server] Evolution URL: ${EVOLUTION_URL}`);
   console.log(`[Mensageiro Server] Antigravity CLI: ${AGY_BIN}`);

@@ -53,6 +53,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
 }) => {
   const {
     user,
+    loading, syncError, refresh, instanceName,
     conversations,
     activeChatId,
     setActiveChatId,
@@ -136,7 +137,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
   }
 
   return (
-    <div className="w-full md:w-[380px] lg:w-[420px] flex flex-col h-full bg-[#111b21] wa-panel-separator-right text-slate-200 shrink-0">
+    <div className="w-full min-w-0 flex flex-col h-full bg-[#111b21] wa-panel-separator-right text-slate-200 shrink-0">
       {/* Top Header — Área do perfil / conversas */}
       <div className="h-16 px-4 wa-header-sidebar flex items-center justify-between shrink-0">
         {showArchivedView ? (
@@ -156,7 +157,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
             </div>
           </div>
         ) : (
-          <div className="flex items-center space-x-2">
+          <div className="flex min-w-0 items-center space-x-2">
             {onOpenMobileMenu && (
               <Button
                 variant="ghost"
@@ -169,11 +170,11 @@ export const Sidebar: React.FC<SidebarProps> = ({
               </Button>
             )}
             <div
-              className="flex items-center space-x-3 cursor-pointer group"
+              className="flex min-w-0 items-center space-x-2 cursor-pointer group"
               onClick={onOpenProfile}
               title="Ver seu perfil"
             >
-              <div className="relative">
+              <div className="relative shrink-0">
                 <img
                   src={user.avatar}
                   alt={user.name}
@@ -181,7 +182,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
                 />
                 <span className="absolute bottom-0 right-0 w-2.5 h-2.5 bg-[#00a884] rounded-full border border-[var(--wa-header-sidebar-bg)]" />
               </div>
-              <div>
+              <div className="min-w-0">
                 <p className="text-sm font-semibold wa-header-title group-hover:opacity-85 transition-opacity truncate max-w-[120px] sm:max-w-[150px]">
                   {user.name || 'Você'}
                 </p>
@@ -191,7 +192,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
         )}
 
         {/* Action icons inteligentes */}
-        <div className="flex items-center space-x-1">
+        <div className="flex shrink-0 items-center space-x-1">
           <Button
             variant="ghost"
             size="icon"
@@ -219,7 +220,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
             variant="ghost"
             size="icon"
             onClick={onOpenNewGroup}
-            className="wa-header-btn rounded-full"
+            className="hidden"
             title="Criar novo grupo"
           >
             <Users className="w-5 h-5" />
@@ -230,7 +231,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
               variant="ghost"
               size="icon"
               onClick={onOpenNewInstance}
-              className="wa-header-btn rounded-full text-[#00a884] hover:text-[#00a884]"
+              className="hidden"
               title="Nova Instância WhatsApp (QR Code)"
             >
               <QrCode className="w-5 h-5" />
@@ -297,14 +298,14 @@ export const Sidebar: React.FC<SidebarProps> = ({
                 onClick={() => {
                   resetData()
                   toast({
-                    title: 'Dados restaurados',
-                    description: 'As conversas voltaram ao estado de exemplo original.',
+                    title: 'Dados recarregados',
+                    description: 'As conversas serão recarregadas do WhatsApp.',
                   })
                 }}
                 className="cursor-pointer hover:bg-[#182229] text-amber-400"
               >
                 <RotateCcw className="w-4 h-4 mr-2" />
-                Restaurar dados de exemplo
+                Recarregar dados do WhatsApp
               </DropdownMenuItem>
               <DropdownMenuItem
                 onClick={onLogout}
@@ -318,6 +319,10 @@ export const Sidebar: React.FC<SidebarProps> = ({
         </div>
       </div>
 
+      <div className="px-4 py-2 text-xs border-b border-[#222d34]" role="status">
+        {loading ? 'Conectando ao WhatsApp…' : syncError ? <div role="alert" className="text-red-300">{syncError} <button className="underline" onClick={refresh}>Tentar novamente</button></div> : `WhatsApp conectado · ${instanceName || '—'}`}
+      </div>
+      {!loading && !syncError && !conversations.some((c) => c.id.includes('@')) && <p className="p-4 text-sm text-slate-400">Nenhuma conversa do WhatsApp disponível. Inicie uma conversa pelos contatos ou aguarde a sincronização do celular.</p>}
       {/* Search Bar & Quick Filters */}
       <div className="p-3 bg-[#111b21] space-y-2 border-b border-[#222d34] shrink-0">
         <div className="relative flex items-center">
@@ -464,7 +469,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
 
       {/* Conversations List */}
       <div className="flex-1 overflow-y-auto divide-y divide-[#202c33]/40">
-        {sortedConversations.length === 0 ? (
+        {sortedConversations.length === 0 && !loading ? (
           <div className="text-center py-12 px-4 text-slate-400 text-sm">
             <MessageSquare className="w-10 h-10 mx-auto text-slate-600 mb-2 opacity-50" />
             <p className="font-medium text-slate-300">
@@ -489,6 +494,14 @@ export const Sidebar: React.FC<SidebarProps> = ({
             return (
               <div
                 key={conv.id}
+                role="button"
+                tabIndex={0}
+                aria-label={`Abrir conversa com ${conv.name}`}
+                onKeyDown={(event) => {
+                  if (event.target === event.currentTarget && (event.key === 'Enter' || event.key === ' ')) {
+                    event.preventDefault(); handleSelectChat(conv)
+                  }
+                }}
                 onClick={() => handleSelectChat(conv)}
                 className={`flex items-center px-3 py-3 cursor-pointer transition-colors relative group ${
                   isActive ? 'bg-[#2a3942]' : 'hover:bg-[#202c33] bg-[#111b21]'

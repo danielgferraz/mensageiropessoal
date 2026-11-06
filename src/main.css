@@ -750,3 +750,105 @@ button[disabled] {
 button.bg-\[\#00a884\] {
   color: #ffffff !important;
 }
+
+/* The visible viewport shrinks with the keyboard; all conversation panes flex inside it. */
+html,
+body,
+#root {
+  height: 100%;
+  width: 100%;
+  overscroll-behavior: none;
+}
+
+.messenger-viewport {
+  position: fixed;
+  inset: 0;
+  top: var(--app-viewport-top, 0px);
+  height: var(--app-viewport-height, 100dvh);
+  padding: env(safe-area-inset-top) env(safe-area-inset-right)
+    env(safe-area-inset-bottom) env(safe-area-inset-left);
+}
+
+.messenger-app :is(input, textarea, form),
+.messenger-chat > div {
+  min-width: 0;
+}
+
+.messenger-app :is(button, a, input, textarea):focus-visible {
+  outline: 2px solid #53bdeb;
+  outline-offset: 2px;
+}
+
+.messenger-rail nav button {
+  min-height: 44px;
+}
+
+@media (max-width: 767px) {
+  .messenger-list {
+    animation: messenger-list-enter 160ms ease-out;
+  }
+
+  .messenger-chat {
+    animation: messenger-chat-enter 160ms ease-out;
+  }
+
+  .messenger-app :is(.wa-header-sidebar, .wa-header-chat, .wa-header-drawer) button,
+  .messenger-chat form button {
+    min-width: 44px;
+    min-height: 44px;
+  }
+
+  .messenger-app :is(input, textarea) {
+    font-size: 16px;
+  }
+
+  .messenger-app .whatsapp-chat-bg {
+    overscroll-behavior: contain;
+    overflow-wrap: anywhere;
+    min-height: 0;
+  }
+
+  .messenger-rail[role='dialog'] {
+    height: var(--app-viewport-height, 100dvh);
+    top: var(--app-viewport-top, 0px);
+    padding-top: env(safe-area-inset-top);
+    padding-bottom: env(safe-area-inset-bottom);
+    padding-left: env(safe-area-inset-left);
+  }
+
+  .messenger-app > .fixed.bottom-5 {
+    bottom: calc(1.25rem + env(safe-area-inset-bottom));
+    right: calc(1.25rem + env(safe-area-inset-right));
+  }
+
+  [role='dialog']:not(.messenger-rail) {
+    max-width: calc(100vw - 1rem);
+    max-height: calc(var(--app-viewport-height, 100dvh) - 1rem);
+    overflow-y: auto;
+  }
+}
+
+@keyframes messenger-chat-enter {
+  from { opacity: 0.5; transform: translateX(12px); }
+  to { opacity: 1; transform: translateX(0); }
+}
+
+@keyframes messenger-list-enter {
+  from { opacity: 0.5; transform: translateX(-8px); }
+  to { opacity: 1; transform: translateX(0); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .messenger-app *,
+  .messenger-app *::before,
+  .messenger-app *::after {
+    animation-duration: 0.01ms !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}
+
+.messenger-list > * { width: 100%; min-width: 0; }
+
+.no-scrollbar { scrollbar-width: none; }
+.no-scrollbar::-webkit-scrollbar { display: none; }

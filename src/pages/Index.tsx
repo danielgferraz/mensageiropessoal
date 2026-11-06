@@ -12,7 +12,6 @@ import { ContactsCrmPanel } from '@/components/ContactsCrmPanel'
 import { SettingsPanel } from '@/components/SettingsPanel'
 import { FeatureRail, LeftPanel } from '@/components/FeatureRail'
 import { ContactDetailsModal } from '@/components/ContactDetailsModal'
-import { Contact } from '@/types/whatsapp'
 import { SystemFabMenu } from '@/components/SystemFabMenu'
 import { NewContactDialog } from '@/components/NewContactDialog'
 import { LabelsManagerDialog } from '@/components/LabelsManagerDialog'
@@ -70,7 +69,7 @@ export default function Index() {
   }
 
   return (
-    <div className="flex h-screen w-screen overflow-hidden bg-[#0c1317]">
+    <div className="messenger-app flex h-full min-h-0 w-full min-w-0 overflow-hidden bg-[#0c1317]">
       {/* Outer WhatsApp Web container layout */}
       <div className="flex h-full w-full max-w-[1680px] mx-auto shadow-2xl relative overflow-hidden bg-[#111b21]">
         {/* Menu lateral recolhível de funcionalidades */}
@@ -79,6 +78,7 @@ export default function Index() {
           onSelect={(panel) => {
             setActiveLeftPanel(panel)
             setMobileMenuOpen(false)
+            if (panel !== 'chats') setActiveChatId(null)
           }}
           onOpenNewInstance={() => setNewInstanceOpen(true)}
           onOpenAntigravity={() => {
@@ -102,9 +102,9 @@ export default function Index() {
           <>
             {/* Left Side (Sidebar or specialized panels) */}
             <div
-              className={`h-full ${
+              className={`messenger-list h-full min-h-0 min-w-0 ${
                 activeChatId ? 'hidden md:flex' : 'flex'
-              } w-full md:w-[380px] lg:w-[420px] shrink-0 transition-all`}
+              } w-full md:w-[320px] lg:w-[380px] xl:w-[420px] shrink-0`}
             >
               {activeLeftPanel === 'chats' && (
                 <Sidebar
@@ -137,7 +137,7 @@ export default function Index() {
             </div>
 
             {/* Right Side (Active Chat View / Placeholder apenas para Conversas sem chat) */}
-            <div className={`flex-1 h-full ${!activeChatId ? 'hidden md:flex' : 'flex'} min-w-0`}>
+            <div className={`messenger-chat flex-1 h-full min-h-0 ${!activeChatId ? 'hidden md:flex' : 'flex'} min-w-0`}>
               <ChatArea
                 onBackMobile={() => {
                   setActiveChatId(null)

@@ -1,0 +1,65 @@
+{
+  "contract": "Existing WhatsApp-style operational interface; admins read real chats/history and send text. Preserve drafts/errors. Auto choose connected WA. Mobile single-pane, desktop rail/list/chat, safe areas and 44px mobile composer controls.",
+  "targetViewports": [
+    "320x568",
+    "390x844",
+    "768x1024",
+    "1440x900"
+  ],
+  "accessibility": {
+    "status": "pass",
+    "evidence": "Keyboard access added to chat rows; labelled composer/back/send/menu, drawer Tab and Escape exercised; focus outline and reduced motion inspected. Broader WCAG audit is outside this check."
+  },
+  "responsive": {
+    "status": "pass",
+    "evidence": "Rendered 320/390/768/1440 widths; no page horizontal overflow; long names truncate; avatar size preserved; input44px; 390x400 viewport composer bottom390.5 inside400. Physical mobile keyboard not tested."
+  },
+  "contentStates": {
+    "loading": {
+      "status": "pass",
+      "evidence": "revision39 Conectando ao WhatsApp with stable structure during delayed fixture API"
+    },
+    "empty": {
+      "status": "pass",
+      "evidence": "revision34 no WhatsApp chats with explanation and contact action; Copilot remains available"
+    },
+    "error": {
+      "status": "pass",
+      "evidence": "revision31 disconnected instance with retry, revision15 send503 preserves draft without adding sent bubble"
+    },
+    "partial": {
+      "status": "pass",
+      "evidence": "revision43 messages remain readable while chats/messages API503 shows retry"
+    },
+    "success": {
+      "status": "pass",
+      "evidence": "revision13 local text accepted, incoming polling and older messages visible; no duplicate message"
+    },
+    "permission": {
+      "status": "pass",
+      "evidence": "revision36 login403 non-admin blocked; unit tests assert anonymous401 and non-admin403 before reaching Evolution"
+    }
+  },
+  "renderedEvidence": [
+    {
+      "viewport": "320x568",
+      "artifact": "browser-observations.json",
+      "observation": "Final build visually inspected: avatar keeps shape, long title truncates, back/search/menu and composer visible; no page horizontal overflow. Earlier measured composer 141x44 at x104 y514.5."
+    },
+    {
+      "viewport": "390x844",
+      "artifact": "browser-observations.json",
+      "observation": "List/chat navigation, drawer Tab/Escape, text send and incoming polling, older messages and failed-send retained draft. Measured composer 211x44 at x116 y790.5. Later 390x400 reduced-height check: 211x44 at x104 y346.5, bottom390.5 within400."
+    },
+    {
+      "viewport": "768x1024",
+      "artifact": "browser-observations.json",
+      "observation": "Final build: collapsed rail, 320px list and chat coexist; composer133x44 at x524 y932.5 within viewport. Fixed sidebar header flex and hidden call buttons."
+    },
+    {
+      "viewport": "1440x900",
+      "artifact": "browser-observations.json",
+      "observation": "Expanded rail/list/chat visually inspected; long contact title, history, incoming and outgoing bubbles readable. Header avatar correction subsequently verified in narrow layouts."
+    }
+  ]
+}

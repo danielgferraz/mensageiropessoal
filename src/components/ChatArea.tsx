@@ -14,9 +14,11 @@ import {
   Search,
   Paperclip,
   Zap,
+  Clock,
+  AlertCircle,
 } from 'lucide-react'
 import { useWhatsApp } from '@/context/WhatsAppContext'
-import { Message, MessageMedia } from '@/types/whatsapp'
+import { Message } from '@/types/whatsapp'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import {
@@ -52,9 +54,13 @@ export const ChatArea: React.FC<ChatAreaProps> = ({
     setActiveMedia,
     contacts,
     toggleMessageReaction,
+    messageError, loadingMessages, refresh, loadOlder, hasOlder, instanceName, syncError,
   } = useWhatsApp()
 
   const [inputText, setInputText] = useState('')
+  const drafts = React.useRef<Record<string, string>>({})
+  const [sending, setSending] = useState(false)
+  const [sendError, setSendError] = useState<string | null>(null)
   const [showEmojiPicker, setShowEmojiPicker] = useState(false)
   const [mediaDialogOpen, setMediaDialogOpen] = useState(false)
   const [quickRepliesOpen, setQuickRepliesOpen] = useState(false)
@@ -67,6 +73,8 @@ export const ChatArea: React.FC<ChatAreaProps> = ({
   const { toast } = useToast()
   const messagesEndRef = React.useRef<HTMLDivElement>(null)
 
+  const activeChatRef = React.useRef(activeChatId)
+  activeChatRef.current = activeChatId
   const activeConversation = conversations.find((c) => c.id === activeChatId)
   const chatMessages: Message[] = activeChatId ? messages[activeChatId] || [] : []
 
@@ -78,10 +86,17 @@ export const ChatArea: React.FC<ChatAreaProps> = ({
     if (activeContact && onOpenContactDetails) onOpenContactDetails(activeContact.id)
   }
 
-  // Auto-scroll when messages update
+  const scrollRef = React.useRef<HTMLDivElement>(null)
+  const nearBottom = React.useRef(true)
   React.useEffect(() => {
-    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' })
-  }, [chatMessages])
+    setInputText(drafts.current[activeChatId || ''] || '')
+    setSendError(null)
+    nearBottom.current = true
+  }, [activeChatId])
+  const lastMessage = chatMessages.at(-1)
+  React.useEffect(() => {
+    if (nearBottom.current) messagesEndRef.current?.scrollIntoView({ block: 'end' })
+  }, [activeChatId, lastMessage?.id])
 
   if (!activeConversation) {
     return (
@@ -99,35 +114,37 @@ export const ChatArea: React.FC<ChatAreaProps> = ({
           ao lado para começar a bater papo.
         </p>
         <div className="mt-8 flex items-center space-x-2 text-xs text-slate-500">
-          <span>🔒 Criptografado com simulação de ponta a ponta</span>
+          <span>{instanceName ? 'Conversas sincronizadas com o WhatsApp conectado' : 'Aguardando conexão do WhatsApp'}</span>
         </div>
       </div>
     )
   }
 
+  const submitText = async (text: string) => {
+    if (sending || !text.trim()) return
+    const chatId = activeConversation.id
+    setSending(true); setSendError(null)
+    try {
+      await sendMessage(chatId, text.trim())
+      if (drafts.current[chatId] === text) {
+        drafts.current[chatId] = ''
+        if (activeChatRef.current === chatId) setInputText('')
+      }
+      setShowEmojiPicker(false)
+    } catch (error) {
+      const detail = error instanceof Error ? error.message : 'Falha ao enviar. Confira a conversa antes de tentar novamente.'
+      if (activeChatRef.current === chatId) setSendError(detail)
+      toast({ title: 'Envio não confirmado', description: detail, variant: 'destructive' })
+    } finally { setSending(false) }
+  }
   const handleSendText = (e?: React.FormEvent) => {
-    if (e) e.preventDefault()
-    if (!inputText.trim()) return
-
-    sendMessage(activeConversation.id, inputText.trim())
-    setInputText('')
-    setShowEmojiPicker(false)
+    e?.preventDefault()
+    void submitText(inputText)
   }
-
-  const handleSendMedia = (media: MessageMedia) => {
-    sendMessage(activeConversation.id, undefined, media)
-    toast({
-      title: 'Mídia enviada!',
-      description: 'Sua foto ou vídeo foi postado no chat.',
-    })
-  }
-
+  const handleSendMedia = () => toast({ title: 'Envio de mídia indisponível', description: 'Use o WhatsApp para enviar fotos e vídeos nesta versão.' })
   const handleSelectQuickReply = (text: string) => {
-    sendMessage(activeConversation.id, text)
-    toast({
-      title: 'Resposta rápida enviada',
-      description: text.substring(0, 40) + (text.length > 40 ? '...' : ''),
-    })
+    setInputText(text)
+    drafts.current[activeConversation.id] = text
   }
 
   const filteredMessages = chatSearchQuery.trim()
@@ -138,6 +155,8 @@ export const ChatArea: React.FC<ChatAreaProps> = ({
 
   const renderStatusTicks = (status: Message['status']) => {
     switch (status) {
+      case 'pending': return <Clock aria-label="Aguardando confirmação" className="w-3.5 h-3.5" />
+      case 'failed': return <AlertCircle aria-label="Falha no envio" className="w-3.5 h-3.5 text-red-400" />
       case 'sent':
         return <Check className="w-3.5 h-3.5 text-slate-400" />
       case 'delivered':
@@ -150,7 +169,7 @@ export const ChatArea: React.FC<ChatAreaProps> = ({
   }
 
   return (
-    <div className="flex-1 flex flex-col h-full bg-[#0b141a] text-slate-100 overflow-hidden relative">
+    <div className="flex-1 min-h-0 min-w-0 flex flex-col h-full bg-[#0b141a] text-slate-100 overflow-hidden relative">
       {/* Top chat header — Cabeçalho central do chat ativo */}
       <div className="h-16 px-4 wa-header-chat flex items-center justify-between shrink-0 z-20">
         <div
@@ -160,6 +179,7 @@ export const ChatArea: React.FC<ChatAreaProps> = ({
         >
           {onBackMobile && (
             <Button
+              aria-label="Voltar para conversas"
               variant="ghost"
               size="icon"
               onClick={(e) => {
@@ -172,15 +192,13 @@ export const ChatArea: React.FC<ChatAreaProps> = ({
             </Button>
           )}
 
-          <div className="relative">
+          <div className="relative shrink-0">
             <img
               src={activeConversation.avatar}
               alt={activeConversation.name}
               className="w-10 h-10 rounded-full object-cover ring-1 ring-white/10"
             />
-            {!activeConversation.isGroup && (
-              <span className="absolute bottom-0 right-0 w-3 h-3 bg-[#00a884] border-2 border-[var(--wa-header-chat-bg)] rounded-full" />
-            )}
+
           </div>
 
           <div className="overflow-hidden">
@@ -189,8 +207,8 @@ export const ChatArea: React.FC<ChatAreaProps> = ({
             </h2>
             <p className="text-xs wa-header-subtitle truncate">
               {activeConversation.isGroup
-                ? `${activeConversation.participants?.length || 3} participantes`
-                : 'online — clique para ver os detalhes'}
+                ? 'Grupo do WhatsApp'
+                : instanceName ? `WhatsApp · ${instanceName}` : 'Sem conexão'}
             </p>
           </div>
         </div>
@@ -216,7 +234,7 @@ export const ChatArea: React.FC<ChatAreaProps> = ({
                 description: 'Recurso fora do escopo desta versão demonstrativa.',
               })
             }
-            className="w-10 h-10 wa-header-btn rounded-full hidden sm:inline-flex"
+            className="w-10 h-10 wa-header-btn rounded-full hidden lg:inline-flex"
             title="Chamada de voz (fora do escopo)"
           >
             <Phone className="w-5 h-5" />
@@ -231,7 +249,7 @@ export const ChatArea: React.FC<ChatAreaProps> = ({
                 description: 'Recurso fora do escopo desta versão demonstrativa.',
               })
             }
-            className="w-10 h-10 wa-header-btn rounded-full hidden sm:inline-flex"
+            className="w-10 h-10 wa-header-btn rounded-full hidden lg:inline-flex"
             title="Chamada de vídeo (fora do escopo)"
           >
             <VideoCallIcon className="w-5 h-5" />
@@ -269,7 +287,7 @@ export const ChatArea: React.FC<ChatAreaProps> = ({
                 Respostas rápidas
               </DropdownMenuItem>
               <DropdownMenuItem
-                onClick={() => setMediaDialogOpen(true)}
+                disabled
                 className="cursor-pointer hover:bg-[#182229]"
               >
                 <Paperclip className="w-4 h-4 mr-2 text-emerald-400" />
@@ -317,14 +335,20 @@ export const ChatArea: React.FC<ChatAreaProps> = ({
       )}
 
       {/* Messages viewport */}
-      <div className="flex-1 overflow-y-auto p-4 sm:p-6 space-y-4 whatsapp-chat-bg">
+      <div ref={scrollRef} onScroll={() => {
+        const el = scrollRef.current
+        if (el) nearBottom.current = el.scrollHeight - el.scrollTop - el.clientHeight < 100
+      }} className="flex-1 min-h-0 overflow-y-auto p-3 sm:p-6 space-y-4 whatsapp-chat-bg">
         <div className="flex justify-center my-2">
           <div className="bg-[#182229]/90 border border-[#222d34] text-[#ffd279] text-xs px-3 py-1.5 rounded-lg shadow max-w-md text-center flex items-center justify-center space-x-1.5">
-            <span>🔒 As mensagens e chamadas são simuladas localmente.</span>
+            <span>Mensagens sincronizadas com o WhatsApp. Mídias aparecem como resumo.</span>
           </div>
         </div>
 
-        {filteredMessages.length === 0 ? (
+        {messageError && <div role="alert" className="text-sm text-red-300 p-3 bg-[#202c33] rounded-lg">{messageError} <button onClick={refresh} className="underline">Tentar novamente</button></div>}
+        {hasOlder && <div className="text-center"><Button variant="secondary" disabled={loadingMessages} onClick={() => void loadOlder()}>Carregar anteriores</Button></div>}
+        {loadingMessages && <p role="status" className="text-center text-sm text-slate-400">Carregando mensagens…</p>}
+        {filteredMessages.length === 0 && !loadingMessages && !messageError ? (
           <div className="text-center py-12 text-slate-500 text-sm">
             {chatSearchQuery
               ? 'Nenhuma mensagem encontrada com esse termo.'
@@ -334,7 +358,7 @@ export const ChatArea: React.FC<ChatAreaProps> = ({
           filteredMessages.map((msg) => {
             const isMe = msg.senderId === 'me'
             const isSystem = msg.senderId === 'system'
-            const isHovered = hoveredMessageId === msg.id
+            const isHovered = activeConversation.id === 'conv-antigravity' && hoveredMessageId === msg.id
 
             if (isSystem) {
               return (
@@ -487,7 +511,7 @@ export const ChatArea: React.FC<ChatAreaProps> = ({
             <button
               key={emoji}
               type="button"
-              onClick={() => setInputText((prev) => prev + emoji)}
+              onClick={() => setInputText((prev) => { const next = prev + emoji; drafts.current[activeConversation.id] = next; return next })}
               className="text-xl p-1.5 hover:bg-[#374248] rounded transition-transform active:scale-95"
             >
               {emoji}
@@ -504,8 +528,9 @@ export const ChatArea: React.FC<ChatAreaProps> = ({
         </div>
       )}
 
+      {sendError && <p role="alert" className="px-4 py-2 text-sm text-red-300 bg-[#202c33]">{sendError}</p>}
       {/* Chat bottom input bar */}
-      <div className="min-h-16 bg-[#202c33] px-3 py-2 flex items-center space-x-2 border-t border-[#2a3942] z-20 shrink-0">
+      <div className="chat-composer min-h-16 bg-[#202c33] px-2 sm:px-3 py-2 flex items-center space-x-2 border-t border-[#2a3942] z-20 shrink-0">
         <Button
           variant="ghost"
           size="icon"
@@ -543,7 +568,7 @@ export const ChatArea: React.FC<ChatAreaProps> = ({
               Respostas rápidas
             </DropdownMenuItem>
             <DropdownMenuItem
-              onClick={() => setMediaDialogOpen(true)}
+              disabled
               className="cursor-pointer hover:bg-[#182229]"
             >
               <Paperclip className="w-4 h-4 mr-2 text-emerald-400" />
@@ -552,17 +577,22 @@ export const ChatArea: React.FC<ChatAreaProps> = ({
           </DropdownMenuContent>
         </DropdownMenu>
 
-        <form onSubmit={handleSendText} className="flex-1 flex items-center space-x-2">
+        <form onSubmit={handleSendText} className="min-w-0 flex-1 flex items-center space-x-2">
           <Input
             type="text"
+            aria-label="Mensagem"
+            maxLength={10000}
+            autoComplete="off"
             placeholder="Mensagem"
             value={inputText}
-            onChange={(e) => setInputText(e.target.value)}
+            onChange={(e) => { setInputText(e.target.value); drafts.current[activeConversation.id] = e.target.value }}
             className="bg-[#2a3942] border-none text-white placeholder-slate-400 focus-visible:ring-1 focus-visible:ring-[#00a884] rounded-lg h-11 text-sm sm:text-base"
           />
 
           {inputText.trim() ? (
             <Button
+              disabled={sending || (!!syncError && activeConversation.id !== 'conv-antigravity')}
+              aria-label={sending ? 'Enviando mensagem' : 'Enviar mensagem'}
               type="submit"
               size="icon"
               className="bg-[#00a884] hover:bg-[#008f6f] text-white rounded-full shrink-0 w-11 h-11 shadow-md"
@@ -577,8 +607,8 @@ export const ChatArea: React.FC<ChatAreaProps> = ({
               size="icon"
               onClick={() => {
                 toast({
-                  title: 'Áudio simulado',
-                  description: 'Digite uma mensagem ou anexe fotos e vídeos para enviar.',
+                  title: 'Envio de áudio indisponível',
+                  description: 'Use o WhatsApp para enviar áudio nesta versão.',
                 })
               }}
               className="text-slate-400 hover:text-white rounded-full shrink-0 w-11 h-11"

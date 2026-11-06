@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react'
+import React, { useEffect, useRef, useState } from 'react'
 import {
   MessageSquare,
   Users,
@@ -56,9 +56,50 @@ export const FeatureRail: React.FC<FeatureRailProps> = ({
   const { user, logout } = useAuth()
   // Estado recolhido/expandido persistido entre sessões (desktop)
   const [open, setOpen] = useState<boolean>(
-    () => localStorage.getItem('wa_clone_rail_open') !== '0',
+    () => {
+      const saved = localStorage.getItem('wa_clone_rail_open')
+      return saved === null ? window.innerWidth >= 1280 : saved !== '0'
+    },
   )
   const [installPrompt, setInstallPrompt] = useState<any>(null)
+  const railRef = useRef<HTMLDivElement>(null)
+  const closeMobileRef = useRef(onMobileClose)
+  closeMobileRef.current = onMobileClose
+
+  useEffect(() => {
+    if (!mobileOpen) return
+    const previousFocus = document.activeElement as HTMLElement | null
+    const rail = railRef.current
+    const focusable = () => Array.from(rail?.querySelectorAll<HTMLElement>('button:not(:disabled), a[href], [tabindex="0"]') || [])
+    focusable()[0]?.focus()
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') {
+        event.preventDefault()
+        closeMobileRef.current?.()
+      }
+      if (event.key !== 'Tab') return
+      const items = focusable()
+      const first = items[0]
+      const last = items[items.length - 1]
+      if (event.shiftKey && document.activeElement === first) {
+        event.preventDefault()
+        last?.focus()
+      } else if (!event.shiftKey && document.activeElement === last) {
+        event.preventDefault()
+        first?.focus()
+      }
+    }
+    const onResize = () => {
+      if (window.innerWidth >= 768) closeMobileRef.current?.()
+    }
+    document.addEventListener('keydown', onKeyDown)
+    window.addEventListener('resize', onResize)
+    return () => {
+      document.removeEventListener('keydown', onKeyDown)
+      window.removeEventListener('resize', onResize)
+      previousFocus?.focus()
+    }
+  }, [mobileOpen])
 
   useEffect(() => {
     localStorage.setItem('wa_clone_rail_open', open ? '1' : '0')
@@ -97,6 +138,7 @@ export const FeatureRail: React.FC<FeatureRailProps> = ({
       {/* Backdrop para mobile gaveta sobreposta */}
       {mobileOpen && (
         <div
+          aria-hidden="true"
           className="fixed inset-0 bg-black/60 z-50 md:hidden backdrop-blur-sm transition-opacity"
           onClick={onMobileClose}
         />
@@ -104,14 +146,19 @@ export const FeatureRail: React.FC<FeatureRailProps> = ({
 
       {/* Barra lateral: no desktop fica fixo ao lado; no mobile abre como gaveta sobreposta */}
       <div
+        ref={railRef}
+        role={mobileOpen ? 'dialog' : undefined}
+        aria-modal={mobileOpen ? true : undefined}
+        aria-label="Menu do Mensageiro"
         className={cn(
-          'flex flex-col h-full bg-[#0b141a] border-r border-[#222d34] text-slate-300 transition-all duration-200 ease-in-out',
+          'messenger-rail flex-col h-full shrink-0 bg-[#0b141a] border-r border-[#222d34] text-slate-300 transition-all duration-200 ease-in-out',
           // Desktop: posicionado no fluxo flex
-          'hidden md:flex md:static md:z-auto',
+          'md:flex md:static md:z-auto',
           open ? 'md:w-[230px]' : 'md:w-[64px]',
           // Mobile: gaveta deslizante sobreposta
-          mobileOpen &&
-            'flex fixed top-0 bottom-0 left-0 w-[270px] z-50 shadow-2xl animate-in slide-in-from-left duration-200',
+          mobileOpen
+            ? 'flex fixed top-0 bottom-0 left-0 w-[min(290px,90vw)] z-50 shadow-2xl animate-in slide-in-from-left duration-200'
+            : 'hidden',
         )}
       >
         {/* Cabeçalho do menu */}
@@ -127,7 +174,9 @@ export const FeatureRail: React.FC<FeatureRailProps> = ({
                 }
               }}
               title={open ? 'Recolher menu' : 'Expandir menu'}
-              className="w-9 h-9 flex items-center justify-center rounded-full wa-header-btn shrink-0"
+              aria-label={mobileOpen ? 'Fechar menu' : open ? 'Recolher menu' : 'Expandir menu'}
+              aria-expanded={mobileOpen || open}
+              className="w-11 h-11 flex items-center justify-center rounded-full wa-header-btn shrink-0"
             >
               {open || mobileOpen ? (
                 <PanelLeftClose className="w-5 h-5" />
@@ -160,6 +209,8 @@ export const FeatureRail: React.FC<FeatureRailProps> = ({
                 type="button"
                 onClick={() => handleItemClick(item.id)}
                 title={item.hint}
+                aria-label={item.label}
+                aria-current={isActive ? 'page' : undefined}
                 className={cn(
                   'relative w-full flex items-center rounded-lg py-3 px-3 transition-colors text-left',
                   isActive
@@ -194,6 +245,7 @@ export const FeatureRail: React.FC<FeatureRailProps> = ({
                   if (onMobileClose) onMobileClose()
                 }}
                 title="Nova instância do WhatsApp (QR Code)"
+                aria-label="Nova instância do WhatsApp"
                 className="w-full flex items-center rounded-lg py-2.5 px-3 transition-colors text-left text-slate-300 hover:bg-[#202c33] hover:text-white group"
               >
                 <QrCode className="w-5 h-5 shrink-0 text-[#00a884] group-hover:scale-110 transition-transform" />
@@ -211,6 +263,7 @@ export const FeatureRail: React.FC<FeatureRailProps> = ({
                   if (onMobileClose) onMobileClose()
                 }}
                 title="Abrir chat com o Antigravity Copilot"
+                aria-label="Antigravity Copilot"
                 className="w-full flex items-center rounded-lg py-2.5 px-3 transition-colors text-left text-slate-300 hover:bg-[#202c33] hover:text-white group"
               >
                 <Bot className="w-5 h-5 shrink-0 text-cyan-400 group-hover:scale-110 transition-transform" />
@@ -224,6 +277,7 @@ export const FeatureRail: React.FC<FeatureRailProps> = ({
               type="button"
               onClick={handleInstallApp}
               title="Instalar Mensageiro como aplicativo (PWA)"
+              aria-label="Instalar aplicativo"
               className="w-full flex items-center rounded-lg py-2.5 px-3 transition-colors text-left text-slate-300 hover:bg-[#202c33] hover:text-white group"
             >
               <Download className="w-5 h-5 shrink-0 text-emerald-400 group-hover:scale-110 transition-transform" />
@@ -282,7 +336,8 @@ export const FeatureRail: React.FC<FeatureRailProps> = ({
                   type="button"
                   onClick={logout}
                   title="Sair do Mensageiro"
-                  className="p-1.5 text-gray-400 hover:text-red-400 hover:bg-[#202c33] rounded-lg transition"
+                  aria-label="Sair do Mensageiro"
+                  className="w-11 h-11 flex items-center justify-center text-gray-400 hover:text-red-400 hover:bg-[#202c33] rounded-lg transition"
                 >
                   <LogOut className="w-4 h-4" />
                 </button>

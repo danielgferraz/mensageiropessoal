@@ -1,4 +1,4 @@
-const CACHE_NAME = 'mensageiro-pwa-v1';
+const CACHE_NAME = 'mensageiro-pwa-v2';
 const ASSETS_TO_CACHE = [
   '/mensageiro/',
   '/mensageiro/index.html',

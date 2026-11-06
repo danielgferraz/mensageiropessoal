@@ -60,15 +60,7 @@ export const NewGroupPanel: React.FC<NewGroupPanelProps> = ({ onClose, onGroupCr
       return
     }
 
-    const newGroupId = createGroup(groupName.trim(), selectedIds, selectedAvatar)
-
-    setActiveChatId(newGroupId)
-    onGroupCreated(newGroupId)
-
-    toast({
-      title: 'Grupo criado com sucesso!',
-      description: `O grupo "${groupName.trim()}" está pronto.`,
-    })
+    toast({ title: 'Criação de grupos indisponível', description: 'Crie o grupo pelo WhatsApp. Ele aparecerá aqui após a sincronização.' })
   }
 
   return (
