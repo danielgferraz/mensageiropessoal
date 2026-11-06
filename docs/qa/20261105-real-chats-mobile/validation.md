@@ -11,7 +11,7 @@
 - 29 testes Node aprovados: proxy/autorização, adaptação/paginação/deduplicação/status e 8 cenários da limpeza seletiva.
 - Os mesmos 29 testes passaram em Docker node:22-alpine, com --network none.
 - TypeScript, lint sem erros (avisos legados) e pnpm build aprovados.
-- Smoke Docker: health200 e API sem autenticação401.
+- Smoke Docker: health 200 e API sem autenticação401.
 - Navegador com upstream fictício: envio, recebimento por polling, histórico, erro com rascunho preservado, estados vazio/desconectado/parcial e bloqueio não-admin403.
 - Layouts em320/390/768/1440 px e área reduzida390x400: ver browser-observations.json e design-evidence.json. Checker da skill aprovado.
 - Complemento de limpeza: tela Configurações conferida em390x844 no bundle index-Ccnknqgn.js; sem orientação para restaurar exemplos.
@@ -27,9 +27,11 @@
 
 ## Produção e limites
 - Infra informou Evolution v2.3.7 e confirmou EVOLUTION_APIKEY no ambiente systemd. Os formatos sanitizados enviados correspondem aos adaptadores implementados.
-- Publicação do frontend final confirmada diretamente por este agente: os 10 arquivos dist da URL pública respondem200 e os SHA256 coincidem com o pacote clean do commit84573e7. Ver public-verification-clean.json.
-- API pública sem autenticação confirmada401. Infra informou serviço ativo, WAopen, backup preservado e hash do backend a610418acf735b05a6b8e85166b7532fbf7f2eb44521a777bfa0150e6f1f5515; essas observações da VPS são relatadas pelo Infra.
-- Ainda aguardados os smoke tests autenticados do proxy na VPS: admin200 em instâncias/chats/histórico e não-admin403. O retorno inicial do Infra não inclui esses testes.
+- Publicação do frontend final confirmada diretamente por este agente: os 10 arquivos dist da URL pública respondem 200 e os SHA256 coincidem com o pacote clean do commit 84573e7. Ver public-verification-clean.json.
+- API pública sem autenticação confirmada401. Infra informou serviço ativo, WA open, backup preservado e hash do backend a610418acf735b05a6b8e85166b7532fbf7f2eb44521a777bfa0150e6f1f5515; essas observações da VPS são relatadas pelo Infra.
+- Infra confirmou a publicação do pacote final clean 84573e7, SHA256 bd9cf7d0dfba787dd8aaf731f5865aadf63838120a9da25177c51797283147ad, serviço reiniciado/ativo, health 200, anônimo 401, restrição admin validada e WA open (mensagem dab23f39-579a-4666-a76e-3a1dd42446a6). Essas verificações internas da VPS são relatadas pelo Infra.
+- O retorno final não discrimina HTTP/body dos testes autenticados de chats/histórico e não-admin; o detalhamento já solicitado continua pendente. Não foi feita validação de entrega a destinatário real.
+- A limpeza seletiva no boot remove registros de demonstração no localStorage; não apaga caches nem sessões reais. A limpeza completa de storage/cache/service workers descrita acima ocorreu apenas na origem isolada de QA.
 - Não houve envio externo para testes: destinatário não foi especificado. Teclado físico iOS/Android e instalação standalone não testados; somente redução de viewport.
 - Mídias recebidas têm resumo textual; envio de mídia/áudio, criação de grupos e reações remotas permanecem indisponíveis.
 - Notas, etiquetas e CRM permanecem locais ao navegador nesta entrega.
