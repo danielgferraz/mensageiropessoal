@@ -41,6 +41,34 @@ function fetchUpstream(url, options = {}) {
   return fetch(url, { ...options, signal: AbortSignal.timeout(15000) });
 }
 
+// Cache de metadados de grupos (nome/tamanho/foto), 10 min por instância; falha silenciosa
+const GROUP_CACHE_TTL_MS = 10 * 60 * 1000;
+const groupCache = new Map();
+export async function getGroupMetadata(instanceName) {
+  const cached = groupCache.get(instanceName);
+  if (cached && Date.now() - cached.at < GROUP_CACHE_TTL_MS) return cached.map;
+  const map = new Map();
+  try {
+    const resp = await fetchUpstream(`${EVOLUTION_URL}/group/fetchAllGroups/${encodeURIComponent(instanceName)}?getParticipants=false`, {
+      headers: { apikey: EVOLUTION_APIKEY },
+    });
+    const rows = resp.ok ? await resp.json() : [];
+    for (const g of Array.isArray(rows) ? rows : []) {
+      if (typeof g?.id !== 'string') continue;
+      map.set(g.id, {
+        subject: typeof g.subject === 'string' && g.subject.trim() ? g.subject.trim() : null,
+        size: Number.isFinite(g.size) ? g.size : null,
+        pictureUrl: typeof g.pictureUrl === 'string' ? g.pictureUrl : null,
+      });
+    }
+    groupCache.set(instanceName, { at: Date.now(), map });
+  } catch (err) {
+    console.error('[Evolution fetchAllGroups error]', err.message);
+    if (cached) return cached.map;
+  }
+  return map;
+}
+
 export function sanitizeInstances(data) {
   const rows = Array.isArray(data) ? data : Array.isArray(data?.instances) ? data.instances : [];
   const stringValue = value => typeof value === 'string' ? value : null;
@@ -535,6 +563,16 @@ async function handleApi(req, res, apiPath) {
         body: JSON.stringify(body || {}),
       });
       const data = await resp.json();
+      if (resp.ok && Array.isArray(data) && data.some((c) => String(c?.remoteJid || '').endsWith('@g.us'))) {
+        const groups = await getGroupMetadata(instanceName);
+        for (const chat of data) {
+          const meta = groups.get(String(chat?.remoteJid || ''));
+          if (!meta) continue;
+          if (!chat.subject && meta.subject) chat.subject = meta.subject;
+          if (chat.groupSize == null && meta.size != null) chat.groupSize = meta.size;
+          if (!chat.profilePicUrl && meta.pictureUrl) chat.profilePicUrl = meta.pictureUrl;
+        }
+      }
       return sendJson(res, resp.status, data);
     } catch (err) {
       if (err.statusCode) return sendJson(res, err.statusCode, { error: err.message });

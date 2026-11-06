@@ -116,7 +116,9 @@ export function parseChats(data: any): { conversations: Conversation[] } {
     const text = (read: (row: any) => unknown) => members.map(read).find((v) => typeof v === 'string' && v.trim()) as string | undefined
     const pushName = text((r) => r.pushName) || text((r) => (r.lastMessage?.key?.fromMe ? undefined : r.lastMessage?.pushName))
     const phone = phoneOf(identity.id)
-    const name = isGroup ? text((r) => r.subject) || text((r) => r.name) || identity.id.split('@')[0]
+    const groupSize = members.map((r) => Number(r.groupSize)).find((n) => Number.isFinite(n) && n > 0)
+    const name = isGroup ? text((r) => r.subject) || text((r) => r.name)
+      || (groupSize ? `Grupo · ${groupSize} participantes` : 'Grupo sem nome')
       : phone ? formatPhone(phone) : pushName || 'Número não identificado'
     const picture = text((r) => (/^https:\/\//.test(r.profilePicUrl || '') ? r.profilePicUrl : undefined))
     const withLast = members.filter((r) => r.lastMessage).map((r) => ({ r, last: normalizeMessage(r.lastMessage, identity.id, identity.aliases) }))

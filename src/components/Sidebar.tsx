@@ -79,8 +79,10 @@ export const Sidebar: React.FC<SidebarProps> = ({
   const { toast } = useToast()
 
   // Separação entre arquivadas e ativas
-  const archivedConversations = conversations.filter((c) => !!c.archived)
-  const activeConversations = conversations.filter((c) => !c.archived)
+  // O Antigravity Copilot é acessado só pelo botão do menu lateral (FeatureRail)
+  const listableConversations = conversations.filter((c) => c.id !== 'conv-antigravity')
+  const archivedConversations = listableConversations.filter((c) => !!c.archived)
+  const activeConversations = listableConversations.filter((c) => !c.archived)
 
   // Lista base dependendo da visão (Arquivadas ou Principal)
   const currentBaseList = showArchivedView ? archivedConversations : activeConversations
