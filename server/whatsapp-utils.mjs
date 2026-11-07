@@ -18,7 +18,20 @@ export function plainText(row) {
   const wrapped = m.ephemeralMessage?.message || m.viewOnceMessage?.message;
   if (wrapped) return plainText({ message: wrapped });
   const text = m.conversation || m.extendedTextMessage?.text || m.imageMessage?.caption || m.videoMessage?.caption || '';
-  return typeof text === 'string' ? text.trim() : '';
+  const reply = text || m.buttonsResponseMessage?.selectedDisplayText || m.listResponseMessage?.title || m.templateButtonReplyMessage?.selectedDisplayText || m.interactiveResponseMessage?.body?.text || '';
+  return typeof reply === 'string' ? reply.trim() : '';
+}
+
+/** Id do botão/linha que o contato tocou (menus nativos), ou null. */
+export function selectedReplyId(row) {
+  const m = row?.message || {};
+  const wrapped = m.ephemeralMessage?.message || m.viewOnceMessage?.message;
+  if (wrapped) return selectedReplyId({ message: wrapped });
+  const direct = m.buttonsResponseMessage?.selectedButtonId || m.listResponseMessage?.singleSelectReply?.selectedRowId || m.templateButtonReplyMessage?.selectedId;
+  if (direct) return String(direct).slice(0, 100);
+  const params = m.interactiveResponseMessage?.nativeFlowResponseMessage?.paramsJson;
+  if (typeof params === 'string') { try { const id = JSON.parse(params)?.id; if (id) return String(id).slice(0, 100); } catch { /* ignora */ } }
+  return null;
 }
 
 /** Texto puro digitado pelo contato (sem legenda de mídia): único tipo que pode receber resposta automática. */
@@ -76,7 +89,7 @@ export function parseUpsert(payload) {
     if (!key?.id || !jids.length) return [];
     return [{
       instance, id: String(key.id), jids, fromMe: key.fromMe === true,
-      isGroup: jids.some(isGroupJid), text: plainText(row), plain: isPlainText(row),
+      isGroup: jids.some(isGroupJid), text: plainText(row), plain: isPlainText(row), replyId: selectedReplyId(row),
       atMs: secondsOf(row) * 1000, pushName: typeof row.pushName === 'string' ? row.pushName.slice(0, 120) : '',
     }];
   });

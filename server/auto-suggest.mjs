@@ -13,6 +13,18 @@ import { parseUpsert, phoneOf } from './whatsapp-utils.mjs';
 import { needsFacts, openingKey, splitBubbles } from './copilot.mjs';
 
 const MAX_SEEN = 1000;
+
+/** Registro compartilhado dos ids que ESTE servidor enviou (IA, menus): o eco do webhook não é "humano respondeu". */
+export function createSentRegistry({ now = () => Date.now() } = {}) {
+  const ids = new Map();
+  const sending = new Map();
+  return {
+    add(id) { if (!id) return; ids.set(id, now()); if (ids.size > 1000) ids.delete(ids.keys().next().value); },
+    has: (id) => ids.has(id),
+    markSending(jid, until) { sending.set(jid, until); },
+    isSending: (jid) => (sending.get(jid) || 0) > now(),
+  };
+}
 const HOUR = 3600000;
 /** Espera depois da ÚLTIMA mensagem do contato (cada mensagem nova reinicia a contagem). Vale para o envio e para a sugestão. */
 export const DEFAULT_DEBOUNCE_MS = 6000;
@@ -26,6 +38,7 @@ export const AUTO_DEFAULTS = Object.freeze({
 
 export function createAutoSuggester({ store, getDb, fetchContext, suggest, sendText = null, sendPresence = null, hasSourceFor = null,
   allowAutomatic = false, requireSources = true, factNoSource = 'confirm', presence = {}, getStyleSamples = null, antiRepeat = true,
+  registry = null, interceptIncoming = null, onHumanMessage = null,
   bubbleDelayMs = (t) => Math.min(3500, 800 + String(t).length * 40),
   limits = {}, debounceMs = DEFAULT_DEBOUNCE_MS, maxPerHour = 20, maxMessageAgeMs = 10 * 60 * 1000, now = () => Date.now(), log = () => {} }) {
   const lim = { ...AUTO_DEFAULTS, ...limits };
@@ -36,8 +49,7 @@ export function createAutoSuggester({ store, getDb, fetchContext, suggest, sendT
   const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
   const seen = new Map();            // id da mensagem -> true (LRU simples)
   const convs = new Map();           // jid -> { seq, timer, ... }
-  const ownSent = new Map();         // id das mensagens que ESTE servidor enviou (eco do webhook não é "humano respondeu")
-  const sending = new Map();         // jid -> até quando um envio nosso está em andamento
+  const sent = registry || createSentRegistry({ now });   // ids enviados por este servidor e envios em andamento
   const lastSentAt = new Map();      // jid -> instante do último envio automático
   let queue = Promise.resolve();
   let running = 0;
@@ -71,9 +83,9 @@ export function createAutoSuggester({ store, getDb, fetchContext, suggest, sendT
     if (t - (lastSentAt.get(jid) || 0) < lim.minIntervalMs) return 'rate_window';
     const last = Date.parse(state.lastAiReplyAt || '') || 0;
     if (t - last < lim.minIntervalMs) return 'rate_window';
-    const sent = autoSentSince(t - HOUR);
-    if (lim.maxPerConvPerHour > 0 && sent.filter((e) => e.contactId === jid).length >= lim.maxPerConvPerHour) return 'rate_conv';
-    if (sent.length >= lim.maxSendsPerHour) return 'rate_global_send';
+    const recent = autoSentSince(t - HOUR);
+    if (lim.maxPerConvPerHour > 0 && recent.filter((e) => e.contactId === jid).length >= lim.maxPerConvPerHour) return 'rate_conv';
+    if (recent.length >= lim.maxSendsPerHour) return 'rate_global_send';
     return null;
   }
 
@@ -134,16 +146,16 @@ export function createAutoSuggester({ store, getDb, fetchContext, suggest, sendT
     // Reserva atômica: se o rascunho foi descartado (mensagem nova, humano respondeu), não envia.
     const claimed = sug?.id ? await db.resolveSuggestion(sug.id, 'accepted') : null;
     if (!claimed) { audit({ ...base, action: 'auto_stale', code: 'draft_discarded' }); return; }
-    sending.set(jid, now() + 30000);
+    sent.markSending(jid, now() + 30000);
     const parts = splitBubbles(String(result.draft)).slice(0, 2);
     const ids = [];
     try {
       for (let i = 0; i < parts.length; i++) {
         if (i > 0) await sleep(bubbleDelayMs(parts[i]));       // pausa de digitação entre as duas bolhas (o "digitando" continua ligado)
-        const sent = await sendText({ instance: entry.instance, jid, text: parts[i] });
-        const messageId = sent?.id || null;
+        const out = await sendText({ instance: entry.instance, jid, text: parts[i] });
+        const messageId = out?.id || null;
         ids.push(messageId);
-        if (messageId) remember(ownSent, messageId, now());
+        if (messageId) sent.add(messageId);
         lastSentAt.set(jid, now());
         await db.recordSent(jid, messageId, 'ia').catch((e) => log('recordSent', e.message));
       }
@@ -155,7 +167,7 @@ export function createAutoSuggester({ store, getDb, fetchContext, suggest, sendT
       log('send', e.message);
       const rest = parts.slice(ids.length).join('\n\n');
       if (rest) await db.recordReplySuggestion(jid, rest.slice(0, 10000), { sourceMessageId: entry.id, auto: true }).catch(() => {});
-    } finally { sending.set(jid, now() + 5000); }   // janela curta para o eco do webhook da própria mensagem
+    } finally { sent.markSending(jid, now() + 5000); }   // janela curta para o eco do webhook da própria mensagem
   }
 
   async function generate(key, seq) {
@@ -225,7 +237,7 @@ export function createAutoSuggester({ store, getDb, fetchContext, suggest, sendT
 
   async function onOutgoing(db, msg) {
     // Eco de uma mensagem que nós mesmos enviamos (ou envio em andamento): não é "humano respondeu".
-    if (ownSent.has(msg.id) || msg.jids.some((j) => (sending.get(j) || 0) > now())) return;
+    if (sent.has(msg.id) || msg.jids.some((j) => sent.isSending(j))) return;
     for (const jid of msg.jids) {
       await db.dismissPendingReplies(jid, 'human_replied', 'humano').catch((e) => log('dismiss', e.message));
       // Humano respondeu: a conversa volta sozinha para "só sugestão"
@@ -238,12 +250,22 @@ export function createAutoSuggester({ store, getDb, fetchContext, suggest, sendT
     if (msg.isGroup || msg.jids.some((j) => j.endsWith('@broadcast'))) return;
     const db = await getDb();
     if (!db) return;
-    if (msg.fromMe) { await onOutgoing(db, msg); return; }
-    if (!msg.text) return;                                  // áudio, figurinha, mídia sem legenda
+    if (msg.fromMe) {
+      // Humano escreveu (não é eco nosso): o menu em andamento é cancelado
+      if (onHumanMessage && !sent.has(msg.id) && !msg.jids.some((j) => sent.isSending(j))) await Promise.resolve(onHumanMessage(msg)).catch((e) => log('menu', e.message));
+      await onOutgoing(db, msg);
+      return;
+    }
     const age = msg.atMs ? now() - msg.atMs : 0;
     if (age > maxMessageAgeMs) return;                      // sincronização de histórico, não mensagem nova
     if (seen.has(msg.id)) return;
     remember(seen, msg.id, true, MAX_SEEN);
+    // Menu em andamento nesta conversa: o roteador responde (sem modelo) e a IA fica quieta para esta mensagem
+    if (interceptIncoming) {
+      const r = await Promise.resolve(interceptIncoming(msg)).catch((e) => { log('menu', e.message); return null; });
+      if (r?.handled) return;
+    }
+    if (!msg.text) return;                                  // áudio, figurinha, mídia sem legenda
 
     const opt = await optedInJid(db, msg.jids);
     if (!opt) return;                                       // conversa sem sugestões ligadas: nada a fazer

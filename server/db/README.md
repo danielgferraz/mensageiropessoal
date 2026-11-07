@@ -15,6 +15,11 @@
   sudo docker exec -i supabase-db psql -U supabase_admin -d mensageiro -v ON_ERROR_STOP=1 < 003_auto_reply.sql
   ```
   Sem a migração o servidor funciona normalmente e a resposta automática fica indisponível (tudo só sugestão). Rollback: `ALTER TABLE mensageiro.conversations DROP COLUMN auto_reply;`.
+- **`005_menus.sql` (construtor de menus e botões):** cria `menus`, `menu_items`, `menu_sessions` e `contact_data` (RLS forçado e uma policy para `mensageiro_app`; sem migração o servidor responde 503 nas rotas de menus e segue normal). Idempotente, como `supabase_admin` no banco `mensageiro`:
+  ```sh
+  sudo docker exec -i supabase-db psql -U supabase_admin -d mensageiro -v ON_ERROR_STOP=1 < 005_menus.sql
+  ```
+  Rollback: `DROP TABLE mensageiro.menu_sessions, mensageiro.menu_items, mensageiro.menus, mensageiro.contact_data;` e `DELETE FROM mensageiro.schema_migrations WHERE version='005_menus';`.
 - **Rollback:**
   1. Remova o drop-in, rode `daemon-reload` e reinicie o `mensageiro`. As rotas `/state` passam a responder 503 e o resto do app continua funcionando.
   2. Rode `DROP DATABASE mensageiro; DROP ROLE mensageiro_app;`.

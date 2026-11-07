@@ -12,12 +12,13 @@ import {
   Download,
   LogOut,
   ShieldCheck,
+  ListChecks,
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { useAuth } from '@/context/AuthContext'
 
 // Painéis que podem ficar ativos na área esquerda do app
-export type LeftPanel = 'chats' | 'contacts' | 'new-group' | 'profile' | 'settings'
+export type LeftPanel = 'chats' | 'contacts' | 'menus' | 'new-group' | 'profile' | 'settings'
 
 interface FeatureRailProps {
   activePanel: LeftPanel
@@ -39,6 +40,7 @@ interface RailItem {
 const RAIL_ITEMS: RailItem[] = [
   { id: 'chats', label: 'Conversas', icon: MessageSquare, hint: 'Ir para as conversas' },
   { id: 'contacts', label: 'Contatos e CRM', icon: Users, hint: 'Contatos e pipeline de clientes' },
+  { id: 'menus', label: 'Menus e botões', icon: ListChecks, hint: 'Monte menus que você envia nas conversas' },
   { id: 'settings', label: 'Configurações', icon: Settings, hint: 'Preferências do aplicativo' },
 ]
 

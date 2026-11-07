@@ -23,6 +23,7 @@ import {
   Bot,
   ArrowDown,
   Sparkles,
+  ListChecks,
 } from 'lucide-react'
 import { useWhatsApp } from '@/context/WhatsAppContext'
 import { Message } from '@/types/whatsapp'
@@ -46,6 +47,8 @@ import { requestCopilotDraft, CopilotDraft } from '@/lib/copilot'
 import { getConversationSnapshot, ConversationSnapshot, StateUnavailableError } from '@/lib/conversation-state'
 import { ConversationAiBar } from './chat/ConversationAiBar'
 import { AntigravityPanel } from './AntigravityPanel'
+import { SendMenuDialog } from './SendMenuDialog'
+import { MenuSessionBar } from './chat/MenuSessionBar'
 import { useStickToBottom } from '@/hooks/use-stick-to-bottom'
 import { unseenLabel } from '@/lib/stick-to-bottom'
 
@@ -77,6 +80,8 @@ export const ChatArea: React.FC<ChatAreaProps> = ({
 
   const [composerMode, setComposerMode] = useState<'message' | 'note'>('message')
   const [saveContactFor, setSaveContactFor] = useState<string | null>(null)
+  const [menuDialogOpen, setMenuDialogOpen] = useState(false)
+  const [menuRefresh, setMenuRefresh] = useState(0)
   const [suggesting, setSuggesting] = useState(false)
   const [copilotResult, setCopilotResult] = useState<(CopilotDraft & { chatId: string }) | { chatId: string; error: string } | null>(null)
   const [noteText, setNoteText] = useState('')
@@ -405,6 +410,10 @@ export const ChatArea: React.FC<ChatAreaProps> = ({
                 <Sparkles className="w-4 h-4 mr-2 text-cyan-400" />
                 Perguntar ao Antigravity
               </DropdownMenuItem>
+              {stateJid && <DropdownMenuItem onClick={() => setMenuDialogOpen(true)} className="cursor-pointer hover:bg-[#182229]">
+                <ListChecks className="w-4 h-4 mr-2 text-cyan-400" />
+                Enviar menu…
+              </DropdownMenuItem>}
               <DropdownMenuItem
                 disabled
                 className="cursor-pointer hover:bg-[#182229]"
@@ -460,6 +469,8 @@ export const ChatArea: React.FC<ChatAreaProps> = ({
           setComposerMode('message'); setInputText(draft); drafts.current[activeConversation.id] = draft
           usedSuggestion.current = { chatId: activeConversation.id, id: sug.id, text: draft }
         }} />}
+
+      {stateJid && <MenuSessionBar jid={stateJid} instance={instanceName || null} refreshKey={menuRefresh} />}
 
       {/* Messages viewport */}
       <div className="relative flex-1 min-h-0 flex flex-col">
@@ -704,6 +715,7 @@ export const ChatArea: React.FC<ChatAreaProps> = ({
         <span>Conversa avulsa: não está em Contatos nem no pipeline.</span>
         <Button type="button" size="sm" variant="ghost" onClick={() => setSaveContactFor(activeConversation!.id)} className="text-[#00a884]"><UserPlus className="mr-1 h-4 w-4" />Salvar como contato</Button>
       </div>}
+      {stateJid && <SendMenuDialog open={menuDialogOpen} onOpenChange={setMenuDialogOpen} jid={stateJid} contactName={activeConversation.name} instance={instanceName || null} onSent={() => setMenuRefresh((n) => n + 1)} />}
       <SaveContactDialog conversationId={saveContactFor} onOpenChange={(open) => { if (!open) setSaveContactFor(null) }} />
       {activeContact && <div className="flex shrink-0 items-center gap-1 border-t border-[#2a3942] bg-[#202c33] px-3 py-1" role="group" aria-label="Tipo de registro">
         <Button type="button" variant="ghost" aria-pressed={composerMode === 'message'} onClick={() => setComposerMode('message')}
@@ -758,6 +770,10 @@ export const ChatArea: React.FC<ChatAreaProps> = ({
               <Zap className="w-4 h-4 mr-2 text-[#00a884]" />
               Respostas rápidas
             </DropdownMenuItem>
+            {stateJid && <DropdownMenuItem onClick={() => setMenuDialogOpen(true)} className="cursor-pointer hover:bg-[#182229]">
+              <ListChecks className="w-4 h-4 mr-2 text-cyan-400" />
+              Enviar menu…
+            </DropdownMenuItem>}
             {canSuggest && <DropdownMenuItem
               disabled={suggesting}
               onClick={suggestReply}

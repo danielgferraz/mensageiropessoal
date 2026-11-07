@@ -71,9 +71,15 @@ Limite conhecido: o app ainda não renderiza `<img>`/áudio dentro das mensagens
 - Prompt v3 + filtro "soa humano" (muletas, tamanho, emoji, abertura repetida; uma reescrita, senão não envia) + anti-repetição de abertura entre respostas + até 2 bolhas + exemplos do jeito do Daniel escolhidos por ele (seção "Meu jeito de escrever").
 - Testes: `natural-v3.test.mjs` (7), `style-routes.test.mjs` (4) e ajustes em `natural-reply.test.mjs`; 10 respostas a "oi" com 10 aberturas diferentes; modelo teimoso envia uma vez só; conversa sintética com exemplos de estilo; 2 bolhas em ordem, digitando até o fim, falha na 2ª bolha não duplica. Navegador: `e2e-style.mjs` 4/4 e `e2e-auto.mjs` 22/22.
 
+## Menus e botões — adendo
+
+- Servidor: `menus.mjs` (validação, renderização texto/nativo, escolha, roteador de sessões), `menus-store.mjs` (PostgreSQL + memória), rotas admin, migração 005, hooks no webhook (a IA fica quieta durante o menu; humano escrevendo cancela; eco dos nossos envios não conta como humano).
+- Interface: página "Menus e botões" (editor com arrastar e ▲▼, ações por botão, prévia dos dois modos, simulador), "Enviar menu…" no chat, faixa de sessão com "Reenviar como texto" e "Encerrar menu".
+- Testes: `menus.test.mjs` (11), `menus-routes.test.mjs` (7 subtestes com Evolution falsa: native, fallback, lista com `sections`/`values`, webhook), `menus-store.test.mjs` (3). Navegador `e2e-menus.mjs` 26/26; regressões `e2e-auto.mjs` 22/22 e `e2e.mjs` 51/51. Nenhum WhatsApp real; a entrega real do botão nativo é validada pelo usuário no próprio número.
+
 ## Resultado
 
-- `pnpm test`: 146/146; `tsc`: sem erros; `oxlint`: sem avisos nos arquivos novos/alterados; `vite build`: ok.
+- `pnpm test`: 168/168; `tsc`: sem erros; `oxlint`: sem avisos nos arquivos novos/alterados; `vite build`: ok.
 - Navegador: 51/51, console limpo (as respostas 503/502 provocadas de propósito em 2.15/2.16 são ignoradas).
 
 ## Não testado / pendente

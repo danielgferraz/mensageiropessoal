@@ -16,6 +16,7 @@ import { SystemFabMenu } from '@/components/SystemFabMenu'
 import { NewContactDialog } from '@/components/NewContactDialog'
 import { LabelsManagerDialog } from '@/components/LabelsManagerDialog'
 import { NewInstanceDialog } from '@/components/NewInstanceDialog'
+import { MenusPage } from '@/components/MenusPage'
 
 export default function Index() {
   const { logout } = useAuth()
@@ -93,7 +94,11 @@ export default function Index() {
         />
 
         {/* Tela unificada de Contatos + CRM em tela cheia (sem painel de chat / placeholder de WhatsApp Web) */}
-        {activeLeftPanel === 'contacts' ? (
+        {activeLeftPanel === 'menus' ? (
+          <div className="flex-1 h-full min-w-0 flex">
+            <MenusPage onOpenMobileMenu={() => setMobileMenuOpen(true)} />
+          </div>
+        ) : activeLeftPanel === 'contacts' ? (
           <div className="flex-1 h-full min-w-0 flex">
             <ContactsCrmPanel
               onClose={() => setActiveLeftPanel('chats')}

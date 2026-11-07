@@ -7,7 +7,8 @@ import { cleanStyleSample, createStore, suggestReply, validateConfig } from './c
 import { loadKnowledge, searchKnowledge } from './rag.mjs';
 import { createStateDb, validJid } from './state-db.mjs';
 import crypto from 'node:crypto';
-import { createAutoSuggester } from './auto-suggest.mjs';
+import { createAutoSuggester, createSentRegistry } from './auto-suggest.mjs';
+import { createMenuRouter, gotoProblem, gotoTargets, nativePlan, renderText, validateItems, validateMenu } from './menus.mjs';
 import { ACTIONS, MAX_MESSAGE_CHARS, aiStateOf, buildAntigravityPrompt, buildContext, buildTranslationPrompt, friendlyAgyError, looksEnglish, parseStageAnswer, sanitizeAgyOutput } from './antigravity.mjs';
 import { cleanJid, plainText, rowsOf, toContextMessages } from './whatsapp-utils.mjs';
 
@@ -28,6 +29,7 @@ const copilotStore = createStore(COPILOT_DATA_DIR, { allowAutomatic: COPILOT_ALL
 const MENSAGEIRO_DATABASE_URL = process.env.MENSAGEIRO_DATABASE_URL || '';
 let stateDb = null;
 export const __setStateDbForTests = (db) => { stateDb = db; };
+const getStateDb = async () => stateDb || await stateDbReady;
 const stateDbReady = createStateDb(MENSAGEIRO_DATABASE_URL)
   .then((db) => { stateDb = db; return db; })
   .catch((err) => { console.error('[state-db] indisponível:', err.message); return null; });
@@ -101,10 +103,54 @@ async function sendWhatsAppPresence({ instance, jid, presence, delayMs }) {
   if (!resp.ok) throw new Error(`Evolution respondeu ${resp.status}`);
 }
 
+// Menus/botões: o menu só sai quando o admin envia numa conversa. MENUS_ENABLED=0 desliga envio e roteamento; MENUS_NATIVE=0 só texto numerado.
+const MENUS_ENABLED = process.env.MENUS_ENABLED !== '0';
+const MENUS_NATIVE = process.env.MENUS_NATIVE !== '0';
+const sentRegistry = createSentRegistry();
+// Botão/lista nativos da Evolution. Erro explícito (ex.: 400 "this.isZero is not a function") => quem chama cai para texto numerado.
+// Atenção: no Baileys a API pode responder 201 e o contato nunca receber; por isso a interface avisa e oferece "reenviar como texto".
+async function sendWhatsAppNative({ instance, jid, plan }) {
+  if (!EVOLUTION_APIKEY || !validInstanceName(instance) || !normalizeRecipient(jid)) throw new Error('destino inválido');
+  const post = (route, body) => fetchUpstream(`${EVOLUTION_URL}/message/${route}/${encodeURIComponent(instance)}`, {
+    method: 'POST', headers: { 'Content-Type': 'application/json', apikey: EVOLUTION_APIKEY }, body: JSON.stringify({ number: jid, ...body }) });
+  const idOf = async (resp) => { const data = await resp.json().catch(() => ({})); return { id: typeof data?.key?.id === 'string' ? data.key.id : null }; };
+  if (plan.kind === 'buttons') {
+    const resp = await post('sendButtons', plan.body);
+    if (!resp.ok) throw new Error(`sendButtons ${resp.status}`);
+    return idOf(resp);
+  }
+  // Lista: a Evolution documenta `sections` e algumas versões usam `values`; tenta uma e depois a outra (só em 400)
+  const { sections, ...rest } = plan.body;
+  for (const shape of ['sections', 'values']) {
+    const resp = await post('sendList', { ...rest, [shape]: sections });
+    if (resp.ok) return idOf(resp);
+    if (resp.status !== 400) throw new Error(`sendList ${resp.status}`);
+  }
+  throw new Error('sendList 400');
+}
+const menuRouter = createMenuRouter({
+  store: new Proxy({}, { get: (_, name) => async (...args) => {
+    const db = await getStateDb();
+    if (!db?.menus || !(await db.menusAvailable?.())) throw Object.assign(new Error('Menus indisponíveis neste servidor (migração 005 pendente).'), { statusCode: 503, code: 'menus_unavailable' });
+    return db.menus[name](...args);
+  } }),
+  getDb: getStateDb,
+  sendText: sendWhatsAppText,
+  sendNative: sendWhatsAppNative,
+  nativeEnabled: MENUS_NATIVE,
+  registry: sentRegistry,
+  audit: (entry) => { try { copilotStore.audit({ user: 'menus', ...entry }); } catch (e) { console.error('[menus:audit]', e.message); } },
+  log: (where, msg) => console.error(`[menus:${where}]`, msg),
+});
+const menusReady = async () => { const db = await getStateDb(); return !!(MENUS_ENABLED && db?.menus && await db.menusAvailable?.()); };
+
 // Webhook da Evolution -> rascunho automático (nunca envia). Segredo próprio, separado do login de admin.
 const WEBHOOK_SECRET = process.env.EVOLUTION_WEBHOOK_SECRET || '';
 const autoSuggester = createAutoSuggester({
   store: copilotStore,
+  registry: sentRegistry,
+  interceptIncoming: async (msg) => ((await menusReady()) ? menuRouter.handleIncoming(msg) : { handled: false }),
+  onHumanMessage: async (msg) => { if (await menusReady()) await menuRouter.onHumanMessage(msg); },
   getDb: async () => stateDb || await stateDbReady,
   fetchContext: fetchRecentMessages,
   // Envio automático: só existe com COPILOT_ALLOW_AUTOMATIC=1; ainda depende de modo automático, opt-in por conversa e limites
@@ -560,6 +606,100 @@ async function handleApi(req, res, apiPath) {
       }
       return sendJson(res, 404, { error: 'Rota não encontrada.' });
     } catch (err) { return fail(err); }
+  }
+
+  // Menus/botões (admin): construtor, prévia, envio manual numa conversa e sessões
+  if (apiPath === '/menus/capabilities' && method === 'GET') {
+    const db = await getStateDb();
+    return sendJson(res, 200, { available: await menusReady(), enabled: MENUS_ENABLED,
+      native: { enabled: MENUS_NATIVE, warning: 'Botão nativo no WhatsApp Web (Baileys) pode ser aceito pela API e nunca chegar ao contato. Se o contato não receber, reenvie como texto numerado.' },
+      migrationApplied: !!(db?.menus && await db.menusAvailable?.()), limits: { items: 10, nativeButtons: 3, nativeLabel: 20 } });
+  }
+  if (apiPath === '/menus/preview' && method === 'POST') {
+    const body = await parseBody(req);
+    const menuCheck = validateMenu(body.menu || {});
+    const itemsCheck = validateItems(body.items || []);
+    const menu = { id: Number(body.menu?.id) || 0, ...menuCheck.value };
+    const items = itemsCheck.items.map((it, i) => ({ ...it, id: it.id || i + 1 }));
+    return sendJson(res, 200, { valid: menuCheck.ok && itemsCheck.ok, errors: [...menuCheck.errors, ...itemsCheck.errors], warnings: [...menuCheck.warnings, ...itemsCheck.warnings],
+      text: renderText(menu, items), native: nativePlan(menu, items) });
+  }
+  if (apiPath === '/menus' || apiPath.startsWith('/menus/') || apiPath === '/menu-sessions') {
+    const db = await getStateDb();
+    if (!db?.menus || !(await db.menusAvailable?.())) return sendJson(res, 503, { error: 'Menus indisponíveis neste servidor (migração 005 pendente).', code: 'menus_unavailable' });
+    const who = auth.user?.email || auth.user?.id || null;
+    const adminAudit = (op, extra = {}) => copilotStore.audit({ action: 'menu_admin', op, user: who, ...extra });
+    const fail = (err) => {
+      if (err.statusCode) return sendJson(res, err.statusCode, { error: err.message });
+      console.error('[menus]', err.message);
+      return sendJson(res, 500, { error: 'Falha ao processar o menu.' });
+    };
+    try {
+      if (apiPath === '/menus' && method === 'GET') return sendJson(res, 200, { menus: await db.menus.listMenus() });
+      if (apiPath === '/menus' && method === 'POST') {
+        const check = validateMenu(await parseBody(req));
+        if (!check.ok) return sendJson(res, 400, { error: check.errors.join(' '), errors: check.errors });
+        const menu = await db.menus.createMenu(check.value);
+        adminAudit('create', { menuId: menu.id });
+        return sendJson(res, 201, { menu, warnings: check.warnings });
+      }
+      if (apiPath === '/menu-sessions') {
+        const jid = new URL(req.url, 'http://localhost').searchParams.get('jid');
+        if (!validJid(jid)) return sendJson(res, 400, { error: 'JID inválido.' });
+        if (method === 'GET') {
+          const session = await db.menus.getSession(jid);
+          const menu = session ? await db.menus.getMenu(session.menu_id) : null;
+          return sendJson(res, 200, { session: session ? { ...session, menu_name: menu?.name || null } : null });
+        }
+        if (method === 'DELETE') { const ended = await menuRouter.endSession(jid); adminAudit('end_session', { contactId: jid }); return sendJson(res, 200, { ended }); }
+      }
+      const m = apiPath.match(/^\/menus\/(\d{1,18})(\/items|\/send)?$/);
+      if (m) {
+        const id = Number(m[1]);
+        const existing = await db.menus.getMenu(id);
+        if (!existing) return sendJson(res, 404, { error: 'Menu não encontrado.' });
+        if (!m[2] && method === 'GET') return sendJson(res, 200, { menu: existing });
+        if (!m[2] && method === 'PUT') {
+          const check = validateMenu({ ...existing, ...(await parseBody(req)) });
+          if (!check.ok) return sendJson(res, 400, { error: check.errors.join(' '), errors: check.errors });
+          const menu = await db.menus.updateMenu(id, check.value);
+          adminAudit('update', { menuId: id });
+          return sendJson(res, 200, { menu, warnings: check.warnings });
+        }
+        if (!m[2] && method === 'DELETE') { await db.menus.deleteMenu(id); adminAudit('delete', { menuId: id }); return sendJson(res, 200, {}); }
+        if (m[2] === '/items' && method === 'PUT') {
+          const body = await parseBody(req);
+          const check = validateItems(body.items);
+          const errors = [...check.errors];
+          if (!errors.length) {
+            for (const target of new Set(gotoTargets(check.items))) {
+              if (target === id) errors.push('Um botão não pode levar ao próprio menu.');
+              else if (!(await db.menus.getMenu(target))) errors.push(`O menu de destino ${target} não existe.`);
+            }
+            const problem = !errors.length && gotoProblem(await db.menus.gotoGraph({ menuId: id, items: check.items }));
+            if (problem) errors.push(problem);
+          }
+          if (errors.length) return sendJson(res, 400, { error: errors.join(' '), errors });
+          const items = await db.menus.replaceItems(id, check.items);
+          adminAudit('items', { menuId: id, count: items.length });
+          return sendJson(res, 200, { items, warnings: check.warnings });
+        }
+        if (m[2] === '/send' && method === 'POST') {
+          if (!MENUS_ENABLED) return sendJson(res, 503, { error: 'Envio de menus desligado neste servidor.', code: 'menus_disabled' });
+          const body = await parseBody(req);
+          const jid = validJid(body.jid) && !body.jid.endsWith('@g.us') && !body.jid.endsWith('@broadcast') ? body.jid : null;
+          if (!jid) return sendJson(res, 400, { error: 'Escolha uma conversa individual.' });
+          if (!validInstanceName(body.instance)) return sendJson(res, 400, { error: 'Instância inválida.' });
+          if (body.mode !== undefined && !['native', 'text'].includes(body.mode)) return sendJson(res, 400, { error: 'Modo inválido.' });
+          const result = await menuRouter.sendMenu({ jid, instance: body.instance, menuId: id, mode: body.mode, by: who });
+          return sendJson(res, 200, result);
+        }
+      }
+      return sendJson(res, 404, { error: 'Rota não encontrada.' });
+    } catch (err) {
+      if (err.code === '23505') return sendJson(res, 400, { error: 'Já existe um menu com esses dados.' });
+      return fail(err);
+    }
   }
 
   // Atendente Copilot: configuração, auditoria e rascunhos (nunca envia mensagens)

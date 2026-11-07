@@ -2,6 +2,8 @@
 // Conexão via MENSAGEIRO_DATABASE_URL (role mensageiro_app, menor privilégio). Sem URL: recursos desligados (503).
 // Modo SOMENTE SUGESTÃO: este módulo nunca envia mensagens.
 
+import { createPgMenuStore } from './menus-store.mjs';
+
 const ACTORS = new Set(['ia', 'humano']);
 const MODES = new Set(['suggestion', 'human']);
 const JID_RE = /^[0-9A-Za-z._:-]{3,80}@(s\.whatsapp\.net|g\.us|lid|broadcast)$/;
@@ -37,6 +39,15 @@ export async function createStateDb(url, { poolFactory } = {}) {
     autoCol = { value: r.rows.length > 0, at: Date.now() };
     return autoCol.value;
   };
+  // Menus (migração 005): sem as tabelas, as rotas /menus respondem 503 e o resto do app segue normal
+  let menusCache = { value: false, at: 0 };
+  const menusAvailable = async () => {
+    if (menusCache.value || Date.now() - menusCache.at < 30000) return menusCache.value;
+    const r = await q("SELECT 1 FROM information_schema.tables WHERE table_schema='mensageiro' AND table_name='menu_sessions'").catch(() => ({ rows: [] }));
+    menusCache = { value: r.rows.length > 0, at: Date.now() };
+    return menusCache.value;
+  };
+  const menus = createPgMenuStore({ q, tx: (fn) => tx(fn) });
   const mapConv = (r, jid) => r ? {
     jid: r.jid, aiEnabled: r.ai_enabled, mode: r.mode, autoReply: r.auto_reply === true, takenOverAt: r.taken_over_at, lastAiReplyAt: r.last_ai_reply_at,
     lastHumanReplyAt: r.last_human_reply_at, updatedAt: r.updated_at,
@@ -49,6 +60,8 @@ export async function createStateDb(url, { poolFactory } = {}) {
     async health() { const r = await q('SELECT max(version) v FROM schema_migrations'); return { ok: true, migration: r.rows[0]?.v || null }; },
 
     autoReplyAvailable,
+    menus,
+    menusAvailable,
 
     async getConversation(jid) {
       const r = await q('SELECT * FROM conversations WHERE jid=$1', [jid]);

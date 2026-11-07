@@ -65,16 +65,17 @@ test('the wait is 6 s by default and applies to suggestions and replies alike', 
 });
 
 test('every new message restarts the wait: one single reply for the whole burst, only after the last message', async () => {
-  const t = setup({ debounceMs: 500 });
+  const t = setup({ debounceMs: 1000 });
   const start = Date.now(); let lastAt = 0;
   for (const text of ['oi', 'tudo bem?', 'Qual o prazo de entrega do serviço?']) {
-    await t.suggester.handleWebhook(upsert(text)); lastAt = Date.now() - start; await sleep(100);   // cada intervalo < espera: reinicia
+    lastAt = Date.now() - start;   // medido ANTES de entregar: o relógio da espera começa depois disso
+    await t.suggester.handleWebhook(upsert(text)); await sleep(100);   // cada intervalo < espera: reinicia
   }
   await t.suggester.whenIdle();
   assert.equal(t.modelCalls.length, 1, 'one generation for the burst');
   assert.equal(t.sends().length, 1, 'one reply, not one per message');
   for (const text of ['oi', 'tudo bem?', 'Qual o prazo de entrega']) assert.ok(t.modelCalls[0].includes(`CLIENTE: ${text}`), `burst message "${text}" is in the context`);
-  assert.ok(t.sends()[0][0] >= lastAt + 500 - 15, `reply ${t.sends()[0][0]}ms after start vs last message at ${lastAt}ms + 500ms`);
+  assert.ok(t.sends()[0][0] >= lastAt + 1000 - 15, `reply ${t.sends()[0][0]}ms after start vs last message at ${lastAt}ms + 1000ms`);
 });
 
 test('"digitando…" starts with the wait, is renewed while generating, and ends with paused after the send', async () => {

@@ -1,0 +1,135 @@
+{
+  "results": [
+    {
+      "name": "M1 página \"Menus e botões\" abre e orienta a criar o primeiro menu",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "name": "M2 o editor avisa quando o menu soa como URA corporativa (não bloqueia)",
+      "ok": true,
+      "detail": "Como o contato vê | Botões | Texto numerado |  | Bem-vindo à nossa central de atendimento. Digite 1 para vend |  | as |  | Digite 1 para vendas |  | Este menu e"
+    },
+    {
+      "name": "M3 prévia \"Botões\" mostra os 3 botões como o contato vê",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "name": "M4 prévia \"Texto numerado\": 1 - 2 - 3 e fechamento de conversa",
+      "ok": true,
+      "detail": "Me conta o que você precisa: |  | 1 - Ver os serviços | 2 - Pedir orçamento | 3 - Falar comigo |  | Me responde com o número ou o nome da opção. |  | 1 | 2 | 3"
+    },
+    {
+      "name": "M5 reordenar (seta) muda a ordem na prévia",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "name": "M6 voltar a ordem",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "name": "M7 simulação mostra o que o botão faz, sem enviar nada",
+      "ok": true,
+      "detail": "Simulação (nada é enviado) |  | Contato escolheu “Pedir orçamento”: |  | Pergunta: “Qual o seu nome?” e guarda como nome | Move para “Em contato” | Responde: “Anotado, {{nome}}! Já te retorno.”"
+    },
+    {
+      "name": "M7b padrão de fábrica do menu novo é texto numerado",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "name": "M8 aviso claro sobre botão nativo silencioso + troca para texto com um clique",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "name": "M9 um clique troca o menu para texto numerado",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "name": "M10 salvou: aparece na lista com 3 botões e modo nativo",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "name": "M11 erro de validação do servidor é mostrado em português e nada é salvo pela metade",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "name": "M12 diálogo de envio mostra a prévia exata e começa em \"botões do WhatsApp\"",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "name": "M13 nada foi enviado antes do clique",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "name": "M14 menu nativo saiu pela rota sendButtons da Evolution (3 botões, ids m:menu:item)",
+      "ok": true,
+      "detail": "[\"Ver os serviços\",\"Pedir orçamento\",\"Falar comigo\"]"
+    },
+    {
+      "name": "M15 faixa \"menu em andamento\" avisa que o botão pode não chegar e oferece reenviar como texto",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "name": "M15b só uma faixa de sessão por conversa",
+      "ok": true,
+      "detail": "faixas=1 botoes=1"
+    },
+    {
+      "name": "M16 \"reenviar como texto\": um texto numerado saiu e o nativo não foi tentado de novo",
+      "ok": true,
+      "detail": "Me conta o que você precisa: |  | 1 - Ver os serviços | 2 - Pedir orçamento | 3 - Falar comigo |  | Pode mandar o número ou o nome da opção."
+    },
+    {
+      "name": "M17 contato respondeu \"2\": o menu perguntou o nome (sem IA)",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "name": "M18 dado coletado, CRM movido como decisão humana e resposta com o nome",
+      "ok": true,
+      "detail": "{\"jid\":\"5511999990003@s.whatsapp.net\",\"stage\":\"Em contato\",\"updatedBy\":\"humano\",\"updatedAt\":\"2026-11-07T04:31:31.361Z\"}"
+    },
+    {
+      "name": "M19 sessão encerrada: a faixa some",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "name": "M20 nativo com erro 400 cai para texto numerado, uma vez só, e avisa",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "name": "M21 \"Encerrar menu\" fecha a sessão",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "name": "M22 auditoria registra o modo usado em cada envio (nativo, texto, fallback)",
+      "ok": true,
+      "detail": "native>text* text>text native>native"
+    },
+    {
+      "name": "M23 auditoria sem o que o contato digitou",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "name": "M99 console limpo",
+      "ok": true,
+      "detail": ""
+    }
+  ],
+  "issues": []
+}

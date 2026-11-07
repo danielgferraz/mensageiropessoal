@@ -5,6 +5,7 @@ import fs from 'node:fs';
 import http from 'node:http';
 import os from 'node:os';
 import path from 'node:path';
+import { createMemoryMenuStore } from '../../../server/menus-store.mjs';
 
 const PN = '5511999990001@s.whatsapp.net';      // conversa longa
 const PN2 = '5511999990002@s.whatsapp.net';     // histórico que chega devagar
@@ -21,13 +22,16 @@ const store = {
   [GROUP]: [msg('G1', GROUP, 'Mensagem no grupo', false, now() - 300)],
 };
 const sent = [];
-const ctl = { slow: {}, agy: 'ok', agyPrompts: [], webhookCalls: 0 };
-const presences = [];   // [{ at, presence, number, delay }]
+const ctl = { slow: {}, agy: 'ok', agyPrompts: [], webhookCalls: 0, buttons: 'ok' };
+const presences = [];
+const natives = [];   // [{ route, body, at }] enviados pelas rotas sendButtons/sendList da Evolution FALSA   // [{ at, presence, number, delay }]
 
 const state = { conv: {}, notes: [], sugs: [], crm: {}, audit: [], seq: 1 };
 const conv = (jid) => state.conv[jid] || { jid, aiEnabled: false, mode: 'suggestion', autoReply: false, takenOverAt: null, lastAiReplyAt: null, lastHumanReplyAt: null, updatedAt: null };
 const authorship = {};
 const fakeDb = {
+  menus: createMemoryMenuStore(),
+  async menusAvailable() { return true; },
   async health() { return { ok: true, migration: 'qa' }; },
   async getConversation(jid) { return conv(jid); },
   async getState(jid) {
@@ -69,7 +73,7 @@ const upstream = http.createServer(async (req, res) => {
   res.setHeader('Content-Type', 'application/json');
   const json = (v, code = 200) => { res.statusCode = code; res.end(JSON.stringify(v)); };
   const url = new URL(req.url, 'http://x');
-  if (url.pathname === '/__state') return json({ sent, state, agyPrompts: ctl.agyPrompts, webhookCalls: ctl.webhookCalls, presences });
+  if (url.pathname === '/__state') return json({ sent, state, agyPrompts: ctl.agyPrompts, webhookCalls: ctl.webhookCalls, presences, natives });
   if (url.pathname === '/__control') { Object.assign(ctl, body.set || {}); return json({ ok: true }); }
   if (url.pathname === '/__push') {  // simula mensagem recebida: grava no "WhatsApp" e dispara o webhook como a Evolution faria
     const row = msg(`IN${Date.now()}${Math.random().toString(36).slice(2, 5)}`, body.jid, body.text, !!body.fromMe, now());
@@ -92,6 +96,11 @@ const upstream = http.createServer(async (req, res) => {
     const jid = body.where?.key?.remoteJid;
     if (ctl.slow[jid]) await new Promise((r) => setTimeout(r, ctl.slow[jid]));
     return json({ messages: { total: store[jid]?.length || 0, pages: 1, records: [...(store[jid] || [])].reverse() } });
+  }
+  if (req.url === '/message/sendButtons/WA' || req.url === '/message/sendList/WA') {
+    natives.push({ route: req.url.split('/')[2], body, at: Date.now() });
+    if (ctl.buttons === 'error400') return json({ response: { message: ['TypeError: this.isZero is not a function'] } }, 400);
+    return json({ key: { id: `NAT${natives.length}` }, status: 'PENDING' }, 201);
   }
   if (req.url === '/chat/sendPresence/WA') { presences.push({ at: Date.now(), presence: body.presence, number: body.number, delay: body.delay }); return json({}); }
   if (req.url === '/message/sendText/WA') {
