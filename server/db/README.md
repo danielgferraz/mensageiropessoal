@@ -33,4 +33,13 @@
     DROP EVENT TRIGGER IF EXISTS mensageiro_block_login; DROP FUNCTION IF EXISTS public.mensageiro_block_login();
     ```
   - Emergência: `PGOPTIONS='-c event_triggers=off'` como superusuário.
+- **Base NebrIA (`004_nebria_rag.sql`, aplicada em 07/11/2026):** fica no mesmo banco `mensageiro`, schema `nebria`.
+  - **Extensão:** `vector` 0.8.2, instalada dentro do schema `nebria`.
+  - **Tabela `nebria.knowledge`:** colunas `source`, `chunk_index`, `title`, `version`, `status` (`rascunho`, `aprovado` ou `arquivado`), `content`, `metadata`, `embedding vector(1536)` e `content_sha256`. Tem `UNIQUE(source, chunk_index)` e índice HNSW por cosseno.
+  - **Modelo de embedding:** OpenAI `text-embedding-3-small`.
+  - **Quem carrega:** o role `nebria_ingest` grava, atualiza e apaga só nessa tabela. Ele é usado pelo usuário Linux `nebria-ingest`, que não tem sudo nem shell. A credencial fica em `/etc/nebria/ingest.env` (root:nebria-ingest 0640, com a env `NEBRIA_DATABASE_URL` via pooler `127.0.0.1:54322`). A senha fica em `/etc/nebria/ingest.pass` (root 0600).
+  - **Quem lê:** o `mensageiro_app` tem só SELECT, e a RLS mostra só linhas com `status='aprovado'`.
+  - **Consulta:** use nomes completos (`nebria.knowledge`, `OPERATOR(nebria.<=>)`, `$1::nebria.vector`). O `search_path` do `mensageiro_app` inclui `nebria`, mas só vale em sessões novas do pooler.
+  - **Bloqueio:** o `002` (v2) também barra o `nebria_ingest` nos bancos `postgres` e `_supabase`.
+  - **Rollback:** `DROP SCHEMA nebria CASCADE; DROP ROLE nebria_ingest; ALTER ROLE mensageiro_app SET search_path = mensageiro;`. Depois remova `/etc/nebria` e rode `userdel -r nebria-ingest`. Backup anterior: `/srv/backups/mensageiro/mensageiro-20261107-pre004.dump`.
 - **Modo:** só sugestão. `COPILOT_ALLOW_AUTOMATIC` continua proibido e nenhuma rota envia mensagem sozinha.

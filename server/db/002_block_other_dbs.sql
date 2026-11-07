@@ -1,4 +1,4 @@
--- Mensageiro · 002 — impede o role mensageiro_app de entrar nos bancos compartilhados do stack legado.
+-- Mensageiro · 002 (v2) — impede os roles mensageiro_app e nebria_ingest de entrar nos bancos compartilhados do stack legado.
 -- Motivo: o CONNECT vem de PUBLIC em "postgres" e "_supabase", e lá o PUBLIC alcança o pg_net (net.http_*).
 -- Rodar como supabase_admin EM CADA banco, "postgres" e "_supabase". Idempotente. Requer PostgreSQL 17+ (login event trigger).
 --   sudo docker exec -i supabase-db psql -U supabase_admin -d postgres  -v ON_ERROR_STOP=1 < 002_block_other_dbs.sql
@@ -12,8 +12,8 @@
 CREATE OR REPLACE FUNCTION public.mensageiro_block_login() RETURNS event_trigger
 LANGUAGE plpgsql AS $$
 BEGIN
-  IF session_user = 'mensageiro_app' THEN
-    RAISE EXCEPTION 'mensageiro_app só pode conectar ao banco mensageiro';
+  IF session_user IN ('mensageiro_app', 'nebria_ingest') THEN
+    RAISE EXCEPTION '% só pode conectar ao banco mensageiro', session_user;
   END IF;
 END
 $$;
