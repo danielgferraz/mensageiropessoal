@@ -66,9 +66,14 @@ Limite conhecido: o app ainda não renderiza `<img>`/áudio dentro das mensagens
 - Handoff: reclamação, cancelamento, reembolso, negociação e jurídico (padrões embutidos) e `[ENCAMINHAR]` nunca são enviados ao contato. Pergunta de identidade ("é robô? é pessoa?") nunca é respondida pela IA: vai para humano.
 - Testes: `server/natural-reply.test.mjs` (10 cenários): "oi"/"tudo bem?" enviados sem fonte; sem a env tudo sem fonte fica sugestão; "quanto custa" sem fonte não inventa (valor e número por extenso bloqueados, "vou confirmar" enviado, modo suggest); com fonte usa o trecho; reclamação/desconto/cancelar/identidade/[ENCAMINHAR] sem envio; resposta que soa bot é reescrita uma vez, se persistir não envia; filtros e detectores; prompt do painel.
 
+## Prompt v3 (tom de conversa) — adendo
+
+- Prompt v3 + filtro "soa humano" (muletas, tamanho, emoji, abertura repetida; uma reescrita, senão não envia) + anti-repetição de abertura entre respostas + até 2 bolhas + exemplos do jeito do Daniel escolhidos por ele (seção "Meu jeito de escrever").
+- Testes: `natural-v3.test.mjs` (7), `style-routes.test.mjs` (4) e ajustes em `natural-reply.test.mjs`; 10 respostas a "oi" com 10 aberturas diferentes; modelo teimoso envia uma vez só; conversa sintética com exemplos de estilo; 2 bolhas em ordem, digitando até o fim, falha na 2ª bolha não duplica. Navegador: `e2e-style.mjs` 4/4 e `e2e-auto.mjs` 22/22.
+
 ## Resultado
 
-- `pnpm test`: 134/134; `tsc`: sem erros; `oxlint`: sem avisos nos arquivos novos/alterados; `vite build`: ok.
+- `pnpm test`: 146/146; `tsc`: sem erros; `oxlint`: sem avisos nos arquivos novos/alterados; `vite build`: ok.
 - Navegador: 51/51, console limpo (as respostas 503/502 provocadas de propósito em 2.15/2.16 são ignoradas).
 
 ## Não testado / pendente

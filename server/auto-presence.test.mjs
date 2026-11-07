@@ -46,7 +46,7 @@ function setup({ db = fakeDb(), config = { mode: 'automatic' }, model, context, 
   const stamp = (...a) => events.push([Date.now() - t0, ...a]);
   const modelCalls = [];
   const suggester = createAutoSuggester({
-    store, getDb: async () => db, debounceMs, presence, allowAutomatic, hasSourceFor,
+    store, getDb: async () => db, debounceMs, presence, allowAutomatic, hasSourceFor, antiRepeat: false, bubbleDelayMs: () => 5,
     sendText: send || (async (m) => { stamp('send', m.text); return { id: 'OUT1' }; }),
     sendPresence: presenceFn || (async (m) => { stamp('presence', m.presence, m.jid); }),
     limits: { minIntervalMs: 0 },

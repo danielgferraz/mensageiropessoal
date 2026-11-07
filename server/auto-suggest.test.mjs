@@ -44,7 +44,7 @@ function setup({ config = {}, db = fakeDb(), model, context, suggesterOpts = {} 
   const runModel = model || (async () => 'Opa, tudo certo por aqui! Já te respondo isso.');
   // Não existe dependência de envio: o módulo só recebe leitura de contexto, modelo e banco de sugestões.
   const suggester = createAutoSuggester({
-    store, getDb: async () => db, debounceMs: 15, maxMessageAgeMs: 10 * 60 * 1000,
+    store, getDb: async () => db, debounceMs: 15, maxMessageAgeMs: 10 * 60 * 1000, antiRepeat: false,
     fetchContext: context || (async () => [{ fromMe: false, text: 'Oi' }, { fromMe: true, text: 'Olá! Como posso ajudar?' }]),
     suggest: (request) => suggestReply({ store, knowledge: null, runModel: (p) => { modelCalls.push(p); return runModel(p); }, user: { email: 'webhook-evolution' }, request }),
     ...suggesterOpts,

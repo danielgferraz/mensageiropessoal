@@ -1,0 +1,25 @@
+{
+  "results": [
+    {
+      "name": "S1 seção \"Meu jeito de escrever\" aparece com o aviso de privacidade",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "name": "S2 só aparecem frases limpas (sem número, link, nome nem jeito de robô)",
+      "ok": true,
+      "detail": "[\"Segunda mensagem\"]"
+    },
+    {
+      "name": "S3 salvar grava só as escolhidas no servidor",
+      "ok": true,
+      "detail": "{\"samples\":[\"Segunda mensagem\"]}"
+    },
+    {
+      "name": "S99 console limpo",
+      "ok": true,
+      "detail": ""
+    }
+  ],
+  "issues": []
+}

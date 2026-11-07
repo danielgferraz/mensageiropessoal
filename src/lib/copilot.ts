@@ -57,3 +57,8 @@ export const requestCopilotDraft = (body: {
   /** Sem `messages`, o servidor busca as últimas mensagens da conversa nesta instância. */
   instanceName?: string; aliases?: string[]
 }) => call<CopilotDraft>('/suggest', { method: 'POST', body: JSON.stringify(body) })
+
+// "Meu jeito de escrever": amostras curtas das PRÓPRIAS mensagens enviadas, escolhidas pelo administrador
+export const getStyleSamples = () => call<{ samples: string[] }>('/style-samples')
+export const saveStyleSamples = (samples: string[]) => call<{ samples: string[] }>('/style-samples', { method: 'PUT', body: JSON.stringify({ samples }) })
+export const getStyleCandidates = (instance: string) => call<{ candidates: string[] }>(`/style-candidates?instance=${encodeURIComponent(instance)}`)

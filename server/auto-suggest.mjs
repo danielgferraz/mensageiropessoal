@@ -10,7 +10,7 @@
 //  5. janela mínima entre respostas da conversa, limite por conversa/hora e global/hora
 //  6. o rascunho é "reservado" (pendente -> aceito) no banco antes de enviar: se foi descartado, não envia; sem reenvio em caso de falha
 import { parseUpsert, phoneOf } from './whatsapp-utils.mjs';
-import { needsFacts } from './copilot.mjs';
+import { needsFacts, openingKey, splitBubbles } from './copilot.mjs';
 
 const MAX_SEEN = 1000;
 const HOUR = 3600000;
@@ -25,12 +25,15 @@ export const AUTO_DEFAULTS = Object.freeze({
 });
 
 export function createAutoSuggester({ store, getDb, fetchContext, suggest, sendText = null, sendPresence = null, hasSourceFor = null,
-  allowAutomatic = false, requireSources = true, factNoSource = 'confirm', presence = {},
+  allowAutomatic = false, requireSources = true, factNoSource = 'confirm', presence = {}, getStyleSamples = null, antiRepeat = true,
+  bubbleDelayMs = (t) => Math.min(3500, 800 + String(t).length * 40),
   limits = {}, debounceMs = DEFAULT_DEBOUNCE_MS, maxPerHour = 20, maxMessageAgeMs = 10 * 60 * 1000, now = () => Date.now(), log = () => {} }) {
   const lim = { ...AUTO_DEFAULTS, ...limits };
   // "Digitando…": renovado enquanto espera/gera (a presença expira) e SEMPRE encerrado com "paused"; nunca fica preso
   const pres = { tickMs: 2000, renewMs: 8000, maxMs: 150000, ...presence };
   const typing = new Map();          // jid -> { instance, startedAt, lastSent, tick }
+  const recentOpenings = [];         // duas primeiras palavras das últimas respostas (todas as conversas): não abrir sempre igual
+  const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
   const seen = new Map();            // id da mensagem -> true (LRU simples)
   const convs = new Map();           // jid -> { seq, timer, ... }
   const ownSent = new Map();         // id das mensagens que ESTE servidor enviou (eco do webhook não é "humano respondeu")
@@ -132,19 +135,26 @@ export function createAutoSuggester({ store, getDb, fetchContext, suggest, sendT
     const claimed = sug?.id ? await db.resolveSuggestion(sug.id, 'accepted') : null;
     if (!claimed) { audit({ ...base, action: 'auto_stale', code: 'draft_discarded' }); return; }
     sending.set(jid, now() + 30000);
+    const parts = splitBubbles(String(result.draft)).slice(0, 2);
+    const ids = [];
     try {
-      const sent = await sendText({ instance: entry.instance, jid, text: String(result.draft) });
+      for (let i = 0; i < parts.length; i++) {
+        if (i > 0) await sleep(bubbleDelayMs(parts[i]));       // pausa de digitação entre as duas bolhas (o "digitando" continua ligado)
+        const sent = await sendText({ instance: entry.instance, jid, text: parts[i] });
+        const messageId = sent?.id || null;
+        ids.push(messageId);
+        if (messageId) remember(ownSent, messageId, now());
+        lastSentAt.set(jid, now());
+        await db.recordSent(jid, messageId, 'ia').catch((e) => log('recordSent', e.message));
+      }
       await typingStop(jid);   // a mensagem chegou: encerra o "digitando"
-      const messageId = sent?.id || null;
-      if (messageId) remember(ownSent, messageId, now());
-      lastSentAt.set(jid, now());
-      await db.recordSent(jid, messageId, 'ia').catch((e) => log('recordSent', e.message));
-      audit({ ...base, action: 'auto_sent', code: 'ok', suggestionId: sug.id, messageId, length: String(result.draft).length, sources: (result.sources || []).map((s) => s.source) });
+      audit({ ...base, action: 'auto_sent', code: 'ok', suggestionId: sug.id, messageId: ids[0] ?? null, messageIds: ids, bubbles: parts.length, length: String(result.draft).length, sources: (result.sources || []).map((s) => s.source) });
     } catch (e) {
-      // Sem reenvio automático (evita duplicar). O texto volta a ser uma sugestão para o humano decidir.
-      audit({ ...base, action: 'auto_send_failed', code: 'send_error', reason: 'Falha ao enviar; deixei como sugestão.' });
+      // Sem reenvio automático (evita duplicar). O que NÃO foi enviado volta como sugestão para o humano decidir.
+      audit({ ...base, action: 'auto_send_failed', code: 'send_error', sentBubbles: ids.length, reason: 'Falha ao enviar; deixei o restante como sugestão.' });
       log('send', e.message);
-      await db.recordReplySuggestion(jid, String(result.draft).slice(0, 10000), { sourceMessageId: entry.id, auto: true }).catch(() => {});
+      const rest = parts.slice(ids.length).join('\n\n');
+      if (rest) await db.recordReplySuggestion(jid, rest.slice(0, 10000), { sourceMessageId: entry.id, auto: true }).catch(() => {});
     } finally { sending.set(jid, now() + 5000); }   // janela curta para o eco do webhook da própria mensagem
   }
 
@@ -173,8 +183,11 @@ export function createAutoSuggester({ store, getDb, fetchContext, suggest, sendT
       const result = await suggest({
         contactId: opt.jid, isSaved: true, isGroup: false, optIn: true, noContactLimit: true, labelIds: [],
         contactPhone: phoneOf(jids.find((j) => phoneOf(j)) || opt.jid), messages, lastIncoming: entry.text,
+        styleSamples: getStyleSamples ? getStyleSamples() : [], avoidOpenings: antiRepeat ? recentOpenings.slice(-10) : [],
       });
       if (!result?.draft) return;                           // bloqueado/encaminhado/falhou: suggestReply já auditou; nada é enviado
+      const opening = openingKey(splitBubbles(result.draft)[0] || '');
+      if (opening && antiRepeat) { recentOpenings.push(opening); if (recentOpenings.length > 20) recentOpenings.shift(); }
 
       if (convs.get(key)?.seq !== seq) { audit({ ...base, action: 'auto_stale', code: 'newer_message', reason: 'Rascunho descartado: chegou mensagem nova.' }); return; }
       const again = await optedInJid(db, jids);

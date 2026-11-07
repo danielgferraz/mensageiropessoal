@@ -35,35 +35,39 @@ function fakeDb() {
     pending: () => suggestions.filter((s) => s.status === 'pending'),
   };
 }
-function setup({ model, kb = emptyKb, requireSources = false, factNoSource } = {}) {
+function setup({ model, kb = emptyKb, requireSources = false, factNoSource, antiRepeat = false, styleSamples = [], contactMessages = [] } = {}) {
   const store = createStore(fs.mkdtempSync(path.join(os.tmpdir(), 'nat-')), { allowAutomatic: true });
   store.writeConfig(validateConfig({ enabled: true, paused: false, mode: 'automatic' }, DEFAULT_CONFIG, { allowAutomatic: true }));
   const db = fakeDb(); const sent = []; const prompts = [];
   const suggester = createAutoSuggester({
-    store, getDb: async () => db, debounceMs: 10, allowAutomatic: true, requireSources, factNoSource,
+    store, getDb: async () => db, debounceMs: 10, allowAutomatic: true, requireSources, factNoSource, antiRepeat, getStyleSamples: () => styleSamples, bubbleDelayMs: () => 5,
     sendText: async (m) => { sent.push(m.text); return { id: `OUT${sent.length}` }; },
     hasSourceFor: (t) => kb.documents?.length ? true : false,
     limits: { minIntervalMs: 0, maxSendsPerHour: 100 },
-    fetchContext: async () => [],
+    fetchContext: async () => contactMessages,
     suggest: (request) => suggestReply({ store, knowledge: kb, runModel: async (p) => { prompts.push(p); return model(p, prompts.length); }, user: { email: 'webhook-evolution' }, request }),
   });
   const run = async (text) => { await suggester.handleWebhook(upsert(text)); await suggester.whenIdle(); };
   return { run, sent, db, prompts, audits: () => store.readAudit(300) };
 }
 
-test('prompt: first person as Daniel, natural BR tone, no bot talk, no robotic phrases, facts only from approved context', () => {
+test('prompt v3: first person as Daniel, conversation tone, short, mirrors the contact, no crutches, no bot talk, facts only from approved context', () => {
   const prompt = buildPrompt({ messages: [{ fromMe: false, text: 'oi' }], snippets: [] });
   assert.match(prompt, /Você é o Daniel/);
   assert.match(prompt, /primeira pessoa/);
-  assert.match(prompt, /1 ou 2 frases curtas/);
-  assert.match(prompt, /Espelhe o jeito do contato/);
-  assert.match(prompt, /Varie a abertura/);
+  assert.match(prompt, /tom de conversa de verdade \(não de atendimento\)/);
+  assert.match(prompt, /1 frase na maioria das vezes, 2 só quando precisar/);
+  assert.match(prompt, /quebre em 2 mensagens curtas separadas por uma linha em branco/);
+  assert.match(prompt, /Espelhe o registro do contato/);
+  assert.match(prompt, /No máximo 1 emoji, e só se o contato usou emoji/);
+  assert.match(prompt, /Varie a abertura sempre/);
+  assert.match(prompt, /Não repita "Oi, tudo bem\?"/);
+  for (const crutch of ['fico à disposição', 'qualquer dúvida', 'estou aqui para ajudar', 'claro!', 'com certeza!', 'Prezado', 'Como posso ajudar?']) assert.ok(prompt.includes(`"${crutch}"`), crutch);
   assert.match(prompt, /Nunca diga nem sugira que você é robô, bot, IA/);
-  assert.match(prompt, /Nada de lista, tópicos, "Prezado", "Como posso ajudar\?"/);
-  assert.match(prompt, /Conversa social[^\n]*sem precisar de contexto/);
   assert.match(prompt, /Fatos do negócio[^\n]*só podem vir do CONTEXTO APROVADO/);
   assert.match(prompt, /Nunca invente/);
   assert.match(prompt, /\[ENCAMINHAR\]/);
+  assert.ok(!prompt.includes('EXEMPLOS_DO_JEITO_DO_DANIEL>'), 'no samples block without approved samples');
 });
 
 test('"oi" and "tudo bem?" get a natural reply sent without any approved source', async () => {

@@ -5,6 +5,7 @@ import { Input } from '@/components/ui/input'
 import { Textarea } from '@/components/ui/textarea'
 import { useToast } from '@/hooks/use-toast'
 import { useWhatsApp } from '@/context/WhatsAppContext'
+import { StyleSamplesSection } from './StyleSamplesSection'
 import {
   CopilotAuditEntry, CopilotConfig, CopilotStatus,
   getCopilotAudit, getCopilotStatus, saveCopilotConfig,
@@ -114,6 +115,10 @@ export const CopilotSettingsTab: React.FC = () => {
         <label className="block text-xs">Sites que podem aparecer nas respostas (vazio = nenhum link)
           <Textarea key={`l${rev}`} defaultValue={draft.allowedLinkHosts.join('\n')} onBlur={(e) => patch({ allowedLinkHosts: lines(e.target.value) })} rows={2} className="mt-1 bg-[#2a3942] border-[#374248] text-white" /></label>
         <p className="text-[11px] text-slate-400">Sempre bloqueados no rascunho: CPF, CNPJ, cartão, e-mail, telefones de terceiros, senhas e chaves.</p>
+      </Section>
+
+      <Section title="Meu jeito de escrever" hint="Deixa as respostas com a sua cara.">
+        <StyleSamplesSection />
       </Section>
 
       <Section title="Base de conhecimento (NebrIA)" hint="Leitura somente. Só entram documentos com a linha “Status: Aprovado”.">

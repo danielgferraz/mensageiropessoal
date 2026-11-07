@@ -108,7 +108,7 @@ fs.writeFileSync(path.join(scratch, 'data', 'copilot-config.json'), JSON.stringi
 fs.mkdirSync(path.join(scratch, 'kb', '02_Servicos'), { recursive: true });
 fs.writeFileSync(path.join(scratch, 'kb', '02_Servicos', 'A.md'), '# Serviço\nStatus: Aprovado\n\n## Prazo\nO prazo de entrega do serviço é de cinco dias úteis após a aprovação do cliente.');
 Object.assign(process.env, { EVOLUTION_URL: 'http://127.0.0.1:4455', EVOLUTION_APIKEY: 'qa-only', SUPABASE_URL: 'http://127.0.0.1:4455', SUPABASE_ANON_KEY: 'qa-only',
-  COPILOT_DATA_DIR: path.join(scratch, 'data'), NEBRIA_DIR: path.join(scratch, 'kb'), COPILOT_ALLOW_AUTOMATIC: '1', AGY_BIN: path.join(scratch, 'sem-agy'), PORT: '3355',
+  COPILOT_DATA_DIR: path.join(scratch, 'data'), NEBRIA_DIR: path.join(scratch, 'kb'), COPILOT_ALLOW_AUTOMATIC: '1', AUTO_REPLY_ANTI_REPEAT: '0', AGY_BIN: path.join(scratch, 'sem-agy'), PORT: '3355',
   EVOLUTION_WEBHOOK_SECRET: SECRET, AUTO_SUGGEST_DEBOUNCE_MS: process.env.QA_DEBOUNCE || '6000' });
 const { server, __setStateDbForTests, __setAgyRunnerForTests } = await import('../../../server/server.mjs');
 __setStateDbForTests(fakeDb);

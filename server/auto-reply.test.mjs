@@ -49,7 +49,7 @@ function setup({ config = { mode: 'automatic' }, db = fakeDb(), model, allowAuto
   const sendText = send || (async (m) => { evolution.push(m); return { id: `OUT${evolution.length}` }; });
   const modelCalls = [];
   const suggester = createAutoSuggester({
-    store, getDb: async () => db, debounceMs, allowAutomatic, sendText, ...(requireSources === undefined ? {} : { requireSources }),
+    store, getDb: async () => db, debounceMs, allowAutomatic, sendText, antiRepeat: false, ...(requireSources === undefined ? {} : { requireSources }),
     limits: { minIntervalMs: 0, ...limits },
     fetchContext: async () => [{ fromMe: false, text: 'Oi' }, { fromMe: true, text: 'Olá! Como posso ajudar?' }],
     suggest: (request) => suggestReply({ store, knowledge: kb, runModel: (p) => { modelCalls.push(p); return (model || (async () => DRAFT))(p); }, user: { email: 'webhook-evolution' }, request }),

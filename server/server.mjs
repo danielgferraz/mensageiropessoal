@@ -3,13 +3,13 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { execFile } from 'node:child_process';
-import { createStore, suggestReply, validateConfig } from './copilot.mjs';
+import { cleanStyleSample, createStore, suggestReply, validateConfig } from './copilot.mjs';
 import { loadKnowledge, searchKnowledge } from './rag.mjs';
 import { createStateDb, validJid } from './state-db.mjs';
 import crypto from 'node:crypto';
 import { createAutoSuggester } from './auto-suggest.mjs';
 import { ACTIONS, MAX_MESSAGE_CHARS, aiStateOf, buildAntigravityPrompt, buildContext, buildTranslationPrompt, friendlyAgyError, looksEnglish, parseStageAnswer, sanitizeAgyOutput } from './antigravity.mjs';
-import { cleanJid, rowsOf, toContextMessages } from './whatsapp-utils.mjs';
+import { cleanJid, plainText, rowsOf, toContextMessages } from './whatsapp-utils.mjs';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -116,6 +116,8 @@ const autoSuggester = createAutoSuggester({
   requireSources: process.env.AUTO_REPLY_REQUIRE_SOURCES !== '0',
   // pergunta de fato sem trecho aprovado: 'confirm' (padrão) responde que vai confirmar, sem número; 'suggest' deixa só como sugestão
   factNoSource: process.env.AUTO_REPLY_FACT_NO_SOURCE === 'suggest' ? 'suggest' : 'confirm',
+  getStyleSamples: () => copilotStore.readStyleSamples(),
+  antiRepeat: process.env.AUTO_REPLY_ANTI_REPEAT !== '0',
   limits: {
     ...(process.env.AUTO_REPLY_MAX_AGE_MS ? { maxAutoAgeMs: parseInt(process.env.AUTO_REPLY_MAX_AGE_MS, 10) } : {}),
     ...(process.env.AUTO_REPLY_MIN_INTERVAL_MS ? { minIntervalMs: parseInt(process.env.AUTO_REPLY_MIN_INTERVAL_MS, 10) } : {}),
@@ -137,6 +139,29 @@ function webhookSecretOk(req, url) {
   return !!WEBHOOK_SECRET && crypto.timingSafeEqual(a, b);
 }
 let agyInFlight = 0;
+
+// Candidatas a "jeito de escrever": mensagens curtas que o próprio Daniel enviou (filtradas por cleanStyleSample). Só o admin vê.
+async function fetchStyleCandidates(instance) {
+  if (!EVOLUTION_APIKEY || !validInstanceName(instance)) return [];
+  const headers = { 'Content-Type': 'application/json', apikey: EVOLUTION_APIKEY };
+  const chatsResp = await fetchUpstream(`${EVOLUTION_URL}/chat/findChats/${encodeURIComponent(instance)}`, { method: 'POST', headers, body: '{}' });
+  const chats = chatsResp.ok ? await chatsResp.json() : [];
+  const jids = (Array.isArray(chats) ? chats : []).map((c) => cleanJid(c?.remoteJid)).filter((j) => j && !j.endsWith('@g.us')).slice(0, 30);
+  const found = new Map();
+  for (let i = 0; i < jids.length; i += 5) {
+    await Promise.all(jids.slice(i, i + 5).map(async (remoteJid) => {
+      const resp = await fetchUpstream(`${EVOLUTION_URL}/chat/findMessages/${encodeURIComponent(instance)}`, {
+        method: 'POST', headers, body: JSON.stringify({ where: { key: { remoteJid } }, page: 1, offset: 40 }) }).catch(() => null);
+      if (!resp?.ok) return;
+      for (const row of rowsOf(await resp.json().catch(() => ({})))) {
+        if (row?.key?.fromMe !== true) continue;
+        const clean = cleanStyleSample(plainText(row));
+        if (clean && !found.has(clean.toLowerCase())) found.set(clean.toLowerCase(), clean);
+      }
+    }));
+  }
+  return [...found.values()].slice(0, 60);
+}
 
 // Cache de metadados de grupos (nome/tamanho/foto), 10 min por instância; falha silenciosa
 const GROUP_CACHE_TTL_MS = 10 * 60 * 1000;
@@ -556,6 +581,21 @@ async function handleApi(req, res, apiPath) {
       knowledgeCache = { at: 0, key: '', value: null };
       return sendJson(res, 200, { config: next });
     }
+    // "Meu jeito de escrever": o admin escolhe amostras das PRÓPRIAS mensagens enviadas (curtas, sem número/link/nome) para o atendente imitar o tom
+    if (apiPath === '/copilot/style-samples' && method === 'GET') return sendJson(res, 200, { samples: copilotStore.readStyleSamples() });
+    if (apiPath === '/copilot/style-samples' && method === 'PUT') {
+      const body = await parseBody(req);
+      const samples = copilotStore.writeStyleSamples(body.samples);
+      copilotStore.audit({ action: 'style_samples', user: auth.user?.email || auth.user?.id || null, count: samples.length });
+      return sendJson(res, 200, { samples });
+    }
+    if (apiPath === '/copilot/style-candidates' && method === 'GET') {
+      const instance = new URL(req.url, 'http://localhost').searchParams.get('instance');
+      if (!validInstanceName(instance)) return sendJson(res, 400, { error: 'Instância inválida.' });
+      const candidates = await fetchStyleCandidates(instance).catch(() => []);
+      copilotStore.audit({ action: 'style_candidates', user: auth.user?.email || auth.user?.id || null, count: candidates.length });
+      return sendJson(res, 200, { candidates });
+    }
     if (apiPath === '/copilot/audit' && method === 'GET') return sendJson(res, 200, { entries: copilotStore.readAudit(100) });
     if (apiPath === '/copilot/suggest' && method === 'POST') {
       const body = await parseBody(req);
@@ -581,7 +621,7 @@ async function handleApi(req, res, apiPath) {
       const result = await suggestReply({ store: copilotStore, knowledge: currentKnowledge(config), runModel: runAgy, user: auth.user,
         request: { contactId: text(body.contactId, 200), isSaved: body.isSaved === true, isGroup: body.isGroup === true,
           labelIds: Array.isArray(body.labelIds) ? body.labelIds.filter((id) => typeof id === 'string').slice(0, 50) : [],
-          contactPhone: text(body.contactPhone, 30).replace(/\D/g, ''), messages, lastIncoming } });
+          contactPhone: text(body.contactPhone, 30).replace(/\D/g, ''), messages, lastIncoming, styleSamples: copilotStore.readStyleSamples() } });
       if (db && convJid && result?.draft) {
         const sug = await db.recordReplySuggestion(convJid, String(result.draft).slice(0, 10000)).catch((err) => { console.error('[state-db]', err.message); return null; });
         if (sug) result.suggestionId = sug.id;

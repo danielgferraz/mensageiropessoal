@@ -30,7 +30,7 @@ test('automatic send end to end: webhook -> draft -> fake Evolution sendText, wi
   fs.mkdirSync(path.join(kb, '02_Servicos'));
   fs.writeFileSync(path.join(kb, '02_Servicos', 'A.md'), '# Serviço\nStatus: Aprovado\n\n## Prazo\nO prazo de entrega do serviço é de cinco dias úteis após a aprovação do cliente.');
   Object.assign(process.env, { SUPABASE_URL: url, SUPABASE_ANON_KEY: 'anon', EVOLUTION_URL: url, EVOLUTION_APIKEY: 'k', COPILOT_DATA_DIR: data, NEBRIA_DIR: kb,
-    AGY_BIN: path.join(data, 'sem-agy'), EVOLUTION_WEBHOOK_SECRET: 'segredo', AUTO_SUGGEST_DEBOUNCE_MS: '10', COPILOT_ALLOW_AUTOMATIC: '1' });
+    AGY_BIN: path.join(data, 'sem-agy'), EVOLUTION_WEBHOOK_SECRET: 'segredo', AUTO_SUGGEST_DEBOUNCE_MS: '10', COPILOT_ALLOW_AUTOMATIC: '1', AUTO_REPLY_ANTI_REPEAT: '0' });
   const { server, autoSuggester, __setAgyRunnerForTests, __setStateDbForTests } = await import('./server.mjs');
   await new Promise((r) => server.listen(0, '127.0.0.1', r));
   const base = `http://127.0.0.1:${server.address().port}/mensageiro/api`;
