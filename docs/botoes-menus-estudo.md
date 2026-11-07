@@ -23,9 +23,20 @@ Limites relevantes:
 - **WhatsApp Cloud API oficial (WhatsApp Business)**: botões de resposta (máx. 3), listas (máx. 10 itens) e templates existem e são confiáveis, **mas** só dentro da janela de 24 h desde a última mensagem do cliente; fora dela só templates aprovados. Exige conta Business e outro canal na Evolution (`WHATSAPP-BUSINESS`), não o número pessoal atual.
 - **Enquete (`sendPoll`)**: é a opção nativa mais estável no Baileys, mas só permite escolha visível e não dispara ação por "botão" nem abre link; serve como extra, não como base do construtor.
 
-### 1.2 Evidência da VPS (pedida ao Infra, só leitura)
+### 1.2 Evidência da VPS (leitura feita pelo Infra, nada foi enviado)
 
-Versão da Evolution já confirmada pelo Infra: **2.3.7**, instância `WA` com Baileys, e a rota `sendPresence` existe. Pendente a confirmação de `sendButtons`/`sendList`/`sendPoll` no `main.js`, a versão do Baileys e o que o patch manual de 24/10 muda. Esta seção é atualizada com a resposta.
+| Item | Achado na VPS |
+| --- | --- |
+| Versões | Evolution **2.3.7**; pacote **`baileys` 7.0.0-rc.9** (release candidate, não o `@whiskeysockets/baileys` estável); WhatsApp Web 2.3000.1053538009; instância `WA` = `WHATSAPP-BAILEYS` |
+| Rotas existentes | `sendText`, `sendMedia`, `sendPtv`, `sendWhatsAppAudio`, `sendSticker`, `sendStatus`, `sendLocation`, `sendContact`, `sendReaction`, **`sendPoll`, `sendList`, `sendButtons`** e `sendTemplate` |
+| `sendButtons` no Baileys | monta `interactiveMessage` + `nativeFlowMessage` (reply→`quick_reply`, copy→`cta_copy`, url→`cta_url`, call→`cta_call`, pix→`payment_info`). Não usa o `buttonsMessage` legado (0 ocorrências) |
+| `sendList` no Baileys | monta o **`listMessage` legado** (`listType:1`), justamente o formato que os relatos dizem não renderizar |
+| `sendPoll` | monta `pollCreationMessage` (nome, `selectableCount`, valores) |
+| `sendTemplate` | no Baileys lança `Method not available in the Baileys service`: template só existe no canal WhatsApp Business API |
+| Changelog | não há README/CHANGELOG no container; nada sobre botões/lista/enquete deprecados |
+| **Patch manual de 24/10** em `main.js` (+122 bytes, backup `main.js.bak`) | mexe **só em botões**: adiciona tipo `list` (`single_select`) dentro de `sendButtons`, troca o envelope `viewOnceMessage{interactiveMessage}` por `interactiveMessage` direto e libera `list` no schema. Não toca em texto, presença nem webhook. Se o container for recriado da imagem, essas 4 mudanças se perdem |
+
+Leitura do conjunto: as **rotas existem** e o Baileys 7.0.0-rc.9 monta o formato moderno (`nativeFlow`) para botões, mas (a) alguém já precisou remendar o `main.js` à mão em 24/10 para tentar fazer botões/lista funcionarem, o que indica que o comportamento padrão não bastava; (b) a lista continua no formato legado; (c) o Baileys é um release candidate; (d) as issues públicas da 2.3.7 relatam envio aceito e nunca entregue; (e) **nenhum teste de entrega foi feito** (não se envia mensagem real nesta fase). Conclusão mantida: **não depender de botão nativo**; usar menu numerado em texto. Se o usuário quiser validar entrega real depois, o teste correto é enviar um botão de resposta para um número **do próprio dono** e olhar o aparelho, nunca para clientes; mesmo funcionando, a falha silenciosa e a dependência do patch manual continuam sendo risco.
 
 ## 2. Modelo de menus
 
