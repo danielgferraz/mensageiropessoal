@@ -80,10 +80,13 @@ export function evaluateRequest(config, request, history = [], now = new Date())
   if (!config.enabled) return deny('disabled', 'O atendente está desligado.');
   if (config.paused) return deny('paused', 'O atendente está em pausa geral.');
   if (config.mode !== 'suggestion') return deny('mode', 'Somente o modo sugestão está disponível neste servidor.');
-  if (!request.isSaved) return deny('not_contact', 'O atendente só atua em contatos salvos.');
   if (request.isGroup) return deny('group', 'O atendente não responde em grupos.');
-  const labelOk = (request.labelIds || []).some((id) => config.allowedLabelIds.includes(id));
-  if (!config.allowedContactIds.includes(request.contactId) && !labelOk) return deny('not_allowed', 'Este contato não está na lista de permitidos.');
+  // optIn: o administrador ligou as sugestões nesta conversa (rascunho automático); vale como autorização do contato.
+  if (!request.optIn) {
+    if (!request.isSaved) return deny('not_contact', 'O atendente só atua em contatos salvos.');
+    const labelOk = (request.labelIds || []).some((id) => config.allowedLabelIds.includes(id));
+    if (!config.allowedContactIds.includes(request.contactId) && !labelOk) return deny('not_allowed', 'Este contato não está na lista de permitidos.');
+  }
   if (!withinBusinessHours(config.businessHours, now)) return deny('hours', 'Fora do horário de atendimento configurado.');
   const hourAgo = now.getTime() - 3600000, dayAgo = now.getTime() - 86400000;
   const mine = history.filter((entry) => entry.contactId === request.contactId && entry.at > hourAgo).length;

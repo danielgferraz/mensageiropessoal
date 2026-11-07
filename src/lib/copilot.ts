@@ -54,4 +54,6 @@ export const getCopilotAudit = () => call<{ entries: CopilotAuditEntry[] }>('/au
 export const requestCopilotDraft = (body: {
   contactId: string; isSaved: boolean; isGroup: boolean; labelIds: string[]; contactPhone?: string
   messages: { fromMe: boolean; text: string }[]
+  /** Sem `messages`, o servidor busca as últimas mensagens da conversa nesta instância. */
+  instanceName?: string; aliases?: string[]
 }) => call<CopilotDraft>('/suggest', { method: 'POST', body: JSON.stringify(body) })

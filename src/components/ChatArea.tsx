@@ -21,6 +21,8 @@ import {
   LockKeyhole,
   UserPlus,
   Bot,
+  ArrowDown,
+  Sparkles,
 } from 'lucide-react'
 import { useWhatsApp } from '@/context/WhatsAppContext'
 import { Message } from '@/types/whatsapp'
@@ -43,6 +45,9 @@ import { SaveContactDialog } from './SaveContactDialog'
 import { requestCopilotDraft, CopilotDraft } from '@/lib/copilot'
 import { getConversationSnapshot, ConversationSnapshot, StateUnavailableError } from '@/lib/conversation-state'
 import { ConversationAiBar } from './chat/ConversationAiBar'
+import { AntigravityPanel } from './AntigravityPanel'
+import { useStickToBottom } from '@/hooks/use-stick-to-bottom'
+import { unseenLabel } from '@/lib/stick-to-bottom'
 
 interface ChatAreaProps {
   onBackMobile?: () => void
@@ -67,6 +72,7 @@ export const ChatArea: React.FC<ChatAreaProps> = ({
     toggleMessageReaction,
     messageError, loadingMessages, refresh, loadOlder, hasOlder, instanceName, syncError,
     getContactLabelIds, noteStorageError, contactNotes, addContactNote, focusContactNote, noteFocusRequest, clearNoteFocus,
+    openAntigravity,
   } = useWhatsApp()
 
   const [composerMode, setComposerMode] = useState<'message' | 'note'>('message')
@@ -90,7 +96,6 @@ export const ChatArea: React.FC<ChatAreaProps> = ({
   const [hoveredMessageId, setHoveredMessageId] = useState<string | null>(null)
 
   const { toast } = useToast()
-  const messagesEndRef = React.useRef<HTMLDivElement>(null)
 
   const activeChatRef = React.useRef(activeChatId)
   activeChatRef.current = activeChatId
@@ -134,12 +139,21 @@ export const ChatArea: React.FC<ChatAreaProps> = ({
     let alive = true
     getConversationSnapshot(stateJid)
       .then((s) => { if (alive) { setSnapshot(s); setStateError(null) } })
-      .catch((e) => { if (alive) { setSnapshot(null); setStateError(e instanceof StateUnavailableError ? 'controle indisponível no servidor.' : e instanceof Error ? e.message : 'falha ao carregar.') } })
+      .catch((e) => {
+        if (!alive) return
+        setStateError(e instanceof StateUnavailableError ? 'controle indisponível no servidor.' : e instanceof Error ? e.message : 'falha ao carregar.')
+        // Uma falha passageira da atualização periódica não apaga o que já estava na tela
+        setSnapshot((prev) => (prev && prev.conversation.jid === stateJid ? prev : null))
+      })
     return () => { alive = false }
   }, [stateJid, stateReload])
+  // Sugestões automáticas chegam pelo servidor: confere a conversa a cada 6 s enquanto a aba está visível
+  React.useEffect(() => {
+    if (!stateJid) return
+    const timer = setInterval(() => { if (!document.hidden) setStateReload((n) => n + 1) }, 6000)
+    return () => clearInterval(timer)
+  }, [stateJid])
 
-  const scrollRef = React.useRef<HTMLDivElement>(null)
-  const nearBottom = React.useRef(true)
   React.useEffect(() => {
     setInputText(drafts.current[activeChatId || ''] || '')
     setSendError(null)
@@ -147,16 +161,21 @@ export const ChatArea: React.FC<ChatAreaProps> = ({
     setNoteText(noteDrafts.current[activeChatId || ''] || '')
     setNoteError(null)
     setCopilotResult(null)
-    nearBottom.current = true
   }, [activeChatId])
   const timeline = buildChatTimeline(chatMessages, contactNotes, activeContact?.id,
     noteFocusRequest?.contactId === activeContact?.id ? '' : chatSearchQuery)
-  const lastEntry = timeline.at(-1)
+  // Rolagem: abre na última mensagem, acompanha o fim, avisa de novas mensagens quando você está lendo o histórico
+  const { scrollRef, contentRef, onScroll: onMessagesScroll, scrollToBottom, unseen, stuck } = useStickToBottom({
+    chatKey: activeConversation?.id ?? null,
+    entries: timeline.map((entry) => ({ id: entry.id,
+      incoming: entry.kind === 'message' && entry.message.senderId !== 'me' && entry.message.senderId !== 'system' })),
+    paused: !!noteFocusRequest || !!chatSearchQuery.trim(),
+  })
   React.useEffect(() => {
     if (noteFocusRequest?.contactId !== activeContact?.id || !noteFocusRequest) return
     setChatSearchQuery('')
     setChatSearchOpen(false)
-    nearBottom.current = false
+    stuck.current = false
     const frame = requestAnimationFrame(() => {
       const target = document.getElementById(`internal-${noteFocusRequest.noteId}`)
       if (target) {
@@ -166,10 +185,7 @@ export const ChatArea: React.FC<ChatAreaProps> = ({
       }
     })
     return () => cancelAnimationFrame(frame)
-  }, [noteFocusRequest, activeContact?.id, timeline.length, clearNoteFocus])
-  React.useEffect(() => {
-    if (nearBottom.current && !noteFocusRequest) messagesEndRef.current?.scrollIntoView({ block: 'end' })
-  }, [activeChatId, lastEntry?.id, noteFocusRequest])
+  }, [noteFocusRequest, activeContact?.id, timeline.length, clearNoteFocus, stuck])
 
   if (!activeConversation) {
     return (
@@ -193,9 +209,14 @@ export const ChatArea: React.FC<ChatAreaProps> = ({
     )
   }
 
+  if (activeConversation.id === 'conv-antigravity') {
+    return <AntigravityPanel onBackMobile={onBackMobile} />
+  }
+
   const submitText = async (text: string) => {
     if (sending || !text.trim()) return
     const chatId = activeConversation.id
+    scrollToBottom() // ao enviar, a conversa acompanha a sua mensagem mesmo que você estivesse lendo o histórico
     setSending(true); setSendError(null)
     try {
       // Só conta como "IA" se o texto enviado é exatamente o rascunho aprovado; editado vira humano
@@ -380,6 +401,10 @@ export const ChatArea: React.FC<ChatAreaProps> = ({
                 <Zap className="w-4 h-4 mr-2 text-[#00a884]" />
                 Respostas rápidas
               </DropdownMenuItem>
+              <DropdownMenuItem onClick={() => openAntigravity(activeConversation.id)} className="cursor-pointer hover:bg-[#182229]">
+                <Sparkles className="w-4 h-4 mr-2 text-cyan-400" />
+                Perguntar ao Antigravity
+              </DropdownMenuItem>
               <DropdownMenuItem
                 disabled
                 className="cursor-pointer hover:bg-[#182229]"
@@ -428,13 +453,18 @@ export const ChatArea: React.FC<ChatAreaProps> = ({
         </div>
       )}
 
-      {stateJid && <ConversationAiBar jid={stateJid} snapshot={snapshot?.conversation.jid === stateJid ? snapshot : null} error={stateError} onChange={() => setStateReload((n) => n + 1)} />}
+      {stateJid && <ConversationAiBar jid={stateJid} snapshot={snapshot?.conversation.jid === stateJid ? snapshot : null} error={stateError} onChange={() => setStateReload((n) => n + 1)}
+        onUseReply={(sug) => {
+          const draft = sug.payload.draft || ''
+          if (!draft) return
+          setComposerMode('message'); setInputText(draft); drafts.current[activeConversation.id] = draft
+          usedSuggestion.current = { chatId: activeConversation.id, id: sug.id, text: draft }
+        }} />}
 
       {/* Messages viewport */}
-      <div ref={scrollRef} onScroll={() => {
-        const el = scrollRef.current
-        if (el) nearBottom.current = el.scrollHeight - el.scrollTop - el.clientHeight < 100
-      }} className="flex-1 min-h-0 overflow-y-auto p-3 sm:p-6 space-y-4 whatsapp-chat-bg">
+      <div className="relative flex-1 min-h-0 flex flex-col">
+      <div ref={scrollRef} onScroll={onMessagesScroll} data-testid="messages-viewport" className="flex-1 min-h-0 overflow-y-auto whatsapp-chat-bg">
+      <div ref={contentRef} className="p-3 sm:p-6 space-y-4">
         <div className="flex justify-center my-2">
           <div className="bg-[#182229]/90 border border-[#222d34] text-[#ffd279] text-xs px-3 py-1.5 rounded-lg shadow max-w-md text-center flex items-center justify-center space-x-1.5">
             <span>Mensagens sincronizadas com o WhatsApp. Mídias aparecem como resumo.</span>
@@ -617,7 +647,15 @@ export const ChatArea: React.FC<ChatAreaProps> = ({
             )
           })
         )}
-        <div ref={messagesEndRef} />
+      </div>
+      </div>
+      {unseen > 0 && (
+        <button type="button" onClick={scrollToBottom} data-testid="new-messages-chip"
+          className="absolute bottom-3 right-4 z-10 flex items-center gap-1.5 rounded-full bg-[#00a884] px-3 py-1.5 text-xs font-medium text-white shadow-lg hover:bg-[#008f72] focus:outline-none focus-visible:ring-2 focus-visible:ring-white">
+          <ArrowDown className="h-4 w-4" aria-hidden />
+          <span role="status" aria-live="polite">{unseenLabel(unseen)}</span>
+        </button>
+      )}
       </div>
 
       {/* Emoji picker preview strip */}

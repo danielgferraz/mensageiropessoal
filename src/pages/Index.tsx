@@ -27,6 +27,7 @@ export default function Index() {
     setActiveMedia,
     startChatWithContact,
     focusContactNote,
+    openAntigravity,
   } = useWhatsApp()
 
   // Track active subpanels on the left side
@@ -85,7 +86,7 @@ export default function Index() {
           onOpenNewInstance={() => setNewInstanceOpen(true)}
           onOpenAntigravity={() => {
             setActiveLeftPanel('chats')
-            setActiveChatId('conv-antigravity')
+            openAntigravity()
           }}
           mobileOpen={mobileMenuOpen}
           onMobileClose={() => setMobileMenuOpen(false)}

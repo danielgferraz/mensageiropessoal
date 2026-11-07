@@ -120,12 +120,28 @@ export async function createStateDb(url, { poolFactory } = {}) {
       });
     },
 
-    async recordReplySuggestion(jid, draft) {
+    // Uma sugestão de resposta pendente por conversa: a nova substitui (descarta) as anteriores.
+    // meta.sourceMessageId = id da mensagem do cliente que originou o rascunho; meta.auto = gerado pelo webhook.
+    async recordReplySuggestion(jid, draft, meta = {}) {
       return tx(async (run) => {
-        const r = await run("INSERT INTO ai_suggestions (jid, kind, payload) VALUES ($1,'reply',$2) RETURNING *", [jid, JSON.stringify({ draft })]);
+        const old = await run("UPDATE ai_suggestions SET status='dismissed', resolved_at=now() WHERE jid=$1 AND kind='reply' AND status='pending' RETURNING id", [jid]);
+        if (old.rows.length) await audit(run, 'ia', 'suggestion.superseded', jid, { ids: old.rows.map((r) => String(r.id)) }, { reason: 'new_suggestion' });
+        const payload = { draft, ...(meta.sourceMessageId ? { sourceMessageId: String(meta.sourceMessageId).slice(0, 200) } : {}), ...(meta.auto ? { auto: true } : {}) };
+        const r = await run("INSERT INTO ai_suggestions (jid, kind, payload) VALUES ($1,'reply',$2) RETURNING *", [jid, JSON.stringify(payload)]);
         await run('INSERT INTO conversations (jid) VALUES ($1) ON CONFLICT (jid) DO NOTHING', [jid]);
-        await audit(run, 'ia', 'suggestion.reply', jid, null, { id: String(r.rows[0].id), length: draft.length });
+        await audit(run, 'ia', meta.auto ? 'suggestion.reply.auto' : 'suggestion.reply', jid, null,
+          { id: String(r.rows[0].id), length: draft.length, ...(meta.sourceMessageId ? { sourceMessageId: payload.sourceMessageId } : {}) });
         return mapSug(r.rows[0]);
+      });
+    },
+
+    // Descarta rascunhos pendentes que ficaram velhos (chegou mensagem nova ou um humano respondeu). Retorna quantos.
+    async dismissPendingReplies(jid, reason, actor = 'ia') {
+      if (!ACTORS.has(actor)) throw new Error('actor inválido');
+      return tx(async (run) => {
+        const r = await run("UPDATE ai_suggestions SET status='dismissed', resolved_at=now() WHERE jid=$1 AND kind='reply' AND status='pending' RETURNING id", [jid]);
+        if (r.rows.length) await audit(run, actor, 'suggestion.superseded', jid, { ids: r.rows.map((x) => String(x.id)) }, { reason });
+        return r.rows.length;
       });
     },
 
@@ -155,6 +171,11 @@ export async function createStateDb(url, { poolFactory } = {}) {
         const col = author === 'ia' ? 'last_ai_reply_at' : 'last_human_reply_at';
         await run(`INSERT INTO conversations (jid, ${col}) VALUES ($1, now()) ON CONFLICT (jid) DO UPDATE SET ${col}=now(), updated_at=now()`, [jid]);
         await audit(run, author, 'message.sent', jid, null, { messageId: messageId || null });
+        // Resposta humana feita por fora do rascunho: o rascunho pendente ficou velho.
+        if (author === 'humano') {
+          const r = await run("UPDATE ai_suggestions SET status='dismissed', resolved_at=now() WHERE jid=$1 AND kind='reply' AND status='pending' RETURNING id", [jid]);
+          if (r.rows.length) await audit(run, 'humano', 'suggestion.superseded', jid, { ids: r.rows.map((x) => String(x.id)) }, { reason: 'human_replied' });
+        }
       });
     },
 

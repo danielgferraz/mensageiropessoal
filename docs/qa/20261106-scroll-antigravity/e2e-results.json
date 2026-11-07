@@ -1,0 +1,260 @@
+{
+  "results": [
+    {
+      "name": "1.1 conversa longa (150 msgs) abre na última mensagem",
+      "ok": true,
+      "detail": "{\"top\":12754,\"client\":578,\"height\":13332,\"dist\":0}"
+    },
+    {
+      "name": "1.1b continua no fim após o polling",
+      "ok": true,
+      "detail": "{\"top\":12754,\"client\":578,\"height\":13332,\"dist\":0}"
+    },
+    {
+      "name": "1.2 troca para outra conversa: abre no fim",
+      "ok": true,
+      "detail": "{\"top\":0,\"client\":578,\"height\":578,\"dist\":0}"
+    },
+    {
+      "name": "1.2b volta para a conversa longa: abre no fim",
+      "ok": true,
+      "detail": "{\"top\":12754,\"client\":578,\"height\":13332,\"dist\":0}"
+    },
+    {
+      "name": "1.3 após recarregar a página: abre no fim",
+      "ok": true,
+      "detail": "{\"top\":12754,\"client\":578,\"height\":13332,\"dist\":0}"
+    },
+    {
+      "name": "1.4 histórico que chega depois do primeiro render: fica no fim",
+      "ok": true,
+      "detail": "{\"top\":0,\"client\":578,\"height\":578,\"dist\":0}"
+    },
+    {
+      "name": "1.5 mídia carregando depois (altura +860px) com a tela no fim: reancora no fim",
+      "ok": true,
+      "detail": "{\"top\":13670,\"client\":578,\"height\":14248,\"dist\":0}"
+    },
+    {
+      "name": "1.6 mídia carregando com a tela no histórico: NÃO puxa para o fim",
+      "ok": true,
+      "detail": "12170 -> 12170, dist 2100"
+    },
+    {
+      "name": "1.7 mensagem recebida com a tela no fim: acompanha",
+      "ok": true,
+      "detail": "{\"top\":12833,\"client\":578,\"height\":13411,\"dist\":0}"
+    },
+    {
+      "name": "1.7b sem aviso quando está no fim",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "name": "1.8 lendo histórico: tela NÃO é puxada",
+      "ok": true,
+      "detail": "11633 -> 11633"
+    },
+    {
+      "name": "1.8b aviso discreto \"N novas mensagens\"",
+      "ok": true,
+      "detail": "2 novas mensagens"
+    },
+    {
+      "name": "1.9 clicar no aviso leva ao fim",
+      "ok": true,
+      "detail": "{\"top\":12990,\"client\":578,\"height\":13568,\"dist\":0}"
+    },
+    {
+      "name": "1.9b aviso some ao clicar",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "name": "1.10 aviso no singular",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "name": "1.10b aviso some ao voltar ao fim manualmente",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "name": "1.11 enviar mensagem lendo o histórico: tela vai ao fim e mostra a mensagem",
+      "ok": true,
+      "detail": "{\"top\":13148,\"client\":578,\"height\":13726,\"dist\":0}"
+    },
+    {
+      "name": "1.11b envio foi só para o fixture (nenhum envio real)",
+      "ok": true,
+      "detail": "[{\"number\":\"5511999990001@s.whatsapp.net\",\"text\":\"ENVIO-QA\"}]"
+    },
+    {
+      "name": "1.12 busca no chat continua funcionando",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "name": "3.0 conversa com IA ligada mostra \"IA em modo sugestão\"",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "name": "3.1 sugestão aparece sozinha na barra da conversa",
+      "ok": true,
+      "detail": "Sugestão pronta da IA — nada é enviado sem o seu clique |  | Olá! O prazo de entrega é de cinco dias úteis. Posso ajudar em mais algo? |  | "
+    },
+    {
+      "name": "3.2 nada enviado ao WhatsApp pela IA",
+      "ok": true,
+      "detail": "envios no fixture: 1 (só o ENVIO-QA do teste 1.11)"
+    },
+    {
+      "name": "3.3 uma sugestão pendente, com id da mensagem de origem",
+      "ok": true,
+      "detail": "{\"draft\":\"Olá! O prazo de entrega é de cinco dias úteis. Posso ajudar em mais algo?\",\"auto\":true,\"sourceMessageId\":\"IN17"
+    },
+    {
+      "name": "3.4 mensagem nova descarta a sugestão antiga imediatamente",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "name": "3.4b depois gera uma nova (continua só uma pendente)",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "name": "3.5 \"Usar e editar\" coloca o rascunho no campo sem enviar",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "name": "3.6 envio só com o clique: 1 envio novo, com o texto aprovado",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "name": "3.7 conversa assumida por humano não gera sugestão",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "name": "3.8 conversa com IA desligada não gera sugestão",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "name": "3.8b tema bloqueado (cartão) não gera sugestão mesmo com IA ligada",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "name": "3.9 sem loop: rascunhos == mensagens do cliente com IA ligada (2, uma no burst)",
+      "ok": true,
+      "detail": "rascunhos=2"
+    },
+    {
+      "name": "2.1 aberto pelo menu: usa a última conversa ativa",
+      "ok": true,
+      "detail": "+55 11 99999-0003"
+    },
+    {
+      "name": "2.2 mostra o estado da IA da conversa",
+      "ok": true,
+      "detail": "Sugestão · você aprova cada envio"
+    },
+    {
+      "name": "2.3 cabeçalho em pt-BR, sem \"WhatsApp · WA\" e sem caminho",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "name": "2.4 resumo em pt-BR e caminho interno mascarado",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "name": "2.5 prompt traz contexto real (contato, mensagens, estado da IA) e manda responder em pt-BR",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "name": "2.5b prompt não vaza segredos nem caminhos",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "name": "2.6 nota proposta NÃO é salva sem confirmar",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "name": "2.7 nota salva só após confirmar, autoria IA",
+      "ok": true,
+      "detail": "{\"id\":\"3\",\"jid\":\"5511999990003@s.whatsapp.net\",\"author\":\"ia\",\"text\":\"Cliente pediu prazo de entrega;"
+    },
+    {
+      "name": "2.8 estágio sugerido (do pipeline) sem gravar nada ainda",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "name": "2.9 sugestão de estágio registrada após confirmar (pendente, não aplicada)",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "name": "2.10 \"aguardando retorno\" pede confirmação antes de gravar",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "name": "2.11 \"aguardando retorno\" gravado após confirmar",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "name": "2.12 sugerir resposta respeita as regras (contato não salvo: explica o bloqueio)",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "name": "2.13 resposta em inglês do CLI é reescrita em pt-BR antes de aparecer",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "name": "2.14 menu da conversa \"Perguntar ao Antigravity\" abre o painel com a conversa",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "name": "2.15 agy fora do ar: erro claro em pt-BR",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "name": "2.16 falha do agy: sem stderr/caminho/stack na tela",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "name": "2.17 sem conversa: ações dependentes desabilitadas e orientação visível",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "name": "2.18 layout de celular sem rolagem horizontal",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "name": "9.0 console limpo (sem console.error nem pageerror)",
+      "ok": true,
+      "detail": ""
+    }
+  ],
+  "consoleIssues": []
+}

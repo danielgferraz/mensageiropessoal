@@ -6,6 +6,10 @@ import { execFile } from 'node:child_process';
 import { createStore, suggestReply, validateConfig } from './copilot.mjs';
 import { loadKnowledge } from './rag.mjs';
 import { createStateDb, validJid } from './state-db.mjs';
+import crypto from 'node:crypto';
+import { createAutoSuggester } from './auto-suggest.mjs';
+import { ACTIONS, MAX_MESSAGE_CHARS, aiStateOf, buildAntigravityPrompt, buildContext, buildTranslationPrompt, friendlyAgyError, looksEnglish, parseStageAnswer, sanitizeAgyOutput } from './antigravity.mjs';
+import { cleanJid, rowsOf, toContextMessages } from './whatsapp-utils.mjs';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -23,6 +27,7 @@ const copilotStore = createStore(COPILOT_DATA_DIR);
 // Banco isolado do Mensageiro (estado por conversa, notas, CRM, auditoria). Sem URL, as rotas /state respondem 503.
 const MENSAGEIRO_DATABASE_URL = process.env.MENSAGEIRO_DATABASE_URL || '';
 let stateDb = null;
+export const __setStateDbForTests = (db) => { stateDb = db; };
 const stateDbReady = createStateDb(MENSAGEIRO_DATABASE_URL)
   .then((db) => { stateDb = db; return db; })
   .catch((err) => { console.error('[state-db] indisponível:', err.message); return null; });
@@ -41,11 +46,17 @@ function agyEnv() {
   delete env.EVOLUTION_APIKEY;
   return env;
 }
+// AGY_CWD (opcional): pasta vazia para o agy trabalhar, em vez da pasta do serviço.
+const AGY_CWD = process.env.AGY_CWD || '';
+let agyOverride = null; // só para testes: substitui o CLI por uma função
+export const __setAgyRunnerForTests = (fn) => { agyOverride = fn; };
+const agyAvailable = () => !!agyOverride || fs.existsSync(AGY_BIN);
 function runAgy(prompt) {
+  if (agyOverride) return Promise.resolve().then(() => agyOverride(prompt));
   return new Promise((resolve, reject) => {
-    if (!fs.existsSync(AGY_BIN)) return reject(new Error('agy indisponível'));
+    if (!fs.existsSync(AGY_BIN)) return reject(Object.assign(new Error('agy indisponível'), { code: 'agy_unavailable' }));
     execFile(AGY_BIN, ['-p', prompt], { timeout: 90000, maxBuffer: 2 * 1024 * 1024,
-      env: agyEnv() },
+      env: agyEnv(), ...(AGY_CWD && fs.existsSync(AGY_CWD) ? { cwd: AGY_CWD } : {}) },
     (error, stdout) => (error ? reject(error) : resolve(stdout)));
   });
 }
@@ -54,6 +65,40 @@ const text = (value, max) => (typeof value === 'string' ? value.slice(0, max) : 
 function fetchUpstream(url, options = {}) {
   return fetch(url, { ...options, signal: AbortSignal.timeout(15000) });
 }
+
+// Últimas mensagens de uma conversa direto na Evolution (telefone e @lid do mesmo contato, unidos por id)
+async function fetchRecentMessages({ instance, jids, limit = 20 }) {
+  if (!EVOLUTION_APIKEY || !validInstanceName(instance)) return [];
+  const sets = await Promise.all(jids.slice(0, 3).map(async (remoteJid) => {
+    const resp = await fetchUpstream(`${EVOLUTION_URL}/chat/findMessages/${encodeURIComponent(instance)}`, {
+      method: 'POST', headers: { 'Content-Type': 'application/json', apikey: EVOLUTION_APIKEY },
+      body: JSON.stringify({ where: { key: { remoteJid } }, page: 1, offset: limit }),
+    });
+    return resp.ok ? rowsOf(await resp.json()) : [];
+  }));
+  return toContextMessages(sets, limit);
+}
+
+// Webhook da Evolution -> rascunho automático (nunca envia). Segredo próprio, separado do login de admin.
+const WEBHOOK_SECRET = process.env.EVOLUTION_WEBHOOK_SECRET || '';
+const autoSuggester = createAutoSuggester({
+  store: copilotStore,
+  getDb: async () => stateDb || await stateDbReady,
+  fetchContext: fetchRecentMessages,
+  suggest: (request) => suggestReply({ store: copilotStore, knowledge: currentKnowledge(copilotStore.readConfig()), runModel: runAgy,
+    user: { email: 'webhook-evolution' }, request }),
+  debounceMs: parseInt(process.env.AUTO_SUGGEST_DEBOUNCE_MS || '4000', 10),
+  maxPerHour: parseInt(process.env.AUTO_SUGGEST_MAX_PER_HOUR || '20', 10),
+  log: (where, msg) => console.error(`[auto-suggest:${where}]`, msg),
+});
+export { autoSuggester };
+function webhookSecretOk(req, url) {
+  const given = String(req.headers['x-webhook-secret'] || (req.headers.authorization || '').replace(/^Bearer\s+/i, '') || url.searchParams.get('token') || '');
+  const a = crypto.createHash('sha256').update(given).digest();
+  const b = crypto.createHash('sha256').update(WEBHOOK_SECRET).digest();
+  return !!WEBHOOK_SECRET && crypto.timingSafeEqual(a, b);
+}
+let agyInFlight = 0;
 
 // Cache de metadados de grupos (nome/tamanho/foto), 10 min por instância; falha silenciosa
 const GROUP_CACHE_TTL_MS = 10 * 60 * 1000;
@@ -358,6 +403,15 @@ async function handleApi(req, res, apiPath) {
     return sendJson(res, 200, { authorized: true, user: auth.user });
   }
 
+  // Webhook da Evolution (sem token de admin: protegido por segredo próprio). Só agenda RASCUNHOS; nunca envia mensagem.
+  if (apiPath === '/webhook/evolution' && method === 'POST') {
+    if (!WEBHOOK_SECRET) return sendJson(res, 503, { error: 'Webhook não configurado no servidor.' });
+    if (!webhookSecretOk(req, new URL(req.url, 'http://localhost'))) return sendJson(res, 401, { error: 'Segredo do webhook inválido.' });
+    const payload = await parseBody(req);
+    const { received } = await autoSuggester.handleWebhook(payload);
+    return sendJson(res, 200, { ok: true, received });
+  }
+
   // A partir daqui, TODOS os endpoints de API exigem autorização de Administrador
   const auth = await verifyAdminAuth(req);
   if (!auth.authorized) {
@@ -458,7 +512,12 @@ async function handleApi(req, res, apiPath) {
     if (apiPath === '/copilot/audit' && method === 'GET') return sendJson(res, 200, { entries: copilotStore.readAudit(100) });
     if (apiPath === '/copilot/suggest' && method === 'POST') {
       const body = await parseBody(req);
-      const messages = Array.isArray(body.messages) ? body.messages.slice(-20).map((m) => ({ fromMe: !!m?.fromMe, text: text(m?.text, 800) })).filter((m) => m.text) : [];
+      let messages = Array.isArray(body.messages) ? body.messages.slice(-20).map((m) => ({ fromMe: !!m?.fromMe, text: text(m?.text, 800) })).filter((m) => m.text) : [];
+      if (!messages.length && validJid(body.contactId) && validInstanceName(body.instanceName)) {
+        const aliases = Array.isArray(body.aliases) ? body.aliases.map(cleanJid).filter(Boolean).slice(0, 2) : [];
+        messages = await fetchRecentMessages({ instance: body.instanceName, jids: [body.contactId, ...aliases], limit: 20 }).catch(() => []);
+        messages = messages.map((m) => ({ fromMe: m.fromMe, text: text(m.text, 800) }));
+      }
       const lastIncoming = [...messages].reverse().find((m) => !m.fromMe)?.text || '';
       if (!text(body.contactId, 200) || !lastIncoming) return sendJson(res, 400, { error: 'Conversa sem mensagem do cliente para responder.' });
       // Controle por conversa: sugestão só com a IA ligada nesta conversa e sem humano assumindo
@@ -485,47 +544,60 @@ async function handleApi(req, res, apiPath) {
     return sendJson(res, 404, { error: 'Rota não encontrada.' });
   }
 
-  // Antigravity CLI Chat endpoint
+  // Chat do Antigravity: contexto real da conversa, sempre pt-BR, sem caminhos internos. Só sugere; nada é gravado ou enviado aqui.
   if (apiPath === '/antigravity/chat' && method === 'POST') {
     const body = await parseBody(req);
-    const prompt = body.prompt || body.message;
-    if (!prompt || typeof prompt !== 'string') {
-      return sendJson(res, 400, { error: 'Campo prompt obrigatório.' });
+    const action = body.action === undefined ? 'chat' : body.action;
+    if (!ACTIONS.includes(action)) return sendJson(res, 400, { error: 'Ação inválida.' });
+    const message = text(body.prompt || body.message, MAX_MESSAGE_CHARS + 1).trim();
+    if (message.length > MAX_MESSAGE_CHARS) return sendJson(res, 400, { error: `Mensagem longa demais (máximo de ${MAX_MESSAGE_CHARS} caracteres).` });
+    if (action === 'chat' && !message) return sendJson(res, 400, { error: 'Escreva sua pergunta para o Antigravity.' });
+    const jid = validJid(body.jid) ? body.jid : null;
+    if (action !== 'chat' && !jid) return sendJson(res, 400, { error: 'Escolha uma conversa para esta ação.' });
+    const stages = Array.isArray(body.stages) ? [...new Set(body.stages.filter((v) => typeof v === 'string' && v.trim()).map((v) => v.trim().slice(0, 64)))].slice(0, 20) : [];
+    if (action === 'crm_stage' && !stages.length) return sendJson(res, 400, { error: 'Nenhum estágio do pipeline para escolher.' });
+    if (!agyAvailable()) { const e = friendlyAgyError({ code: 'agy_unavailable' }); return sendJson(res, e.status, { error: e.error, code: e.code }); }
+    if (agyInFlight >= 2) return sendJson(res, 429, { error: 'O Antigravity está ocupado com outros pedidos. Aguarde alguns segundos.', code: 'agy_busy' });
+
+    // Contexto: estado/notas/CRM do banco do Mensageiro + últimas mensagens direto da Evolution
+    let context = null;
+    if (jid) {
+      const db = stateDb || await stateDbReady;
+      const state = db ? await Promise.resolve().then(() => db.getState(jid)).catch(() => null) : null;
+      const aliases = Array.isArray(body.aliases) ? body.aliases.map(cleanJid).filter(Boolean).slice(0, 2) : [];
+      const messages = await fetchRecentMessages({ instance: body.instanceName, jids: [jid, ...aliases], limit: 30 }).catch(() => []);
+      const isGroup = jid.endsWith('@g.us');
+      context = buildContext({ contactName: body.contactName, isGroup, aiState: isGroup || !state ? 'n/a' : aiStateOf(state.conversation),
+        stage: state?.crm?.stage || text(body.localStage, 64) || null, notes: state?.notes || [], messages });
     }
 
-    if (!fs.existsSync(AGY_BIN)) {
-      return sendJson(res, 200, {
-        success: true,
-        response: `[Antigravity Simulado] Executável "${AGY_BIN}" não encontrado neste host local. Recebido: "${prompt}". Na VPS Oracle, o binário executará nativamente via CLI.`,
-        simulated: true,
-      });
-    }
-
-    // Executa o agy CLI na VPS
-    execFile(
-      AGY_BIN,
-      ['-p', prompt],
-      {
-        timeout: 90000,
-        maxBuffer: 10 * 1024 * 1024,
-        env: { ...process.env, PATH: `${process.env.PATH}:/home/opc/.local/bin` }
-      },
-      (error, stdout, stderr) => {
-        if (error) {
-          console.error('[AGY Error]', error, stderr);
-          return sendJson(res, 500, {
-            error: 'Falha ao executar Antigravity CLI.',
-            details: error.message,
-            stderr: stderr || null,
-          });
-        }
-        return sendJson(res, 200, {
-          success: true,
-          response: stdout.trim(),
-        });
+    const prompt = buildAntigravityPrompt({ action, message, context, stages });
+    const user = auth.user?.email || auth.user?.id || 'desconhecido';
+    agyInFlight++;
+    try {
+      const raw = await runAgy(prompt);
+      let output = sanitizeAgyOutput(raw);
+      if (!output) throw new Error('empty');
+      if (looksEnglish(output)) {   // sempre pt-BR: uma segunda passada pede para reescrever em português
+        const again = sanitizeAgyOutput(await runAgy(buildTranslationPrompt(output)));
+        if (!again || looksEnglish(again)) throw Object.assign(new Error('language'), { code: 'agy_language' });
+        output = again;
       }
-    );
-    return;
+      copilotStore.audit({ action: 'antigravity', code: 'ok', user, kind: action, contactId: jid, promptChars: prompt.length, outputChars: output.length });
+      const result = { success: true, response: output, ...(context ? { context: context.counts } : {}) };
+      if (action === 'note') result.proposal = { type: 'note', text: output.slice(0, 600) };
+      if (action === 'crm_stage') {
+        const parsed = parseStageAnswer(output, stages);
+        if (parsed) { result.proposal = { type: 'crm_stage', ...parsed }; result.response = `Sugiro o estágio "${parsed.stage}".${parsed.reason ? ` Motivo: ${parsed.reason}` : ''}`; }
+        else result.response = 'Não consegui escolher um estágio com segurança. Defina o estágio manualmente no pipeline.';
+      }
+      return sendJson(res, 200, result);
+    } catch (error) {
+      console.error('[AGY]', error?.code || error?.message);
+      copilotStore.audit({ action: 'antigravity', code: error?.code || 'error', user, kind: action, contactId: jid, promptChars: prompt.length });
+      const e = friendlyAgyError(error);
+      return sendJson(res, e.status, { error: e.error, code: e.code });
+    } finally { agyInFlight--; }
   }
 
   // Evolution API: Listar instâncias

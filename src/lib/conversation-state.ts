@@ -14,7 +14,7 @@ export interface ConversationState {
 export interface ServerNote { id: string; jid: string; author: Actor; text: string; createdAt: string }
 export interface AiSuggestion {
   id: string; jid: string; kind: 'reply' | 'crm_stage'; status: 'pending' | 'accepted' | 'dismissed'; createdAt: string
-  payload: { draft?: string; stage?: string; reason?: string | null; currentStage?: string | null; manualStage?: boolean }
+  payload: { draft?: string; auto?: boolean; sourceMessageId?: string; stage?: string; reason?: string | null; currentStage?: string | null; manualStage?: boolean }
 }
 export interface ConversationSnapshot {
   conversation: ConversationState
@@ -47,3 +47,7 @@ export const updateConversationState = (jid: string, patch: { aiEnabled?: boolea
   call<{ conversation: ConversationState }>(`/conversations/${j(jid)}`, { method: 'PUT', body: JSON.stringify(patch) })
 export const resolveSuggestion = (id: string, decision: 'accept' | 'dismiss') =>
   call<{ suggestion: AiSuggestion; crm: ConversationSnapshot['crm'] }>(`/suggestions/${id}/${decision}`, { method: 'POST' })
+export const addServerNote = (jid: string, text: string, author: Actor = 'ia') =>
+  call<{ note: ServerNote }>(`/conversations/${j(jid)}/notes`, { method: 'POST', body: JSON.stringify({ text, author }) })
+export const suggestCrmStage = (jid: string, stage: string, reason: string) =>
+  call<{ suggestion: AiSuggestion }>(`/conversations/${j(jid)}/crm-suggestion`, { method: 'POST', body: JSON.stringify({ stage, reason }) })

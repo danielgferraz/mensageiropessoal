@@ -43,6 +43,11 @@ interface WhatsAppContextType {
   messages: Record<string, Message[]>
   activeChatId: string | null
   setActiveChatId: (id: string | null) => void
+  /** Conversa do WhatsApp sobre a qual o Antigravity está trabalhando (null = nenhuma escolhida). */
+  antigravityTarget: string | null
+  setAntigravityTarget: (id: string | null) => void
+  /** Abre o chat do Antigravity; sem argumento, usa a última conversa aberta. */
+  openAntigravity: (target?: string | null) => void
   activeMedia: MessageMedia | null
   setActiveMedia: (media: MessageMedia | null) => void
   sendMessage: (conversationId: string, text?: string, media?: MessageMedia, opts?: { suggestionId?: string; jid?: string }) => Promise<void>
@@ -136,6 +141,13 @@ const STORAGE_KEYS = {
 export const WhatsAppProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const { user: adminUser } = useAuth()
   const [activeChatId, setActiveChatId] = useState<string | null>(null)
+  const [antigravityTarget, setAntigravityTarget] = useState<string | null>(null)
+  const lastWhatsappChat = useRef<string | null>(null)
+  useEffect(() => { if (activeChatId && activeChatId !== 'conv-antigravity') lastWhatsappChat.current = activeChatId }, [activeChatId])
+  const openAntigravity = (target?: string | null) => {
+    setAntigravityTarget(target === undefined ? lastWhatsappChat.current : target)
+    setActiveChatId('conv-antigravity')
+  }
   const remote = useEvolution(activeChatId)
   const { conversations: remoteConversations, setConversations, messages, setMessages } = remote
   // Contatos e pipeline só contêm quem foi adicionado de propósito; conversas avulsas não viram contato.
@@ -371,16 +383,6 @@ export const WhatsAppProvider: React.FC<{ children: React.ReactNode }> = ({ chil
   const sendMessage = async (conversationId: string, text?: string, media?: MessageMedia, opts?: { suggestionId?: string; jid?: string }) => {
     if (media) throw new Error('Envio de fotos e vídeos ainda não está disponível.')
     if (!text?.trim()) return
-    if (conversationId === 'conv-antigravity') {
-      const prompt: Message = { id: crypto.randomUUID(), conversationId, text: text.trim(),
-        senderId: 'me', senderName: 'Você', timestamp: new Date().toLocaleTimeString('pt-BR'), status: 'sent' }
-      const data = await evolutionRequest('/antigravity/chat', { prompt: text.trim() })
-      if (!data.success || data.simulated) throw new Error('Antigravity indisponível neste servidor.')
-      setMessages((prev) => ({ ...prev, [conversationId]: [...(prev[conversationId] || []), prompt, {
-        ...prompt, id: crypto.randomUUID(), senderId: 'c-antigravity', senderName: 'Antigravity', text: data.response,
-      }] }))
-      return
-    }
     if (!remote.instance || remote.syncError) throw new Error('Confira a conexão do WhatsApp antes de enviar.')
     const name = remote.instance.name
     const data = await evolutionRequest(`/whatsapp/send-message/${encodeURIComponent(name)}`, {
@@ -838,6 +840,9 @@ export const WhatsAppProvider: React.FC<{ children: React.ReactNode }> = ({ chil
         messages,
         activeChatId,
         setActiveChatId,
+        antigravityTarget,
+        setAntigravityTarget,
+        openAntigravity,
         activeMedia,
         setActiveMedia,
         sendMessage,
