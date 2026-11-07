@@ -163,7 +163,7 @@
     {
       "name": "2.2 mostra o estado da IA da conversa",
       "ok": true,
-      "detail": "Sugestão · você aprova cada envio"
+      "detail": "Só sugestão · você aprova cada envio"
     },
     {
       "name": "2.3 cabeçalho em pt-BR, sem \"WhatsApp · WA\" e sem caminho",

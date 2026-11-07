@@ -26,6 +26,7 @@ const GENERAL = '_geral'
 const uid = () => crypto.randomUUID()
 
 const BADGE_STYLE: Record<AiBadge, string> = {
+  auto: 'bg-[#00a884]/30 text-[#7fe3cb] font-medium',
   suggestion: 'bg-[#00a884]/20 text-[#7fe3cb]',
   human: 'bg-amber-500/20 text-amber-200',
   off: 'bg-slate-600/30 text-slate-300',
@@ -65,7 +66,7 @@ export const AntigravityPanel: React.FC<{ onBackMobile?: () => void }> = ({ onBa
     let alive = true
     setBadge('loading')
     getConversationSnapshot(jid)
-      .then(({ conversation: c }) => { if (alive) setBadge(!c.aiEnabled ? 'off' : c.mode === 'human' ? 'human' : 'suggestion') })
+      .then(({ conversation: c }) => { if (alive) setBadge(!c.aiEnabled ? 'off' : c.mode === 'human' ? 'human' : c.autoReply ? 'auto' : 'suggestion') })
       .catch(() => { if (alive) setBadge('unavailable') })
     return () => { alive = false }
   }, [targetId, targetIsGroup, jid, stateReload])

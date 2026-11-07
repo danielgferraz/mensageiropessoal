@@ -1,0 +1,90 @@
+{
+  "results": [
+    {
+      "name": "A1 conversa começa em \"Só sugestão\", sem selo Automático",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "name": "A2 ativar exige confirmação explícita (diálogo)",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "name": "A3 cancelar não ativa",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "name": "A4 após confirmar: \"IA responde automaticamente nesta conversa\" + selo Automático",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "name": "A5 a IA enviou sozinha UMA resposta, para o contato certo, com o texto aprovado",
+      "ok": true,
+      "detail": "[{\"number\":\"5511999990003@s.whatsapp.net\",\"text\":\"Olá! O prazo de entrega é de cinco dias úteis. Posso ajudar em mais algo?\"}]"
+    },
+    {
+      "name": "A6 nada fica pendente (o rascunho foi usado) e há registro de autoria IA",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "name": "A7 a mensagem enviada aparece na conversa com o selo \"IA\"",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "name": "A8 segunda mensagem dentro da janela de 60 s NÃO é enviada, vira sugestão",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "name": "A9 auditoria registra envio (com id da mensagem) e o motivo de ter ficado só sugestão, sem texto",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "name": "A10 humano respondeu: a conversa volta sozinha para \"Só sugestão\"",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "name": "A11 atendente em pausa geral: nada é enviado",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "name": "A12 assumir a conversa desliga o automático",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "name": "A13 devolver para a IA NÃO reativa o automático (continua só sugestão)",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "name": "A14 outra conversa não tem automático nem selo",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "name": "A15 conversa recém-ligada começa só em sugestão (não herda o opt-in)",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "name": "A16 sem opt-in de envio nessa conversa: nada enviado",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "name": "A99 console limpo",
+      "ok": true,
+      "detail": ""
+    }
+  ],
+  "issues": []
+}

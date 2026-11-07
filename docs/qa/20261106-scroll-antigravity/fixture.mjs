@@ -24,18 +24,21 @@ const sent = [];
 const ctl = { slow: {}, agy: 'ok', agyPrompts: [], webhookCalls: 0 };
 
 const state = { conv: {}, notes: [], sugs: [], crm: {}, audit: [], seq: 1 };
-const conv = (jid) => state.conv[jid] || { jid, aiEnabled: false, mode: 'suggestion', takenOverAt: null, lastAiReplyAt: null, lastHumanReplyAt: null, updatedAt: null };
+const conv = (jid) => state.conv[jid] || { jid, aiEnabled: false, mode: 'suggestion', autoReply: false, takenOverAt: null, lastAiReplyAt: null, lastHumanReplyAt: null, updatedAt: null };
+const authorship = {};
 const fakeDb = {
   async health() { return { ok: true, migration: 'qa' }; },
   async getConversation(jid) { return conv(jid); },
   async getState(jid) {
-    return { conversation: conv(jid), crm: state.crm[jid] || null, notes: state.notes.filter((n) => n.jid === jid), authorship: {},
+    return { conversation: conv(jid), crm: state.crm[jid] || null, notes: state.notes.filter((n) => n.jid === jid), authorship,
       suggestions: state.sugs.filter((s) => s.jid === jid && s.status === 'pending') };
   },
   async updateConversation(jid, patch) {
     const cur = conv(jid); const next = { ...cur };
     if (typeof patch.aiEnabled === 'boolean') next.aiEnabled = patch.aiEnabled;
     if (patch.mode) next.mode = patch.mode;
+    if (typeof patch.autoReply === 'boolean') next.autoReply = patch.autoReply;
+    if (!next.aiEnabled || next.mode === 'human') next.autoReply = false;
     state.conv[jid] = next; state.audit.push({ action: 'conversation.update', jid, after: patch });
     return next;
   },
@@ -53,7 +56,10 @@ const fakeDb = {
     const s = state.sugs.find((x) => x.id === String(id) && x.status === 'pending'); if (!s) return null;
     s.status = decision === 'accepted' ? 'accepted' : 'dismissed'; return { suggestion: s, crm: null };
   },
-  async recordSent() {}, async listAudit() { return state.audit; },
+  async autoReplyAvailable() { return true; },
+  async pauseAutoReply(jid) { const c = state.conv[jid]; if (!c?.autoReply) return false; c.autoReply = false; state.audit.push({ action: 'autoreply.paused', jid }); return true; },
+  async recordSent(jid, messageId, author) { if (messageId) authorship[messageId] = author; if (author === 'ia') { state.conv[jid] = { ...conv(jid), lastAiReplyAt: new Date().toISOString() }; } },
+  async listAudit() { return state.audit; },
 };
 
 const upstream = http.createServer(async (req, res) => {
@@ -96,9 +102,11 @@ await new Promise((r) => upstream.listen(4455, '127.0.0.1', r));
 
 const scratch = fs.mkdtempSync(path.join(os.tmpdir(), 'mensageiro-qa-'));
 fs.mkdirSync(path.join(scratch, 'data'));
-fs.writeFileSync(path.join(scratch, 'data', 'copilot-config.json'), JSON.stringify({ enabled: true, paused: false, mode: 'suggestion' }));
+fs.writeFileSync(path.join(scratch, 'data', 'copilot-config.json'), JSON.stringify({ enabled: true, paused: false, mode: process.env.QA_MODE || 'automatic' }));
+fs.mkdirSync(path.join(scratch, 'kb', '02_Servicos'), { recursive: true });
+fs.writeFileSync(path.join(scratch, 'kb', '02_Servicos', 'A.md'), '# Serviço\nStatus: Aprovado\n\n## Prazo\nO prazo de entrega do serviço é de cinco dias úteis após a aprovação do cliente.');
 Object.assign(process.env, { EVOLUTION_URL: 'http://127.0.0.1:4455', EVOLUTION_APIKEY: 'qa-only', SUPABASE_URL: 'http://127.0.0.1:4455', SUPABASE_ANON_KEY: 'qa-only',
-  COPILOT_DATA_DIR: path.join(scratch, 'data'), NEBRIA_DIR: '', AGY_BIN: path.join(scratch, 'sem-agy'), PORT: '3355',
+  COPILOT_DATA_DIR: path.join(scratch, 'data'), NEBRIA_DIR: path.join(scratch, 'kb'), COPILOT_ALLOW_AUTOMATIC: '1', AGY_BIN: path.join(scratch, 'sem-agy'), PORT: '3355',
   EVOLUTION_WEBHOOK_SECRET: SECRET, AUTO_SUGGEST_DEBOUNCE_MS: '1500' });
 const { server, __setStateDbForTests, __setAgyRunnerForTests } = await import('../../../server/server.mjs');
 __setStateDbForTests(fakeDb);

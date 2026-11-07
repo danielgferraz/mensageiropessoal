@@ -36,7 +36,8 @@ test('pause, allowlist, contact, group, label and mode rules are enforced', () =
   assert.equal(evaluateRequest(open(), req({ contactId: '5511888880002@s.whatsapp.net' }), [], NOON).code, 'not_allowed');
   assert.equal(evaluateRequest(open({ allowedContactIds: [], allowedLabelIds: ['vip'] }), req({ labelIds: ['vip'] }), [], NOON).allowed, true);
   assert.equal(evaluateRequest(open(), req(), [], NOON).allowed, true);
-  assert.equal(evaluateRequest({ ...open(), mode: 'automatic' }, req(), [], NOON).code, 'mode');
+  assert.equal(evaluateRequest({ ...open(), mode: 'automatic' }, req(), [], NOON).allowed, true, 'automatic only changes what happens after the draft');
+  assert.equal(evaluateRequest({ ...open(), mode: 'qualquer' }, req(), [], NOON).code, 'mode');
 });
 
 test('limits, business hours, handoff words and blocked topics stop the draft', () => {
@@ -143,4 +144,14 @@ test('config persistence survives restarts and corrupt files fall back to the cl
   assert.equal(createStore(dir).readConfig().maxPerDay, 5);
   fs.writeFileSync(path.join(dir, 'copilot-config.json'), '{ not json');
   assert.equal(createStore(dir).readConfig().enabled, false);
+});
+
+test('kill switch: a saved "automatic" mode counts as suggestion when the server flag is off', () => {
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'kill-switch-'));
+  const on = createStore(dir, { allowAutomatic: true });
+  on.writeConfig(validateConfig({ enabled: true, paused: false, mode: 'automatic' }, DEFAULT_CONFIG, { allowAutomatic: true }));
+  assert.equal(on.readConfig().mode, 'automatic');
+  const off = createStore(dir, { allowAutomatic: false });
+  assert.equal(off.readConfig().mode, 'suggestion');
+  assert.equal(off.readConfig().enabled, true, 'the rest of the configuration is kept');
 });

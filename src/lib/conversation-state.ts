@@ -6,6 +6,8 @@ export interface ConversationState {
   jid: string
   aiEnabled: boolean
   mode: 'suggestion' | 'human'
+  /** Opt-in desta conversa para a IA enviar sozinha (exige IA ligada e ninguém assumindo). */
+  autoReply?: boolean
   takenOverAt: string | null
   lastAiReplyAt: string | null
   lastHumanReplyAt: string | null
@@ -22,6 +24,8 @@ export interface ConversationSnapshot {
   notes: ServerNote[]
   suggestions: AiSuggestion[]
   authorship: Record<string, Actor>
+  /** allowed = servidor liberou e o modo Automático está ativo; available = banco com a migração 003. */
+  automatic?: { allowed: boolean; serverAllowed: boolean; available: boolean }
 }
 
 export class StateUnavailableError extends Error {}
@@ -43,7 +47,7 @@ async function call<T>(path: string, init?: RequestInit): Promise<T> {
 const j = (jid: string) => encodeURIComponent(jid)
 
 export const getConversationSnapshot = (jid: string) => call<ConversationSnapshot>(`/conversations/${j(jid)}`)
-export const updateConversationState = (jid: string, patch: { aiEnabled?: boolean; mode?: 'suggestion' | 'human' }) =>
+export const updateConversationState = (jid: string, patch: { aiEnabled?: boolean; mode?: 'suggestion' | 'human'; autoReply?: boolean }) =>
   call<{ conversation: ConversationState }>(`/conversations/${j(jid)}`, { method: 'PUT', body: JSON.stringify(patch) })
 export const resolveSuggestion = (id: string, decision: 'accept' | 'dismiss') =>
   call<{ suggestion: AiSuggestion; crm: ConversationSnapshot['crm'] }>(`/suggestions/${id}/${decision}`, { method: 'POST' })

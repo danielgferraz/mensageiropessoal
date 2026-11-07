@@ -72,14 +72,14 @@ export const CopilotSettingsTab: React.FC = () => {
           {status.config.paused ? <><PlayCircle className="mr-1 h-4 w-4" />Retomar</> : <><PauseCircle className="mr-1 h-4 w-4" />Pausar tudo</>}
         </Button>
       </div>
-      <p className="flex items-start gap-2 text-[11px] text-slate-400"><ShieldCheck className="mt-0.5 h-4 w-4 shrink-0 text-[#00a884]" />Modo sugestão: o atendente escreve um rascunho no campo de mensagem e você revisa e envia. Nada é enviado automaticamente.</p>
+      <p className="flex items-start gap-2 text-[11px] text-slate-400"><ShieldCheck className="mt-0.5 h-4 w-4 shrink-0 text-[#00a884]" />Modo sugestão: o atendente escreve um rascunho e você revisa e envia. Modo automático: só envia sozinho nas conversas em que você ativar "resposta automática" (uma a uma), para texto recente, com base aprovada e dentro dos limites; pausa quando você responde.</p>
       {error && <p role="alert" className="text-sm text-red-300">{error}</p>}
 
       <Section title="Operação">
         <label className="flex items-center gap-2 text-sm"><input type="checkbox" checked={draft.enabled} onChange={(e) => patch({ enabled: e.target.checked })} />Atendente ligado</label>
         <fieldset className="space-y-1 text-sm"><legend className="text-xs text-slate-400">Modo</legend>
           <label className="flex items-center gap-2"><input type="radio" name="copilot-mode" checked={draft.mode === 'suggestion'} onChange={() => patch({ mode: 'suggestion' })} />Sugestão (rascunho para aprovação)</label>
-          <label className={`flex items-center gap-2 ${status.automaticAllowed ? '' : 'opacity-50'}`}><input type="radio" name="copilot-mode" disabled={!status.automaticAllowed} checked={draft.mode === 'automatic'} onChange={() => patch({ mode: 'automatic' })} />Automático{!status.automaticAllowed && ' (bloqueado neste servidor)'}</label>
+          <label className={`flex items-center gap-2 ${status.automaticAllowed ? '' : 'opacity-50'}`}><input type="radio" name="copilot-mode" disabled={!status.automaticAllowed} checked={draft.mode === 'automatic'} onChange={() => patch({ mode: 'automatic' })} />Automático (envia sozinho só nas conversas com opt-in){!status.automaticAllowed && ' — bloqueado neste servidor'}</label>
         </fieldset>
       </Section>
 

@@ -79,7 +79,8 @@ export function evaluateRequest(config, request, history = [], now = new Date())
   const deny = (code, reason) => ({ allowed: false, code, reason });
   if (!config.enabled) return deny('disabled', 'O atendente está desligado.');
   if (config.paused) return deny('paused', 'O atendente está em pausa geral.');
-  if (config.mode !== 'suggestion') return deny('mode', 'Somente o modo sugestão está disponível neste servidor.');
+  // 'automatic' só muda o que acontece DEPOIS do rascunho (envio, nas conversas com opt-in); o rascunho em si é igual nos dois modos
+  if (!['suggestion', 'automatic'].includes(config.mode)) return deny('mode', 'Modo do atendente inválido.');
   if (request.isGroup) return deny('group', 'O atendente não responde em grupos.');
   // optIn: o administrador ligou as sugestões nesta conversa (rascunho automático); vale como autorização do contato.
   if (!request.optIn) {
@@ -144,14 +145,18 @@ export function buildPrompt({ messages, snippets }) {
 }
 
 /** Persistência simples em arquivo (config + auditoria JSONL). `dir` é criado com permissão restrita. */
-export function createStore(dir) {
+export function createStore(dir, { allowAutomatic = false } = {}) {
   const configFile = path.join(dir, 'copilot-config.json');
   const auditFile = path.join(dir, 'copilot-audit.jsonl');
   const ensure = () => fs.mkdirSync(dir, { recursive: true, mode: 0o700 });
   return {
     readConfig() {
-      try { return validateConfig(JSON.parse(fs.readFileSync(configFile, 'utf8')), DEFAULT_CONFIG, { allowAutomatic: false }); }
-      catch { return { ...DEFAULT_CONFIG, businessHours: { ...DEFAULT_CONFIG.businessHours } }; }
+      try {
+        const config = validateConfig(JSON.parse(fs.readFileSync(configFile, 'utf8')), DEFAULT_CONFIG, { allowAutomatic: true });
+        // Kill switch: sem COPILOT_ALLOW_AUTOMATIC no servidor, um modo "automatic" salvo volta a valer como sugestão
+        if (!allowAutomatic && config.mode === 'automatic') config.mode = 'suggestion';
+        return config;
+      } catch { return { ...DEFAULT_CONFIG, businessHours: { ...DEFAULT_CONFIG.businessHours } }; }
     },
     writeConfig(config) {
       ensure();

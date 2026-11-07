@@ -45,9 +45,17 @@ Limite conhecido: o app ainda não renderiza `<img>`/áudio dentro das mensagens
 - Testes de servidor (`auto-suggest.test.mjs`, `state-db.test.mjs`): debounce, rodada velha descartada, limites por contato/hora/dia, chave geral desligada/pausada, tema bloqueado, encaminhamento humano, saída bloqueada pelo filtro, falha de contexto/modelo, auditoria sem texto.
 - O envio automático continua proibido: `COPILOT_ALLOW_AUTOMATIC` desligado e nenhum código deste fluxo envia mensagem.
 
+## Envio automático (opt-in por conversa) — adendo
+
+- Travas em série (`server/auto-suggest.mjs`): servidor liberado (`COPILOT_ALLOW_AUTOMATIC=1`) + atendente ligado/fora de pausa/modo Automático + migração 003 + opt-in da conversa (`auto_reply`) sem humano assumindo + texto puro com até 2 min + rascunho com fonte aprovada e aprovado pelo filtro de saída + ainda atual + janela de 60 s, 3/h por conversa e 10/h global. Rascunho reservado no banco antes de enviar; falha de envio não reenvia e volta como sugestão.
+- Pausas: humano respondeu (eco das nossas mensagens é reconhecido pelo id e por janela curta), assumir ou desligar a IA.
+- Nunca envia: grupos, mídia/áudio/figurinha (e legenda de foto não conta como texto puro), conversa sem opt-in, atendente pausado/desligado, kill switch.
+- Testes: `server/auto-reply.test.mjs` (10 cenários com Evolution falsa), `auto-reply-routes.test.mjs` (webhook -> sendText falso), `state-db.test.mjs` (coluna/migração/reset), `copilot.test.mjs` (kill switch). Navegador `e2e-auto.mjs`: 17/17 (confirmação, envio único, janela, auditoria, humano responde pausa, pausa geral, assumir, outra conversa intacta). Regressão `e2e.mjs`: 51/51.
+- UI: "IA responde automaticamente nesta conversa" + selo AUTOMÁTICO x "Só sugestão"; botão com confirmação; Antigravity mostra o mesmo estado.
+
 ## Resultado
 
-- `pnpm test`: 97/97; `tsc`: sem erros; `oxlint`: sem avisos nos arquivos novos/alterados; `vite build`: ok.
+- `pnpm test`: 113/113; `tsc`: sem erros; `oxlint`: sem avisos nos arquivos novos/alterados; `vite build`: ok.
 - Navegador: 51/51, console limpo (as respostas 503/502 provocadas de propósito em 2.15/2.16 são ignoradas).
 
 ## Não testado / pendente

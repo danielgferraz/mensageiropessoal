@@ -10,6 +10,11 @@
   sudo docker exec -i supabase-db psql -U supabase_admin -d postgres -v ON_ERROR_STOP=1 -v app_password="$(sudo cat /etc/mensageiro/db.pass)" < 000_bootstrap.sql
   sudo docker exec -i supabase-db psql -U supabase_admin -d mensageiro -v ON_ERROR_STOP=1 < 001_init.sql
   ```
+- **`003_auto_reply.sql` (resposta automática por conversa):** adiciona `conversations.auto_reply boolean NOT NULL DEFAULT false` (todas as conversas começam desligadas). Idempotente, roda como `supabase_admin` no banco `mensageiro`:
+  ```sh
+  sudo docker exec -i supabase-db psql -U supabase_admin -d mensageiro -v ON_ERROR_STOP=1 < 003_auto_reply.sql
+  ```
+  Sem a migração o servidor funciona normalmente e a resposta automática fica indisponível (tudo só sugestão). Rollback: `ALTER TABLE mensageiro.conversations DROP COLUMN auto_reply;`.
 - **Rollback:**
   1. Remova o drop-in, rode `daemon-reload` e reinicie o `mensageiro`. As rotas `/state` passam a responder 503 e o resto do app continua funcionando.
   2. Rode `DROP DATABASE mensageiro; DROP ROLE mensageiro_app;`.

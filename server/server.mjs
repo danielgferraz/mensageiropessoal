@@ -23,7 +23,7 @@ const DIST_DIR = path.resolve(__dirname, '../dist');
 const COPILOT_DATA_DIR = process.env.COPILOT_DATA_DIR || path.resolve(__dirname, 'data');
 const NEBRIA_DIR = process.env.NEBRIA_DIR || '';
 const COPILOT_ALLOW_AUTOMATIC = process.env.COPILOT_ALLOW_AUTOMATIC === '1';
-const copilotStore = createStore(COPILOT_DATA_DIR);
+const copilotStore = createStore(COPILOT_DATA_DIR, { allowAutomatic: COPILOT_ALLOW_AUTOMATIC });
 // Banco isolado do Mensageiro (estado por conversa, notas, CRM, auditoria). Sem URL, as rotas /state respondem 503.
 const MENSAGEIRO_DATABASE_URL = process.env.MENSAGEIRO_DATABASE_URL || '';
 let stateDb = null;
@@ -79,12 +79,34 @@ async function fetchRecentMessages({ instance, jids, limit = 20 }) {
   return toContextMessages(sets, limit);
 }
 
+// Envia texto pela Evolution (usado só pela resposta automática, nunca por rotas do navegador)
+async function sendWhatsAppText({ instance, jid, text }) {
+  if (!EVOLUTION_APIKEY || !validInstanceName(instance) || !normalizeRecipient(jid)) throw new Error('destino inválido');
+  const resp = await fetchUpstream(`${EVOLUTION_URL}/message/sendText/${encodeURIComponent(instance)}`, {
+    method: 'POST', headers: { 'Content-Type': 'application/json', apikey: EVOLUTION_APIKEY },
+    body: JSON.stringify({ number: jid, text, delay: 1200 }),
+  });
+  if (!resp.ok) throw new Error(`Evolution respondeu ${resp.status}`);
+  const data = await resp.json().catch(() => ({}));
+  return { id: typeof data?.key?.id === 'string' ? data.key.id : null };
+}
+
 // Webhook da Evolution -> rascunho automático (nunca envia). Segredo próprio, separado do login de admin.
 const WEBHOOK_SECRET = process.env.EVOLUTION_WEBHOOK_SECRET || '';
 const autoSuggester = createAutoSuggester({
   store: copilotStore,
   getDb: async () => stateDb || await stateDbReady,
   fetchContext: fetchRecentMessages,
+  // Envio automático: só existe com COPILOT_ALLOW_AUTOMATIC=1; ainda depende de modo automático, opt-in por conversa e limites
+  allowAutomatic: COPILOT_ALLOW_AUTOMATIC,
+  sendText: COPILOT_ALLOW_AUTOMATIC ? sendWhatsAppText : null,
+  requireSources: process.env.AUTO_REPLY_REQUIRE_SOURCES !== '0',
+  limits: {
+    ...(process.env.AUTO_REPLY_MAX_AGE_MS ? { maxAutoAgeMs: parseInt(process.env.AUTO_REPLY_MAX_AGE_MS, 10) } : {}),
+    ...(process.env.AUTO_REPLY_MIN_INTERVAL_MS ? { minIntervalMs: parseInt(process.env.AUTO_REPLY_MIN_INTERVAL_MS, 10) } : {}),
+    ...(process.env.AUTO_REPLY_MAX_PER_CONV_HOUR ? { maxPerConvPerHour: parseInt(process.env.AUTO_REPLY_MAX_PER_CONV_HOUR, 10) } : {}),
+    ...(process.env.AUTO_REPLY_MAX_PER_HOUR ? { maxSendsPerHour: parseInt(process.env.AUTO_REPLY_MAX_PER_HOUR, 10) } : {}),
+  },
   suggest: (request) => suggestReply({ store: copilotStore, knowledge: currentKnowledge(copilotStore.readConfig()), runModel: runAgy,
     user: { email: 'webhook-evolution' }, request }),
   debounceMs: parseInt(process.env.AUTO_SUGGEST_DEBOUNCE_MS || '4000', 10),
@@ -442,10 +464,19 @@ async function handleApi(req, res, apiPath) {
       if (conv) {
         const jid = jidOf(conv[1]);
         if (!jid) return sendJson(res, 400, { error: 'JID inválido.' });
-        if (method === 'GET') return sendJson(res, 200, await db.getState(jid));
+        if (method === 'GET') {
+          const snapshot = await db.getState(jid);
+          // A UI só oferece a resposta automática quando o servidor permite e o banco tem a coluna (migração 003)
+          return sendJson(res, 200, { ...snapshot, automatic: { allowed: COPILOT_ALLOW_AUTOMATIC && copilotStore.readConfig().mode === 'automatic', serverAllowed: COPILOT_ALLOW_AUTOMATIC, available: !!(await db.autoReplyAvailable?.()) } });
+        }
         if (method === 'PUT') {
           const body = await parseBody(req);
-          return sendJson(res, 200, { conversation: await db.updateConversation(jid, { aiEnabled: body.aiEnabled, mode: body.mode }, 'humano') });
+          if (body.autoReply === true) {
+            if (!COPILOT_ALLOW_AUTOMATIC) return sendJson(res, 400, { error: 'A resposta automática não está liberada neste servidor.' });
+            if (copilotStore.readConfig().mode !== 'automatic') return sendJson(res, 400, { error: 'Ative o modo Automático em Configurações > Atendente antes de ligar a resposta automática numa conversa.' });
+            if (jid.endsWith('@g.us') || jid.endsWith('@broadcast')) return sendJson(res, 400, { error: 'A resposta automática não funciona em grupos.' });
+          }
+          return sendJson(res, 200, { conversation: await db.updateConversation(jid, { aiEnabled: body.aiEnabled, mode: body.mode, autoReply: typeof body.autoReply === 'boolean' ? body.autoReply : undefined }, 'humano') });
         }
       }
       const notes = apiPath.match(/^\/state\/conversations\/([^/]+)\/notes$/);

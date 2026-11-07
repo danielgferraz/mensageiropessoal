@@ -51,3 +51,41 @@ test('a human-authored send discards a stale pending draft; an AI-authored send 
   await db.recordSent('5511999990001@s.whatsapp.net', 'MSG2', 'ia');
   assert.ok(!log.some((l) => /^UPDATE ai_suggestions/.test(l.sql)));
 });
+
+test('auto_reply: unavailable without migration 003, validated when available, and always reset by AI off / takeover', async () => {
+  const answers = { hasColumn: false, row: { jid: 'j', ai_enabled: true, mode: 'suggestion', auto_reply: false } };
+  const { log, pool } = fakePool((sql) => {
+    if (/information_schema/.test(sql)) return { rows: answers.hasColumn ? [{ '?column?': 1 }] : [] };
+    if (/^SELECT \* FROM conversations/.test(sql.trim())) return { rows: [answers.row] };
+    if (/^INSERT INTO conversations/.test(sql.trim())) return { rows: [{ jid: 'j', ai_enabled: true, mode: 'suggestion', auto_reply: /auto_reply/.test(sql) }] };
+  });
+  const db = await createStateDb('x', { poolFactory: () => pool });
+  const jid = '5511999990001@s.whatsapp.net';
+  assert.equal(await db.autoReplyAvailable(), false);
+  await assert.rejects(db.updateConversation(jid, { autoReply: true }), (e) => e.statusCode === 409 && /migração 003/.test(e.message));
+  await db.updateConversation(jid, { aiEnabled: true });   // sem a coluna o resto continua funcionando
+  assert.ok(!log.some((l) => /auto_reply/.test(l.sql) && /^INSERT INTO conversations/.test(l.sql)));
+  assert.equal(await db.pauseAutoReply(jid, 'human_replied'), false);
+
+  const full = await createStateDb('x', { poolFactory: () => fakePool((sql) => {
+    if (/information_schema/.test(sql)) return { rows: [{ x: 1 }] };
+    if (/^SELECT \* FROM conversations/.test(sql.trim())) return { rows: [answers.row] };
+    if (/^INSERT INTO conversations/.test(sql.trim())) return { rows: [{ jid: 'j', ai_enabled: true, mode: 'suggestion', auto_reply: true }] };
+    if (/^UPDATE conversations SET auto_reply=false/.test(sql.trim())) return { rows: [{ jid: 'j' }] };
+  }).pool });
+  assert.equal(await full.autoReplyAvailable(), true);
+  assert.equal((await full.updateConversation(jid, { autoReply: true })).autoReply, true);
+  // IA desligada ou humano assumindo nunca deixa o automático ligado
+  answers.row = { jid: 'j', ai_enabled: true, mode: 'suggestion', auto_reply: true };
+  const probe = fakePool((sql, params) => {
+    if (/information_schema/.test(sql)) return { rows: [{ x: 1 }] };
+    if (/^SELECT \* FROM conversations/.test(sql.trim())) return { rows: [answers.row] };
+    if (/^INSERT INTO conversations/.test(sql.trim())) return { rows: [{ jid: 'j', ai_enabled: params[1], mode: params[2], auto_reply: params[4] }] };
+  });
+  const d2 = await createStateDb('x', { poolFactory: () => probe.pool });
+  assert.equal((await d2.updateConversation(jid, { mode: 'human' })).autoReply, false);
+  assert.equal((await d2.updateConversation(jid, { aiEnabled: false })).autoReply, false);
+  answers.row = { jid: 'j', ai_enabled: false, mode: 'suggestion', auto_reply: false };
+  await assert.rejects(d2.updateConversation(jid, { autoReply: true }), (e) => e.statusCode === 400 && /Ligue as sugestões/.test(e.message));
+  assert.equal(await full.pauseAutoReply(jid, 'human_replied'), true);
+});

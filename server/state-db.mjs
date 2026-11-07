@@ -29,16 +29,26 @@ export async function createStateDb(url, { poolFactory } = {}) {
     run('INSERT INTO audit (actor, action, jid, before, after) VALUES ($1,$2,$3,$4,$5)',
       [actor, action, jid ?? null, before == null ? null : JSON.stringify(before), after == null ? null : JSON.stringify(after)]);
 
+  // A coluna auto_reply vem da migração 003. Sem ela, a resposta automática fica indisponível (tudo segue só sugestão).
+  let autoCol = { value: false, at: 0 };
+  const autoReplyAvailable = async () => {
+    if (autoCol.value || Date.now() - autoCol.at < 30000) return autoCol.value;
+    const r = await q("SELECT 1 FROM information_schema.columns WHERE table_schema='mensageiro' AND table_name='conversations' AND column_name='auto_reply'").catch(() => ({ rows: [] }));
+    autoCol = { value: r.rows.length > 0, at: Date.now() };
+    return autoCol.value;
+  };
   const mapConv = (r, jid) => r ? {
-    jid: r.jid, aiEnabled: r.ai_enabled, mode: r.mode, takenOverAt: r.taken_over_at, lastAiReplyAt: r.last_ai_reply_at,
+    jid: r.jid, aiEnabled: r.ai_enabled, mode: r.mode, autoReply: r.auto_reply === true, takenOverAt: r.taken_over_at, lastAiReplyAt: r.last_ai_reply_at,
     lastHumanReplyAt: r.last_human_reply_at, updatedAt: r.updated_at,
-  } : { jid, aiEnabled: false, mode: 'suggestion', takenOverAt: null, lastAiReplyAt: null, lastHumanReplyAt: null, updatedAt: null };
+  } : { jid, aiEnabled: false, mode: 'suggestion', autoReply: false, takenOverAt: null, lastAiReplyAt: null, lastHumanReplyAt: null, updatedAt: null };
   const mapNote = (r) => ({ id: String(r.id), jid: r.jid, author: r.author, text: r.text, createdAt: r.created_at });
   const mapSug = (r) => ({ id: String(r.id), jid: r.jid, kind: r.kind, payload: r.payload, status: r.status, createdAt: r.created_at, resolvedAt: r.resolved_at });
   const mapCrm = (r) => r ? { jid: r.jid, stage: r.stage, updatedBy: r.updated_by, updatedAt: r.updated_at } : null;
 
   return {
     async health() { const r = await q('SELECT max(version) v FROM schema_migrations'); return { ok: true, migration: r.rows[0]?.v || null }; },
+
+    autoReplyAvailable,
 
     async getConversation(jid) {
       const r = await q('SELECT * FROM conversations WHERE jid=$1', [jid]);
@@ -61,6 +71,8 @@ export async function createStateDb(url, { poolFactory } = {}) {
 
     async updateConversation(jid, patch, actor = 'humano') {
       if (!ACTORS.has(actor)) throw new Error('actor inválido');
+      const hasAuto = await autoReplyAvailable();
+      if (patch.autoReply === true && !hasAuto) throw Object.assign(new Error('Resposta automática indisponível: a migração 003 ainda não foi aplicada no banco.'), { statusCode: 409 });
       return tx(async (run) => {
         const cur = (await run('SELECT * FROM conversations WHERE jid=$1 FOR UPDATE', [jid])).rows[0];
         const before = mapConv(cur, jid);
@@ -71,12 +83,34 @@ export async function createStateDb(url, { poolFactory } = {}) {
           if (patch.mode !== before.mode) next.takenOverAt = patch.mode === 'human' ? new Date() : null;
           next.mode = patch.mode;
         }
-        const r = await run(`INSERT INTO conversations (jid, ai_enabled, mode, taken_over_at) VALUES ($1,$2,$3,$4)
-          ON CONFLICT (jid) DO UPDATE SET ai_enabled=EXCLUDED.ai_enabled, mode=EXCLUDED.mode, taken_over_at=EXCLUDED.taken_over_at, updated_at=now()
-          RETURNING *`, [jid, next.aiEnabled, next.mode, next.takenOverAt]);
+        if (typeof patch.autoReply === 'boolean') next.autoReply = patch.autoReply;
+        if (next.autoReply && !(next.aiEnabled && next.mode === 'suggestion')) {
+          // Desligar a IA ou assumir a conversa sempre volta para "só sugestão"; ligar o automático exige IA ligada e sem humano assumindo
+          if (patch.autoReply === true) throw Object.assign(new Error('Ligue as sugestões da IA e devolva a conversa para a IA antes de ativar a resposta automática.'), { statusCode: 400 });
+          next.autoReply = false;
+        }
+        const r = hasAuto
+          ? await run(`INSERT INTO conversations (jid, ai_enabled, mode, taken_over_at, auto_reply) VALUES ($1,$2,$3,$4,$5)
+              ON CONFLICT (jid) DO UPDATE SET ai_enabled=EXCLUDED.ai_enabled, mode=EXCLUDED.mode, taken_over_at=EXCLUDED.taken_over_at, auto_reply=EXCLUDED.auto_reply, updated_at=now()
+              RETURNING *`, [jid, next.aiEnabled, next.mode, next.takenOverAt, next.autoReply])
+          : await run(`INSERT INTO conversations (jid, ai_enabled, mode, taken_over_at) VALUES ($1,$2,$3,$4)
+              ON CONFLICT (jid) DO UPDATE SET ai_enabled=EXCLUDED.ai_enabled, mode=EXCLUDED.mode, taken_over_at=EXCLUDED.taken_over_at, updated_at=now()
+              RETURNING *`, [jid, next.aiEnabled, next.mode, next.takenOverAt]);
         const after = mapConv(r.rows[0], jid);
-        await audit(run, actor, 'conversation.update', jid, { aiEnabled: before.aiEnabled, mode: before.mode }, { aiEnabled: after.aiEnabled, mode: after.mode });
+        await audit(run, actor, 'conversation.update', jid, { aiEnabled: before.aiEnabled, mode: before.mode, autoReply: before.autoReply }, { aiEnabled: after.aiEnabled, mode: after.mode, autoReply: after.autoReply });
         return after;
+      });
+    },
+
+    // Pausa automática da resposta automática (humano respondeu, etc.). Retorna true se estava ligada.
+    async pauseAutoReply(jid, reason, actor = 'humano') {
+      if (!ACTORS.has(actor)) throw new Error('actor inválido');
+      if (!(await autoReplyAvailable())) return false;
+      return tx(async (run) => {
+        const r = await run('UPDATE conversations SET auto_reply=false, updated_at=now() WHERE jid=$1 AND auto_reply=true RETURNING jid', [jid]);
+        if (!r.rows.length) return false;
+        await audit(run, actor, 'autoreply.paused', jid, { autoReply: true }, { autoReply: false, reason });
+        return true;
       });
     },
 

@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { Bot, Hand, RotateCcw, Check, X, StickyNote, ChevronDown, ChevronUp, MessageSquareText } from 'lucide-react'
+import { Bot, Hand, RotateCcw, Check, X, StickyNote, ChevronDown, ChevronUp, MessageSquareText, Zap } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { ConversationSnapshot, AiSuggestion, updateConversationState, resolveSuggestion } from '@/lib/conversation-state'
 import { formatNoteDate } from '@/lib/contact-notes'
@@ -18,9 +18,11 @@ export function ConversationAiBar({ jid, snapshot, error, onChange, onUseReply }
   const [busy, setBusy] = useState(false)
   const [actionError, setActionError] = useState<string | null>(null)
   const [showNotes, setShowNotes] = useState(false)
+  const [confirmingAuto, setConfirmingAuto] = useState(false)
   if (error) return <div className="shrink-0 border-b border-[#2a3942] bg-[#111b21] px-3 py-1 text-[11px] text-slate-500">IA: {error}</div>
   if (!snapshot) return null
-  const { conversation: c, suggestions, notes } = snapshot
+  const { conversation: c, suggestions, notes, automatic } = snapshot
+  const autoOn = !!c.autoReply && c.aiEnabled && c.mode === 'suggestion'
   const iaNotes = notes.filter((n) => n.author === 'ia')
   const crmSuggestions = suggestions.filter((s) => s.kind === 'crm_stage')
   // O servidor mantém no máximo uma sugestão de resposta pendente por conversa
@@ -30,18 +32,24 @@ export function ConversationAiBar({ jid, snapshot, error, onChange, onUseReply }
     setBusy(true); setActionError(null)
     try { await fn(); onChange() } catch (e) { setActionError(e instanceof Error ? e.message : 'Falha ao salvar.') } finally { setBusy(false) }
   }
-  const status = !c.aiEnabled ? 'IA desligada nesta conversa' : c.mode === 'human' ? 'Assumida por humano — IA pausada' : 'IA em modo sugestão (você aprova cada envio)'
+  const status = !c.aiEnabled ? 'IA desligada nesta conversa' : c.mode === 'human' ? 'Assumida por humano — IA pausada' : autoOn ? 'IA responde automaticamente nesta conversa' : 'Só sugestão (você aprova cada envio)'
 
   return (
     <div className="shrink-0 border-b border-[#2a3942] bg-[#111b21] px-3 py-1.5 text-xs text-slate-300" aria-label="Controle da IA nesta conversa">
       <div className="flex flex-wrap items-center gap-2">
         <Bot className={`h-4 w-4 ${c.aiEnabled && c.mode === 'suggestion' ? 'text-[#00a884]' : 'text-slate-500'}`} aria-hidden />
-        <span data-testid="ai-status">{status}</span>
+        <span data-testid="ai-status" className={autoOn ? 'font-medium text-[#7fe3cb]' : undefined}>{status}</span>
+        {autoOn && <span data-testid="ai-auto-badge" className="inline-flex items-center gap-1 rounded bg-[#00a884]/25 px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-[#7fe3cb]"><Zap className="h-3 w-3" aria-hidden />Automático</span>}
         <div className="ml-auto flex flex-wrap items-center gap-1">
           <Button type="button" size="sm" variant="ghost" disabled={busy} className="h-7 px-2 text-xs text-slate-200"
             onClick={() => run(() => updateConversationState(jid, { aiEnabled: !c.aiEnabled }))}>
             {c.aiEnabled ? 'Desligar sugestões' : 'Ligar sugestões'}
           </Button>
+          {c.aiEnabled && c.mode === 'suggestion' && automatic?.available && automatic.allowed && !confirmingAuto && (autoOn
+            ? <Button type="button" size="sm" variant="ghost" disabled={busy} className="h-7 px-2 text-xs text-amber-200"
+                onClick={() => run(() => updateConversationState(jid, { autoReply: false }))}>Voltar para só sugestão</Button>
+            : <Button type="button" size="sm" variant="ghost" disabled={busy} className="h-7 px-2 text-xs text-[#7fe3cb]"
+                onClick={() => setConfirmingAuto(true)}><Zap className="mr-1 h-3.5 w-3.5" />Ativar resposta automática</Button>)}
           {c.aiEnabled && (c.mode === 'suggestion'
             ? <Button type="button" size="sm" variant="ghost" disabled={busy} className="h-7 px-2 text-xs text-amber-200"
                 onClick={() => run(() => updateConversationState(jid, { mode: 'human' }))}><Hand className="mr-1 h-3.5 w-3.5" />Assumir</Button>
@@ -51,6 +59,16 @@ export function ConversationAiBar({ jid, snapshot, error, onChange, onUseReply }
             aria-expanded={showNotes}><StickyNote className="mr-1 h-3.5 w-3.5" />Notas da IA ({iaNotes.length}){showNotes ? <ChevronUp className="ml-1 h-3 w-3" /> : <ChevronDown className="ml-1 h-3 w-3" />}</Button>}
         </div>
       </div>
+      {confirmingAuto && (
+        <div role="alertdialog" aria-label="Confirmar resposta automática" className="mt-1 rounded border border-amber-400/50 bg-[#30291a] px-2 py-1.5 text-amber-50">
+          <p>Nesta conversa, a IA vai <b>enviar respostas sozinha</b> ao contato, em nome de Daniel, só para mensagens de texto recentes e com base aprovada. Se você responder ou assumir, ela pausa. Confirma?</p>
+          <div className="mt-1.5 flex gap-1">
+            <Button type="button" size="sm" disabled={busy} className="h-7 bg-amber-300 px-2 text-xs text-slate-950 hover:bg-amber-200"
+              onClick={() => run(async () => { await updateConversationState(jid, { autoReply: true }); setConfirmingAuto(false) })}>Sim, ativar</Button>
+            <Button type="button" size="sm" variant="ghost" disabled={busy} className="h-7 px-2 text-xs text-amber-100" onClick={() => setConfirmingAuto(false)}>Cancelar</Button>
+          </div>
+        </div>
+      )}
       {c.aiEnabled && c.mode === 'suggestion' && replySuggestion && (
         <div className="mt-1 rounded border border-[#00a884]/40 bg-[#14262c] px-2 py-1.5" data-testid="reply-suggestion">
           <p className="flex items-center gap-1 text-[11px] text-[#00a884]"><MessageSquareText className="h-3.5 w-3.5" aria-hidden />

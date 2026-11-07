@@ -119,7 +119,7 @@ await shot('chat-bottom');
 // ---------- ESCOPO 3: SUGESTÃO AUTOMÁTICA ----------
 await openChat('99999-0003'); await sleep(600);
 await page.getByRole('button', { name: 'Ligar sugestões' }).click();
-await page.getByTestId('ai-status').filter({ hasText: 'IA em modo sugestão' }).waitFor({ timeout: 5000 });
+await page.getByTestId('ai-status').filter({ hasText: 'Só sugestão' }).waitFor({ timeout: 5000 });
 check('3.0 conversa com IA ligada mostra "IA em modo sugestão"', true);
 await api('/__push', { jid: J3, text: 'Qual o prazo de entrega do serviço?' });
 await page.getByTestId('reply-suggestion').waitFor({ timeout: 25000 });
@@ -167,7 +167,7 @@ await page.getByLabel('Antigravity Copilot').click();
 await page.getByTestId('antigravity-panel').waitFor();
 const sel = await page.locator('#ag-target').evaluate((s) => s.options[s.selectedIndex].text);
 check('2.1 aberto pelo menu: usa a última conversa ativa', /99999-0003/.test(sel), sel);
-await page.getByTestId('ag-ai-state').filter({ hasText: 'Sugestão' }).waitFor({ timeout: 5000 });
+await page.getByTestId('ag-ai-state').filter({ hasText: 'Só sugestão' }).waitFor({ timeout: 5000 });
 check('2.2 mostra o estado da IA da conversa', true, await page.getByTestId('ag-ai-state').innerText());
 const hdr = await page.getByTestId('antigravity-panel').innerText();
 check('2.3 cabeçalho em pt-BR, sem "WhatsApp · WA" e sem caminho', /Assistente interno/.test(hdr) && !/WhatsApp · WA/.test(hdr) && !/\/srv\//.test(hdr));

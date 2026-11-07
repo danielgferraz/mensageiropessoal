@@ -56,9 +56,10 @@ export async function askAntigravity(body: AntigravityRequest): Promise<Antigrav
 }
 
 /** Estado exibido no painel: sugestão x assumida por humano x IA desligada. */
-export type AiBadge = 'suggestion' | 'human' | 'off' | 'group' | 'none' | 'loading' | 'unavailable'
+export type AiBadge = 'auto' | 'suggestion' | 'human' | 'off' | 'group' | 'none' | 'loading' | 'unavailable'
 export const AI_BADGE_LABEL: Record<AiBadge, string> = {
-  suggestion: 'Sugestão · você aprova cada envio',
+  auto: 'IA responde automaticamente nesta conversa',
+  suggestion: 'Só sugestão · você aprova cada envio',
   human: 'Assumida por humano · IA pausada',
   off: 'IA desligada nesta conversa',
   group: 'Grupo · sem sugestões da IA',

@@ -21,6 +21,15 @@ export function plainText(row) {
   return typeof text === 'string' ? text.trim() : '';
 }
 
+/** Texto puro digitado pelo contato (sem legenda de mídia): único tipo que pode receber resposta automática. */
+export function isPlainText(row) {
+  const m = row?.message || {};
+  const wrapped = m.ephemeralMessage?.message || m.viewOnceMessage?.message;
+  if (wrapped) return isPlainText({ message: wrapped });
+  const text = m.conversation || m.extendedTextMessage?.text;
+  return typeof text === 'string' && !!text.trim() && !m.imageMessage && !m.videoMessage && !m.audioMessage && !m.documentMessage && !m.stickerMessage;
+}
+
 /** Texto para contexto de conversa: mídia sem legenda vira um marcador curto. */
 export function contextText(row) {
   const text = plainText(row);
@@ -67,7 +76,7 @@ export function parseUpsert(payload) {
     if (!key?.id || !jids.length) return [];
     return [{
       instance, id: String(key.id), jids, fromMe: key.fromMe === true,
-      isGroup: jids.some(isGroupJid), text: plainText(row),
+      isGroup: jids.some(isGroupJid), text: plainText(row), plain: isPlainText(row),
       atMs: secondsOf(row) * 1000, pushName: typeof row.pushName === 'string' ? row.pushName.slice(0, 120) : '',
     }];
   });
