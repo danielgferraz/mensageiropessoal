@@ -41,7 +41,7 @@ function setup({ config = {}, db = fakeDb(), model, context, suggesterOpts = {} 
   const store = createStore(dir);
   store.writeConfig(validateConfig({ enabled: true, paused: false, ...config }, DEFAULT_CONFIG));
   const modelCalls = [];
-  const runModel = model || (async () => 'O prazo de entrega é de cinco dias úteis. Posso ajudar em mais algo?');
+  const runModel = model || (async () => 'Opa, tudo certo por aqui! Já te respondo isso.');
   // Não existe dependência de envio: o módulo só recebe leitura de contexto, modelo e banco de sugestões.
   const suggester = createAutoSuggester({
     store, getDb: async () => db, debounceMs: 15, maxMessageAgeMs: 10 * 60 * 1000,
@@ -76,7 +76,7 @@ test('conversation with suggestions ON generates one pending draft linked to the
   assert.equal(t.modelCalls.length, 1);
   assert.match(t.modelCalls[0], /CLIENTE: Qual o prazo de entrega/);
   const [s] = t.db.pending();
-  assert.ok(s.draft.includes('cinco dias'));
+  assert.ok(s.draft.includes('tudo certo'));
   assert.equal(s.auto, true);
   assert.equal(s.sourceMessageId, payload.data.key.id);
   assert.ok(t.audits().some((a) => a.action === 'auto_suggestion' && a.contactId === PN));

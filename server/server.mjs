@@ -114,6 +114,8 @@ const autoSuggester = createAutoSuggester({
   // evita mostrar "digitando" quando não há fonte aprovada para a pergunta (nada seria enviado)
   hasSourceFor: (text) => { const c = copilotStore.readConfig(); const k = currentKnowledge(c); return !c.ragEnabled || !k || searchKnowledge(k, text).length > 0; },
   requireSources: process.env.AUTO_REPLY_REQUIRE_SOURCES !== '0',
+  // pergunta de fato sem trecho aprovado: 'confirm' (padrão) responde que vai confirmar, sem número; 'suggest' deixa só como sugestão
+  factNoSource: process.env.AUTO_REPLY_FACT_NO_SOURCE === 'suggest' ? 'suggest' : 'confirm',
   limits: {
     ...(process.env.AUTO_REPLY_MAX_AGE_MS ? { maxAutoAgeMs: parseInt(process.env.AUTO_REPLY_MAX_AGE_MS, 10) } : {}),
     ...(process.env.AUTO_REPLY_MIN_INTERVAL_MS ? { minIntervalMs: parseInt(process.env.AUTO_REPLY_MIN_INTERVAL_MS, 10) } : {}),

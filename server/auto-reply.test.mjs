@@ -123,13 +123,13 @@ test('groups, media, captions, old messages and unapproved sources are never aut
   assert.ok(codes(old).includes('old_message'));
   assert.equal(old.db.pending().length, 1, 'still a suggestion');
 
-  const noSource = setup({ kb: emptyKb });
+  const noSource = setup({ kb: emptyKb, model: async () => 'Deixa eu confirmar aqui e já te falo.' });
   await run(noSource, upsert());
   assert.equal(noSource.evolution.length, 0);
   assert.ok(codes(noSource).includes('no_approved_source'));
   assert.equal(noSource.db.pending().length, 1);
 
-  const optional = setup({ kb: emptyKb, requireSources: false });
+  const optional = setup({ kb: emptyKb, requireSources: false, model: async () => 'Deixa eu confirmar aqui e já te falo.' });
   await run(optional, upsert());
   assert.equal(optional.evolution.length, 1, 'only with the explicit server option');
 });

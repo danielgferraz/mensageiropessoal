@@ -60,7 +60,7 @@ test('webhook + antigravity routes against an isolated upstream (no real agy, no
     });
     fs.writeFileSync(path.join(data, 'copilot-config.json'), JSON.stringify({ enabled: true, paused: false, mode: 'suggestion' }));
     const prompts = [];
-    __setAgyRunnerForTests(async (prompt) => { prompts.push(prompt); return 'O prazo é de cinco dias úteis. Posso ajudar em mais algo?'; });
+    __setAgyRunnerForTests(async (prompt) => { prompts.push(prompt); return 'Opa, tudo certo por aqui! Já te respondo isso.'; });
     const r = await fetch(`${base}/webhook/evolution`, { method: 'POST', headers: { 'x-webhook-secret': 'segredo-de-teste', 'Content-Type': 'application/json' },
       body: JSON.stringify({ event: 'messages.upsert', instance: 'WA', data: { key: { id: 'inc1', remoteJid: PN, fromMe: false }, message: { conversation: 'Qual o prazo do serviço?' }, messageTimestamp: Math.floor(Date.now() / 1000) } }) });
     assert.equal(r.status, 200);

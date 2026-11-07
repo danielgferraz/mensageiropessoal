@@ -59,9 +59,16 @@ Limite conhecido: o app ainda não renderiza `<img>`/áudio dentro das mensagens
 - Presença `composing` desde o início da espera (só quando um envio automático ainda é possível), renovada a cada 8 s, sempre encerrada com `paused`; abortada se humano assumir/IA desligar/pausa; teto de 150 s; falha de presença não derruba a resposta.
 - Testes: `server/auto-presence.test.mjs` (10 cenários, estáveis em 3 execuções) e `auto-reply-routes.test.mjs` (formato do `/chat/sendPresence`). Navegador `e2e-auto.mjs` 22/22, com medição real: última mensagem -> resposta 6024 ms; primeira -> resposta 9035 ms (reinício); composing,composing,paused; nada preso depois. Regressão `e2e.mjs` 51/51.
 
+## Tom natural e fonte não-trava — adendo
+
+- Prompt reescrito (v2): primeira pessoa como Daniel, informal, 1-2 frases, espelha o contato, sem lista/"Prezado"/"Como posso ajudar?", varia a abertura, nunca diz que é bot/IA; fatos só do contexto aprovado, senão "deixa eu confirmar e já te falo". Painel do Antigravity com o mesmo tom (sem falar de projeto, servidor ou bot).
+- Filtro de saída: bloqueia menção a IA/bot, frases robotizadas e listas (com uma reescrita automática) e, na resposta automática SEM trecho aprovado, qualquer número/valor/prazo.
+- Handoff: reclamação, cancelamento, reembolso, negociação e jurídico (padrões embutidos) e `[ENCAMINHAR]` nunca são enviados ao contato. Pergunta de identidade ("é robô? é pessoa?") nunca é respondida pela IA: vai para humano.
+- Testes: `server/natural-reply.test.mjs` (10 cenários): "oi"/"tudo bem?" enviados sem fonte; sem a env tudo sem fonte fica sugestão; "quanto custa" sem fonte não inventa (valor e número por extenso bloqueados, "vou confirmar" enviado, modo suggest); com fonte usa o trecho; reclamação/desconto/cancelar/identidade/[ENCAMINHAR] sem envio; resposta que soa bot é reescrita uma vez, se persistir não envia; filtros e detectores; prompt do painel.
+
 ## Resultado
 
-- `pnpm test`: 123/123; `tsc`: sem erros; `oxlint`: sem avisos nos arquivos novos/alterados; `vite build`: ok.
+- `pnpm test`: 134/134; `tsc`: sem erros; `oxlint`: sem avisos nos arquivos novos/alterados; `vite build`: ok.
 - Navegador: 51/51, console limpo (as respostas 503/502 provocadas de propósito em 2.15/2.16 são ignoradas).
 
 ## Não testado / pendente

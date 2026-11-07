@@ -10,6 +10,7 @@
 //  5. janela mínima entre respostas da conversa, limite por conversa/hora e global/hora
 //  6. o rascunho é "reservado" (pendente -> aceito) no banco antes de enviar: se foi descartado, não envia; sem reenvio em caso de falha
 import { parseUpsert, phoneOf } from './whatsapp-utils.mjs';
+import { needsFacts } from './copilot.mjs';
 
 const MAX_SEEN = 1000;
 const HOUR = 3600000;
@@ -24,7 +25,7 @@ export const AUTO_DEFAULTS = Object.freeze({
 });
 
 export function createAutoSuggester({ store, getDb, fetchContext, suggest, sendText = null, sendPresence = null, hasSourceFor = null,
-  allowAutomatic = false, requireSources = true, presence = {},
+  allowAutomatic = false, requireSources = true, factNoSource = 'confirm', presence = {},
   limits = {}, debounceMs = DEFAULT_DEBOUNCE_MS, maxPerHour = 20, maxMessageAgeMs = 10 * 60 * 1000, now = () => Date.now(), log = () => {} }) {
   const lim = { ...AUTO_DEFAULTS, ...limits };
   // "Digitando…": renovado enquanto espera/gera (a presença expira) e SEMPRE encerrado com "paused"; nunca fica preso
@@ -61,6 +62,8 @@ export function createAutoSuggester({ store, getDb, fetchContext, suggest, sendT
     if (!state.autoReply || !state.aiEnabled || state.mode !== 'suggestion') return 'conversation_suggestion_only';
     if (!entry.autoEligible) return entry.allPlain ? 'old_message' : 'not_plain_text';
     if (requireSources && hasSourceFor && !hasSourceFor(entry.text)) return 'no_approved_source';
+    // Sem exigir fonte: conversa social segue; pergunta de fato (preço, prazo...) sem trecho só vira "vou confirmar" (factNoSource='confirm') ou sugestão ('suggest')
+    if (!requireSources && factNoSource === 'suggest' && hasSourceFor && !hasSourceFor(entry.text) && needsFacts(entry.text)) return 'fact_needs_source';
     const t = now();
     if (t - (lastSentAt.get(jid) || 0) < lim.minIntervalMs) return 'rate_window';
     const last = Date.parse(state.lastAiReplyAt || '') || 0;
@@ -76,6 +79,7 @@ export function createAutoSuggester({ store, getDb, fetchContext, suggest, sendT
     const why = gateReason({ entry, state: again.state, jid });
     if (why) return why;
     if (requireSources && !(result.sources || []).length) return 'no_approved_source';
+    if (!requireSources && factNoSource === 'suggest' && !(result.sources || []).length && needsFacts(entry.text)) return 'fact_needs_source';
     return null;
   }
 
