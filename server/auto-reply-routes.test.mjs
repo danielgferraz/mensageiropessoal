@@ -11,7 +11,7 @@ const GROUP = '120363000000000000@g.us';
 const DRAFT = 'O prazo de entrega do serviço é de cinco dias úteis. Posso ajudar em mais algo?';
 
 test('automatic send end to end: webhook -> draft -> fake Evolution sendText, with admin-only opt-in rules', async (t) => {
-  const sends = [];
+  const sends = []; const presences = [];
   const upstream = http.createServer(async (req, res) => {
     const chunks = []; for await (const c of req) chunks.push(c);
     const body = chunks.length ? JSON.parse(Buffer.concat(chunks).toString()) : null;
@@ -19,6 +19,7 @@ test('automatic send end to end: webhook -> draft -> fake Evolution sendText, wi
     if (req.url === '/auth/v1/user') return res.end(JSON.stringify({ id: 'admin', email: 'admin@example.test' }));
     if (req.url.startsWith('/rest/v1/profiles')) return res.end(JSON.stringify([{ id: 'x', role: 'admin', full_name: 'Fixture' }]));
     if (req.url === '/chat/findMessages/WA') return res.end(JSON.stringify({ messages: { records: [] } }));
+    if (req.url === '/chat/sendPresence/WA') { presences.push(body); return res.end('{}'); }
     if (req.url === '/message/sendText/WA') { sends.push(body); return res.end(JSON.stringify({ key: { id: `SENT${sends.length}`, remoteJid: body.number, fromMe: true } })); }
     res.writeHead(404).end('{}');
   });
@@ -78,6 +79,10 @@ test('automatic send end to end: webhook -> draft -> fake Evolution sendText, wi
     assert.equal(sends[0].text, DRAFT);
     assert.deepEqual(sentRows, [{ jid: PN, messageId: 'SENT1', author: 'ia' }]);
     assert.equal(suggestions[0].status, 'accepted');
+    assert.equal(presences[0].presence, 'composing', 'typing starts before the reply');
+    assert.equal(presences[0].number, PN);
+    assert.ok(presences[0].delay > 0);
+    assert.deepEqual(presences.at(-1), { number: PN, presence: 'paused', delay: 0 }, 'and always ends with paused');
     await hook(); await autoSuggester.whenIdle();
     assert.equal(sends.length, 1, 'window of 60 s between automatic replies');
     assert.equal(suggestions.filter((s) => s.status === 'pending').length, 1);

@@ -22,6 +22,7 @@ const store = {
 };
 const sent = [];
 const ctl = { slow: {}, agy: 'ok', agyPrompts: [], webhookCalls: 0 };
+const presences = [];   // [{ at, presence, number, delay }]
 
 const state = { conv: {}, notes: [], sugs: [], crm: {}, audit: [], seq: 1 };
 const conv = (jid) => state.conv[jid] || { jid, aiEnabled: false, mode: 'suggestion', autoReply: false, takenOverAt: null, lastAiReplyAt: null, lastHumanReplyAt: null, updatedAt: null };
@@ -68,7 +69,7 @@ const upstream = http.createServer(async (req, res) => {
   res.setHeader('Content-Type', 'application/json');
   const json = (v, code = 200) => { res.statusCode = code; res.end(JSON.stringify(v)); };
   const url = new URL(req.url, 'http://x');
-  if (url.pathname === '/__state') return json({ sent, state, agyPrompts: ctl.agyPrompts, webhookCalls: ctl.webhookCalls });
+  if (url.pathname === '/__state') return json({ sent, state, agyPrompts: ctl.agyPrompts, webhookCalls: ctl.webhookCalls, presences });
   if (url.pathname === '/__control') { Object.assign(ctl, body.set || {}); return json({ ok: true }); }
   if (url.pathname === '/__push') {  // simula mensagem recebida: grava no "WhatsApp" e dispara o webhook como a Evolution faria
     const row = msg(`IN${Date.now()}${Math.random().toString(36).slice(2, 5)}`, body.jid, body.text, !!body.fromMe, now());
@@ -92,9 +93,10 @@ const upstream = http.createServer(async (req, res) => {
     if (ctl.slow[jid]) await new Promise((r) => setTimeout(r, ctl.slow[jid]));
     return json({ messages: { total: store[jid]?.length || 0, pages: 1, records: [...(store[jid] || [])].reverse() } });
   }
+  if (req.url === '/chat/sendPresence/WA') { presences.push({ at: Date.now(), presence: body.presence, number: body.number, delay: body.delay }); return json({}); }
   if (req.url === '/message/sendText/WA') {
     const row = msg(`SENT${sent.length}`, body.number, body.text, true, now()); row.status = 'SERVER_ACK';
-    sent.push({ number: body.number, text: body.text }); store[body.number]?.push(row); return json(row);
+    sent.push({ number: body.number, text: body.text, at: Date.now() }); store[body.number]?.push(row); return json(row);
   }
   return json({}, 404);
 });
@@ -107,7 +109,7 @@ fs.mkdirSync(path.join(scratch, 'kb', '02_Servicos'), { recursive: true });
 fs.writeFileSync(path.join(scratch, 'kb', '02_Servicos', 'A.md'), '# Serviço\nStatus: Aprovado\n\n## Prazo\nO prazo de entrega do serviço é de cinco dias úteis após a aprovação do cliente.');
 Object.assign(process.env, { EVOLUTION_URL: 'http://127.0.0.1:4455', EVOLUTION_APIKEY: 'qa-only', SUPABASE_URL: 'http://127.0.0.1:4455', SUPABASE_ANON_KEY: 'qa-only',
   COPILOT_DATA_DIR: path.join(scratch, 'data'), NEBRIA_DIR: path.join(scratch, 'kb'), COPILOT_ALLOW_AUTOMATIC: '1', AGY_BIN: path.join(scratch, 'sem-agy'), PORT: '3355',
-  EVOLUTION_WEBHOOK_SECRET: SECRET, AUTO_SUGGEST_DEBOUNCE_MS: '1500' });
+  EVOLUTION_WEBHOOK_SECRET: SECRET, AUTO_SUGGEST_DEBOUNCE_MS: process.env.QA_DEBOUNCE || '6000' });
 const { server, __setStateDbForTests, __setAgyRunnerForTests } = await import('../../../server/server.mjs');
 __setStateDbForTests(fakeDb);
 __setAgyRunnerForTests(async (prompt) => {

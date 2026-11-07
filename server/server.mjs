@@ -4,7 +4,7 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { execFile } from 'node:child_process';
 import { createStore, suggestReply, validateConfig } from './copilot.mjs';
-import { loadKnowledge } from './rag.mjs';
+import { loadKnowledge, searchKnowledge } from './rag.mjs';
 import { createStateDb, validJid } from './state-db.mjs';
 import crypto from 'node:crypto';
 import { createAutoSuggester } from './auto-suggest.mjs';
@@ -91,6 +91,16 @@ async function sendWhatsAppText({ instance, jid, text }) {
   return { id: typeof data?.key?.id === 'string' ? data.key.id : null };
 }
 
+// "Digitando…" para o contato (composing/paused). Cosmético: quem chama ignora falhas.
+async function sendWhatsAppPresence({ instance, jid, presence, delayMs }) {
+  if (!EVOLUTION_APIKEY || !validInstanceName(instance) || !normalizeRecipient(jid) || !['composing', 'paused'].includes(presence)) return;
+  const resp = await fetchUpstream(`${EVOLUTION_URL}/chat/sendPresence/${encodeURIComponent(instance)}`, {
+    method: 'POST', headers: { 'Content-Type': 'application/json', apikey: EVOLUTION_APIKEY },
+    body: JSON.stringify({ number: jid, presence, delay: Math.max(0, Math.min(30000, delayMs || 0)) }),
+  });
+  if (!resp.ok) throw new Error(`Evolution respondeu ${resp.status}`);
+}
+
 // Webhook da Evolution -> rascunho automático (nunca envia). Segredo próprio, separado do login de admin.
 const WEBHOOK_SECRET = process.env.EVOLUTION_WEBHOOK_SECRET || '';
 const autoSuggester = createAutoSuggester({
@@ -100,6 +110,9 @@ const autoSuggester = createAutoSuggester({
   // Envio automático: só existe com COPILOT_ALLOW_AUTOMATIC=1; ainda depende de modo automático, opt-in por conversa e limites
   allowAutomatic: COPILOT_ALLOW_AUTOMATIC,
   sendText: COPILOT_ALLOW_AUTOMATIC ? sendWhatsAppText : null,
+  sendPresence: COPILOT_ALLOW_AUTOMATIC ? sendWhatsAppPresence : null,
+  // evita mostrar "digitando" quando não há fonte aprovada para a pergunta (nada seria enviado)
+  hasSourceFor: (text) => { const c = copilotStore.readConfig(); const k = currentKnowledge(c); return !c.ragEnabled || !k || searchKnowledge(k, text).length > 0; },
   requireSources: process.env.AUTO_REPLY_REQUIRE_SOURCES !== '0',
   limits: {
     ...(process.env.AUTO_REPLY_MAX_AGE_MS ? { maxAutoAgeMs: parseInt(process.env.AUTO_REPLY_MAX_AGE_MS, 10) } : {}),
@@ -109,7 +122,7 @@ const autoSuggester = createAutoSuggester({
   },
   suggest: (request) => suggestReply({ store: copilotStore, knowledge: currentKnowledge(copilotStore.readConfig()), runModel: runAgy,
     user: { email: 'webhook-evolution' }, request }),
-  debounceMs: parseInt(process.env.AUTO_SUGGEST_DEBOUNCE_MS || '4000', 10),
+  debounceMs: parseInt(process.env.AUTO_SUGGEST_DEBOUNCE_MS || '6000', 10),
   maxPerHour: parseInt(process.env.AUTO_SUGGEST_MAX_PER_HOUR || '20', 10),
   log: (where, msg) => console.error(`[auto-suggest:${where}]`, msg),
 });

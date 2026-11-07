@@ -148,15 +148,15 @@ const draftCalls = () => fixture().then((f) => f.agyPrompts.filter((p) => p.incl
 const draftsBefore = await draftCalls();
 await page.getByRole('button', { name: 'Assumir' }).click();
 await page.getByTestId('ai-status').filter({ hasText: 'Assumida por humano' }).waitFor();
-await api('/__push', { jid: J3, text: 'Mensagem com humano assumindo' }); await sleep(4500);
+await api('/__push', { jid: J3, text: 'Mensagem com humano assumindo' }); await sleep(8500);
 check('3.7 conversa assumida por humano não gera sugestão', (await draftCalls()) === draftsBefore && (await page.getByTestId('reply-suggestion').count()) === 0);
 await page.getByRole('button', { name: 'Devolver para a IA' }).click();
 await page.getByRole('button', { name: 'Desligar sugestões' }).click();
 await page.getByTestId('ai-status').filter({ hasText: 'IA desligada nesta conversa' }).waitFor();
-await api('/__push', { jid: J3, text: 'Mensagem com IA desligada' }); await sleep(4500);
+await api('/__push', { jid: J3, text: 'Mensagem com IA desligada' }); await sleep(8500);
 check('3.8 conversa com IA desligada não gera sugestão', (await draftCalls()) === draftsBefore && (await page.getByTestId('reply-suggestion').count()) === 0);
 await page.getByRole('button', { name: 'Ligar sugestões' }).click(); await sleep(400);
-await api('/__push', { jid: J3, text: 'Posso pagar no cartão?' }); await sleep(4500);
+await api('/__push', { jid: J3, text: 'Posso pagar no cartão?' }); await sleep(8500);
 check('3.8b tema bloqueado (cartão) não gera sugestão mesmo com IA ligada', (await draftCalls()) === draftsBefore && (await page.getByTestId('reply-suggestion').count()) === 0);
 await page.getByRole('button', { name: 'Desligar sugestões' }).click(); await sleep(400);
 check('3.9 sem loop: rascunhos == mensagens do cliente com IA ligada (2, uma no burst)', draftsBefore === 2, `rascunhos=${draftsBefore}`);

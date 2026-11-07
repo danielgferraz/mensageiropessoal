@@ -38,7 +38,7 @@ await page.screenshot({ path: 'shot-auto-on.png' });
 
 // 2. envio automático real (para o fixture)
 await post('/__push', { jid: J3, text: 'Qual o prazo de entrega do serviço?' });
-for (let i = 0; i < 60 && (await fx()).sent.length < 1; i++) await sleep(250);
+for (let i = 0; i < 140 && (await fx()).sent.length < 1; i++) await sleep(250);
 let s = await fx();
 check('A5 a IA enviou sozinha UMA resposta, para o contato certo, com o texto aprovado', s.sent.length === 1 && s.sent[0].number === J3 && /cinco dias úteis/.test(s.sent[0].text), JSON.stringify(s.sent));
 check('A6 nada fica pendente (o rascunho foi usado) e há registro de autoria IA', s.state.sugs.filter((x) => x.jid === J3 && x.status === 'pending').length === 0 && Object.values(s.state.conv[J3] ? { a: 1 } : {}).length > 0);
@@ -49,14 +49,14 @@ await page.screenshot({ path: 'shot-auto-sent.png' });
 
 // 3. segunda mensagem dentro da janela: só sugestão
 await post('/__push', { jid: J3, text: 'E o prazo para o segundo serviço de entrega?' });
-for (let i = 0; i < 40; i++) { s = await fx(); if (s.state.sugs.some((x) => x.jid === J3 && x.status === 'pending')) break; await sleep(250); }
+for (let i = 0; i < 100; i++) { s = await fx(); if (s.state.sugs.some((x) => x.jid === J3 && x.status === 'pending')) break; await sleep(250); }
 check('A8 segunda mensagem dentro da janela de 60 s NÃO é enviada, vira sugestão', s.sent.length === 1 && s.state.sugs.filter((x) => x.jid === J3 && x.status === 'pending').length === 1);
 const audit = (await admin('/copilot/audit', 'GET')).entries;
 check('A9 auditoria registra envio (com id da mensagem) e o motivo de ter ficado só sugestão, sem texto', audit.some((e) => e.action === 'auto_sent' && e.messageId) && audit.some((e) => e.action === 'auto_skip' && e.code === 'rate_window') && !JSON.stringify(audit).includes('cinco dias'));
 
 // 4. humano responde pelo celular -> pausa sozinha
 await post('/__push', { jid: J3, text: 'Resposta do Daniel pelo celular', fromMe: true });
-await page.getByTestId('ai-auto-badge').waitFor({ state: 'detached', timeout: 15000 });
+await page.getByTestId('ai-auto-badge').waitFor({ state: 'detached', timeout: 20000 });
 check('A10 humano respondeu: a conversa volta sozinha para "Só sugestão"', /Só sugestão/.test(await status()) && (await fx()).state.conv[J3].autoReply === false);
 
 // 5. kill switch
@@ -66,7 +66,7 @@ await page.getByTestId('ai-auto-badge').waitFor({ timeout: 5000 });
 await admin('/copilot/config', 'PUT', { paused: true });
 const before = (await fx()).sent.length;
 await post('/__push', { jid: J3, text: 'Mais uma pergunta sobre o prazo de entrega?' });
-await sleep(7000);
+await sleep(9000);
 check('A11 atendente em pausa geral: nada é enviado', (await fx()).sent.length === before);
 await admin('/copilot/config', 'PUT', { paused: false });
 
@@ -84,8 +84,31 @@ await page.getByRole('button', { name: 'Ligar sugestões' }).click(); await slee
 check('A15 conversa recém-ligada começa só em sugestão (não herda o opt-in)', /Só sugestão/.test(await status()));
 const sentBefore = (await fx()).sent.length;
 await post('/__push', { jid: '5511999990001@s.whatsapp.net', text: 'Qual o prazo de entrega do serviço?' });
-await sleep(7000);
+await sleep(9000);
 check('A16 sem opt-in de envio nessa conversa: nada enviado', (await fx()).sent.length === sentBefore);
+
+
+// 8. espera de 6 s com reinício + "digitando…"
+await page.getByText(/99999-0003/).first().click(); await page.waitForSelector('[data-testid=messages-viewport]'); await sleep(500);
+await admin('/state/conversations/' + encodeURIComponent(J3), 'PUT', { aiEnabled: true, mode: 'suggestion', autoReply: true });
+{ const lastSend = (await fx()).sent.filter((m) => m.number === J3).at(-1)?.at || 0; const wait = lastSend + 62000 - Date.now(); if (wait > 0) await sleep(wait); }
+const p0 = (await fx()).presences.length; const n0 = (await fx()).sent.length;
+const tA = Date.now(); await post('/__push', { jid: J3, text: 'Quero saber o prazo' });
+let seenComposingMs = null;
+for (let i = 0; i < 20; i++) { const ps = (await fx()).presences.slice(p0); if (ps.some((x) => x.presence === 'composing' && x.number === J3)) { seenComposingMs = Date.now() - tA; break; } await sleep(100); }
+check('P1 "digitando…" começa junto com a contagem (em ~1 s), antes de gerar ou enviar', seenComposingMs !== null && seenComposingMs < 2500 && (await fx()).sent.length === n0, `composing após ${seenComposingMs} ms`);
+await sleep(3000);
+const tB = Date.now(); await post('/__push', { jid: J3, text: 'de entrega do serviço?' });
+let sentAt = 0;
+for (let i = 0; i < 200; i++) { const f = await fx(); if (f.sent.length > n0) { sentAt = f.sent.at(-1).at; break; } await sleep(250); }
+const f1 = await fx();
+check('P2 reinício: UMA resposta, só 6 s depois da ÚLTIMA mensagem (não da primeira)', f1.sent.length === n0 + 1 && sentAt - tB >= 5800 && sentAt - tA >= 8800, `última→resposta ${sentAt - tB} ms; primeira→resposta ${sentAt - tA} ms`);
+const mine = f1.presences.slice(p0).filter((x) => x.number === J3);
+check('P3 presença: composing renovado, depois paused após o envio, e termina em paused', mine[0].presence === 'composing' && mine.filter((x) => x.presence === 'composing').length >= 2 && mine.at(-1).presence === 'paused' && mine.at(-1).at >= sentAt - 50, mine.map((x) => x.presence).join(','));
+await sleep(3000);
+const f2 = await fx();
+check('P4 nenhum "digitando" preso depois de enviar', f2.presences.filter((x) => x.number === J3).at(-1).presence === 'paused' && f2.presences.length === f1.presences.length);
+check('P5 nunca "digitando" para conversa sem automático (outro contato/grupo)', !f2.presences.some((x) => x.number !== J3));
 
 check('A99 console limpo', issues.length === 0, issues.slice(0, 3).join(' || '));
 await browser.close();

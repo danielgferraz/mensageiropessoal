@@ -23,7 +23,7 @@
     {
       "name": "A5 a IA enviou sozinha UMA resposta, para o contato certo, com o texto aprovado",
       "ok": true,
-      "detail": "[{\"number\":\"5511999990003@s.whatsapp.net\",\"text\":\"Olá! O prazo de entrega é de cinco dias úteis. Posso ajudar em mais algo?\"}]"
+      "detail": "[{\"number\":\"5511999990003@s.whatsapp.net\",\"text\":\"Olá! O prazo de entrega é de cinco dias úteis. Posso ajudar em mais algo?\",\"at\":1794020314947}]"
     },
     {
       "name": "A6 nada fica pendente (o rascunho foi usado) e há registro de autoria IA",
@@ -77,6 +77,31 @@
     },
     {
       "name": "A16 sem opt-in de envio nessa conversa: nada enviado",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "name": "P1 \"digitando…\" começa junto com a contagem (em ~1 s), antes de gerar ou enviar",
+      "ok": true,
+      "detail": "composing após 7 ms"
+    },
+    {
+      "name": "P2 reinício: UMA resposta, só 6 s depois da ÚLTIMA mensagem (não da primeira)",
+      "ok": true,
+      "detail": "última→resposta 6024 ms; primeira→resposta 9035 ms"
+    },
+    {
+      "name": "P3 presença: composing renovado, depois paused após o envio, e termina em paused",
+      "ok": true,
+      "detail": "composing,composing,paused"
+    },
+    {
+      "name": "P4 nenhum \"digitando\" preso depois de enviar",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "name": "P5 nunca \"digitando\" para conversa sem automático (outro contato/grupo)",
       "ok": true,
       "detail": ""
     },

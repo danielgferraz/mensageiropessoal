@@ -53,9 +53,15 @@ Limite conhecido: o app ainda não renderiza `<img>`/áudio dentro das mensagens
 - Testes: `server/auto-reply.test.mjs` (10 cenários com Evolution falsa), `auto-reply-routes.test.mjs` (webhook -> sendText falso), `state-db.test.mjs` (coluna/migração/reset), `copilot.test.mjs` (kill switch). Navegador `e2e-auto.mjs`: 17/17 (confirmação, envio único, janela, auditoria, humano responde pausa, pausa geral, assumir, outra conversa intacta). Regressão `e2e.mjs`: 51/51.
 - UI: "IA responde automaticamente nesta conversa" + selo AUTOMÁTICO x "Só sugestão"; botão com confirmação; Antigravity mostra o mesmo estado.
 
+## Espera de 6 s com reinício e "digitando…" — adendo
+
+- Debounce 6 s (antes 4 s) contado da última mensagem, com reinício por mensagem e uma única resposta para a rajada; vale também para o card de sugestão.
+- Presença `composing` desde o início da espera (só quando um envio automático ainda é possível), renovada a cada 8 s, sempre encerrada com `paused`; abortada se humano assumir/IA desligar/pausa; teto de 150 s; falha de presença não derruba a resposta.
+- Testes: `server/auto-presence.test.mjs` (10 cenários, estáveis em 3 execuções) e `auto-reply-routes.test.mjs` (formato do `/chat/sendPresence`). Navegador `e2e-auto.mjs` 22/22, com medição real: última mensagem -> resposta 6024 ms; primeira -> resposta 9035 ms (reinício); composing,composing,paused; nada preso depois. Regressão `e2e.mjs` 51/51.
+
 ## Resultado
 
-- `pnpm test`: 113/113; `tsc`: sem erros; `oxlint`: sem avisos nos arquivos novos/alterados; `vite build`: ok.
+- `pnpm test`: 123/123; `tsc`: sem erros; `oxlint`: sem avisos nos arquivos novos/alterados; `vite build`: ok.
 - Navegador: 51/51, console limpo (as respostas 503/502 provocadas de propósito em 2.15/2.16 são ignoradas).
 
 ## Não testado / pendente

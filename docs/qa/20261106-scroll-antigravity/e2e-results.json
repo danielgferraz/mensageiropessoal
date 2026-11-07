@@ -88,7 +88,7 @@
     {
       "name": "1.11b envio foi só para o fixture (nenhum envio real)",
       "ok": true,
-      "detail": "[{\"number\":\"5511999990001@s.whatsapp.net\",\"text\":\"ENVIO-QA\"}]"
+      "detail": "[{\"number\":\"5511999990001@s.whatsapp.net\",\"text\":\"ENVIO-QA\",\"at\":1794020425945}]"
     },
     {
       "name": "1.12 busca no chat continua funcionando",
