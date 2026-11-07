@@ -170,10 +170,11 @@ test('guardrails still apply: master switch, paused, blocked topics, handoff, li
     const t = setup(); await t.suggester.handleWebhook(upsert({ message: { conversation: text } })); await t.suggester.whenIdle();
     assert.equal(t.db.suggestions.length, 0, text); assert.equal(t.modelCalls.length, 0);
   }
+  // Decisão do usuário: o fluxo automático não tem teto por conversa (o limite por contato continua valendo no pedido manual)
   const t = setup({ config: { maxPerHourPerContact: 1 } });
   await t.suggester.handleWebhook(upsert()); await t.suggester.whenIdle();
   await t.suggester.handleWebhook(upsert()); await t.suggester.whenIdle();
-  assert.equal(t.modelCalls.length, 1, 'second draft within the hour is refused');
+  assert.equal(t.modelCalls.length, 2, 'no per-conversation cap in the automatic flow');
   const g = setup({ suggesterOpts: { maxPerHour: 1 } });
   await g.suggester.handleWebhook(upsert()); await g.suggester.whenIdle();
   await g.suggester.handleWebhook(upsert()); await g.suggester.whenIdle();

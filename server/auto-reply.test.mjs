@@ -174,6 +174,21 @@ test('rate limits: window per conversation, per conversation per hour and global
   assert.ok(codes(global).includes('rate_global_send'));
 });
 
+test('no per-conversation cap by default: many replies to one contact are only limited by the 60 s window and the global hourly limit', async () => {
+  const t = setup({ limits: { maxSendsPerHour: 100 }, config: { mode: 'automatic', maxPerHourPerContact: 1, maxPerDay: 100 } });
+  for (let i = 0; i < 8; i++) await run(t, upsert());
+  assert.equal(t.evolution.length, 8, 'eight replies to the same conversation within the hour');
+  assert.ok(!codes(t).includes('rate_conv'));
+  // a janela entre respostas e o teto global continuam valendo
+  const win = setup({ limits: { minIntervalMs: 60000 } });
+  await run(win, upsert()); await run(win, upsert());
+  assert.equal(win.evolution.length, 1);
+  const glob = setup({ limits: { maxSendsPerHour: 2 } });
+  for (let i = 0; i < 4; i++) await run(glob, upsert());
+  assert.equal(glob.evolution.length, 2);
+  assert.ok(codes(glob).includes('rate_global_send'));
+});
+
 test('a newer message while generating, or a draft discarded before sending, cancels the send', async () => {
   let release; const gate = new Promise((r) => { release = r; }); let calls = 0;
   const t = setup({ model: async () => { calls++; if (calls === 1) await gate; return calls === 1 ? 'Resposta antiga sobre o prazo de entrega do serviço.' : DRAFT; } });

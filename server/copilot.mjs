@@ -91,7 +91,8 @@ export function evaluateRequest(config, request, history = [], now = new Date())
   if (!withinBusinessHours(config.businessHours, now)) return deny('hours', 'Fora do horário de atendimento configurado.');
   const hourAgo = now.getTime() - 3600000, dayAgo = now.getTime() - 86400000;
   const mine = history.filter((entry) => entry.contactId === request.contactId && entry.at > hourAgo).length;
-  if (mine >= config.maxPerHourPerContact) return deny('rate_contact', 'Limite de rascunhos por hora para este contato atingido.');
+  // noContactLimit: fluxo automático das conversas com opt-in não tem teto por conversa (vale o global e a janela entre respostas)
+  if (!request.noContactLimit && mine >= config.maxPerHourPerContact) return deny('rate_contact', 'Limite de rascunhos por hora para este contato atingido.');
   if (history.filter((entry) => entry.at > dayAgo).length >= config.maxPerDay) return deny('rate_day', 'Limite diário de rascunhos atingido.');
   const last = request.lastIncoming || '';
   const handoff = mentions(last, config.handoffKeywords);

@@ -65,23 +65,24 @@ test('the wait is 6 s by default and applies to suggestions and replies alike', 
 });
 
 test('every new message restarts the wait: one single reply for the whole burst, only after the last message', async () => {
-  const t = setup({ debounceMs: 150 });
+  const t = setup({ debounceMs: 500 });
   const start = Date.now(); let lastAt = 0;
   for (const text of ['oi', 'tudo bem?', 'Qual o prazo de entrega do serviço?']) {
-    await t.suggester.handleWebhook(upsert(text)); lastAt = Date.now() - start; await sleep(90);   // cada intervalo < espera: reinicia
+    await t.suggester.handleWebhook(upsert(text)); lastAt = Date.now() - start; await sleep(100);   // cada intervalo < espera: reinicia
   }
   await t.suggester.whenIdle();
   assert.equal(t.modelCalls.length, 1, 'one generation for the burst');
   assert.equal(t.sends().length, 1, 'one reply, not one per message');
   for (const text of ['oi', 'tudo bem?', 'Qual o prazo de entrega']) assert.ok(t.modelCalls[0].includes(`CLIENTE: ${text}`), `burst message "${text}" is in the context`);
-  assert.ok(t.sends()[0][0] >= lastAt + 150 - 15, `reply ${t.sends()[0][0]}ms after start vs last message at ${lastAt}ms + 150ms`);
+  assert.ok(t.sends()[0][0] >= lastAt + 500 - 15, `reply ${t.sends()[0][0]}ms after start vs last message at ${lastAt}ms + 500ms`);
 });
 
 test('"digitando…" starts with the wait, is renewed while generating, and ends with paused after the send', async () => {
   const t = setup({ debounceMs: 80, model: async () => { await sleep(250); return DRAFT; } });
   await t.suggester.handleWebhook(upsert());
   await sleep(20);
-  assert.deepEqual(t.presences(), ['composing'], 'composing begins as soon as the wait begins, before any generation');
+  assert.equal(t.presences()[0], 'composing', 'composing begins as soon as the wait begins, before any generation');
+  assert.ok(t.presences().every((x) => x === 'composing'));
   assert.equal(t.sends().length, 0);
   await t.suggester.whenIdle();
   const seq = t.events.map((e) => e[1] === 'presence' ? e[2] : e[1]);

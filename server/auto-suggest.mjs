@@ -19,7 +19,7 @@ export const DEFAULT_DEBOUNCE_MS = 6000;
 export const AUTO_DEFAULTS = Object.freeze({
   maxAutoAgeMs: 2 * 60 * 1000,      // só responde sozinho a mensagens com até 2 min
   minIntervalMs: 60 * 1000,         // no máximo uma resposta automática por conversa a cada 60 s
-  maxPerConvPerHour: 3,
+  maxPerConvPerHour: 0,             // 0 = sem teto por conversa (decisão do usuário); a janela de 60 s e o global/hora continuam
   maxSendsPerHour: 10,              // global
 });
 
@@ -66,7 +66,7 @@ export function createAutoSuggester({ store, getDb, fetchContext, suggest, sendT
     const last = Date.parse(state.lastAiReplyAt || '') || 0;
     if (t - last < lim.minIntervalMs) return 'rate_window';
     const sent = autoSentSince(t - HOUR);
-    if (sent.filter((e) => e.contactId === jid).length >= lim.maxPerConvPerHour) return 'rate_conv';
+    if (lim.maxPerConvPerHour > 0 && sent.filter((e) => e.contactId === jid).length >= lim.maxPerConvPerHour) return 'rate_conv';
     if (sent.length >= lim.maxSendsPerHour) return 'rate_global_send';
     return null;
   }
@@ -167,7 +167,7 @@ export function createAutoSuggester({ store, getDb, fetchContext, suggest, sendT
       }
 
       const result = await suggest({
-        contactId: opt.jid, isSaved: true, isGroup: false, optIn: true, labelIds: [],
+        contactId: opt.jid, isSaved: true, isGroup: false, optIn: true, noContactLimit: true, labelIds: [],
         contactPhone: phoneOf(jids.find((j) => phoneOf(j)) || opt.jid), messages, lastIncoming: entry.text,
       });
       if (!result?.draft) return;                           // bloqueado/encaminhado/falhou: suggestReply já auditou; nada é enviado

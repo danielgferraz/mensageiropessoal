@@ -117,7 +117,8 @@ const autoSuggester = createAutoSuggester({
   limits: {
     ...(process.env.AUTO_REPLY_MAX_AGE_MS ? { maxAutoAgeMs: parseInt(process.env.AUTO_REPLY_MAX_AGE_MS, 10) } : {}),
     ...(process.env.AUTO_REPLY_MIN_INTERVAL_MS ? { minIntervalMs: parseInt(process.env.AUTO_REPLY_MIN_INTERVAL_MS, 10) } : {}),
-    ...(process.env.AUTO_REPLY_MAX_PER_CONV_HOUR ? { maxPerConvPerHour: parseInt(process.env.AUTO_REPLY_MAX_PER_CONV_HOUR, 10) } : {}),
+    // 0 ou ausente = sem teto por conversa. Aceita os dois nomes.
+    ...((process.env.AUTO_REPLY_MAX_PER_CONV_HOUR || process.env.AUTO_REPLY_MAX_PER_CONVERSATION) ? { maxPerConvPerHour: parseInt(process.env.AUTO_REPLY_MAX_PER_CONV_HOUR || process.env.AUTO_REPLY_MAX_PER_CONVERSATION, 10) || 0 } : {}),
     ...(process.env.AUTO_REPLY_MAX_PER_HOUR ? { maxSendsPerHour: parseInt(process.env.AUTO_REPLY_MAX_PER_HOUR, 10) } : {}),
   },
   suggest: (request) => suggestReply({ store: copilotStore, knowledge: currentKnowledge(copilotStore.readConfig()), runModel: runAgy,
